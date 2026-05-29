@@ -7,6 +7,13 @@ import { useShop } from "../context/ShopContext";
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
 
+const fadeInUp = {
+  initial: { opacity: 0, y: 30 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-50px" },
+  transition: { duration: 0.6, ease: "easeOut" }
+};
+
 export default function Home() {
   const [activeSlide, setActiveSlide] = useState(0);
   const { wishlist, toggleWishlist, addToCart } = useShop();
@@ -105,7 +112,7 @@ export default function Home() {
       </section>
 
       {/* Trust Bar */}
-      <section className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
+      <motion.section {...fadeInUp} className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
           {[
             { icon: Truck, title: "Next-Day Delivery", desc: "Metro cities" },
@@ -124,10 +131,10 @@ export default function Home() {
             </div>
           ))}
         </div>
-      </section>
+      </motion.section>
 
       {/* Featured Products */}
-      <section className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
+      <motion.section {...fadeInUp} className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
         <div className="mb-5 flex items-end justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -187,10 +194,10 @@ export default function Home() {
             </motion.div>
           ))}
         </div>
-      </section>
+      </motion.section>
 
       {/* Promo Banner */}
-      <section className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
+      <motion.section {...fadeInUp} className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
         <div className="relative overflow-hidden rounded-[28px] border border-[#F0E6F2] bg-gradient-to-r from-[#FCF7FD] via-[#FFF8FB] to-[#F8F4FA] p-[1px]">
           <div className="relative grid grid-cols-1 items-center gap-6 rounded-[27px] bg-white/70 px-6 py-8 backdrop-blur md:grid-cols-[1.1fr_0.9fr] md:px-10 md:py-10">
             <div>
@@ -222,10 +229,10 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Categories */}
-      <section className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
+      <motion.section {...fadeInUp} className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
         <div className="mb-5 flex items-baseline justify-between">
           <h2 className="text-[22px] font-semibold tracking-tight md:text-[26px]">Shop by Category</h2>
           <a href="#" className="text-[13.5px] font-medium text-[#8B1D8F] hover:underline">View all</a>
@@ -247,10 +254,32 @@ export default function Home() {
             </a>
           ))}
         </div>
-      </section>
+      </motion.section>
+
+      {/* Shop by Age */}
+      <motion.section {...fadeInUp} className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
+        <h2 className="mb-5 text-[22px] font-semibold tracking-tight text-[#1A0F1C] md:text-[26px]">Shop by Age</h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+          {[
+            { age: "0-2 Years", label: "Toddlers", img: "https://images.pexels.com/photos/8506372/pexels-photo-8506372.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=400&h=400" },
+            { age: "3-5 Years", label: "Preschoolers", img: "https://images.pexels.com/photos/31625368/pexels-photo-31625368.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=400&h=400" },
+            { age: "6-8 Years", label: "Kids", img: "https://images.pexels.com/photos/34322336/pexels-photo-34322336.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=400&h=400" },
+            { age: "9-12 Years", label: "Pre-teens", img: "https://images.pexels.com/photos/14211426/pexels-photo-14211426.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=400&h=400" },
+          ].map((item) => (
+            <a key={item.age} href="#" className="group relative overflow-hidden rounded-[20px] bg-[#FCF7FD]">
+              <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              <img src={item.img} alt={item.age} className="aspect-square w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+              <div className="absolute bottom-4 left-4 z-20">
+                <div className="text-[18px] font-bold text-white">{item.age}</div>
+                <div className="text-[13px] font-medium text-white/80">{item.label}</div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </motion.section>
 
       {/* Parent Favorites */}
-      <section className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
+      <motion.section {...fadeInUp} className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
         <div className="grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
           <div className="relative overflow-hidden rounded-[28px] border border-[#F0E6F2] bg-[#1A0F1C]">
             <img src="https://images.pexels.com/photos/8501698/pexels-photo-8501698.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1200&h=800" alt="" className="absolute inset-0 h-full w-full object-cover opacity-[0.35]" />
@@ -287,10 +316,47 @@ export default function Home() {
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
+
+      {/* The Saheli Difference */}
+      <motion.section {...fadeInUp} className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
+        <div className="overflow-hidden rounded-[32px] bg-[#FCF7FD] md:grid md:grid-cols-2">
+          <div className="flex flex-col justify-center p-8 md:p-14 lg:p-20">
+            <h2 className="text-[28px] font-bold leading-tight text-[#1A0F1C] md:text-[36px]">
+              Crafted for Comfort,<br/> Designed to Shine.
+            </h2>
+            <p className="mt-4 text-[15px] leading-relaxed text-[#5E4F63]">
+              We know that an itchy costume ruins the fun. That's why every Saheli Shrungar outfit is lined with breathable cotton, ensuring your child can perform, play, and celebrate in complete comfort.
+            </p>
+            <ul className="mt-8 space-y-4">
+              {[
+                "100% kid-safe, hypoallergenic materials",
+                "Authentic detailing and traditional craftsmanship",
+                "Durable stitching for multiple wears",
+                "Hassle-free, easy-to-wear designs"
+              ].map((point, i) => (
+                <li key={i} className="flex items-center gap-3 text-[14px] font-medium text-[#2E1F31]">
+                  <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#E8F5E9] text-[#0F8A4B]">
+                    <Check className="h-3.5 w-3.5" />
+                  </div>
+                  {point}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-10">
+              <a href="#" className="inline-flex rounded-full bg-[#1A0F1C] px-6 py-3.5 text-[14px] font-medium text-white transition hover:bg-[#8B1D8F]">
+                Learn About Our Process
+              </a>
+            </div>
+          </div>
+          <div className="relative h-64 w-full md:h-auto">
+            <img src="https://images.pexels.com/photos/18139756/pexels-photo-18139756.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1000&h=1200" alt="Craftsmanship" className="absolute inset-0 h-full w-full object-cover" />
+          </div>
+        </div>
+      </motion.section>
 
       {/* Testimonials */}
-      <section className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
+      <motion.section {...fadeInUp} className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
         <div className="mb-5 flex items-baseline justify-between">
           <h2 className="text-[22px] font-semibold tracking-tight md:text-[26px]">Loved by Parents</h2>
           <div className="flex items-center gap-1 text-[13px] text-[#6B5A6F]">
@@ -316,10 +382,10 @@ export default function Home() {
             </div>
           ))}
         </div>
-      </section>
+      </motion.section>
 
       {/* Instagram */}
-      <section className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
+      <motion.section {...fadeInUp} className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
         <div className="flex items-center justify-between">
           <h2 className="text-[22px] font-semibold tracking-tight md:text-[26px]">@sahelishrungar</h2>
           <a href="#" className="text-[13.5px] font-medium text-[#8B1D8F] hover:underline">Follow us</a>
@@ -339,10 +405,10 @@ export default function Home() {
             </a>
           ))}
         </div>
-      </section>
+      </motion.section>
 
       {/* Newsletter */}
-      <section className="mx-auto mt-12 max-w-[1240px] px-4 md:mt-16 mb-12">
+      <motion.section {...fadeInUp} className="mx-auto mt-12 mb-12 max-w-[1240px] px-4 md:mt-16">
         <div className="relative overflow-hidden rounded-[28px] border border-[#F0E6F2]">
           <div className="absolute inset-0 bg-gradient-to-r from-[#8B1D8F] via-[#A32B9D] to-[#C2187B]" />
           <div className="absolute inset-0 opacity-[0.15] [background:radial-gradient(circle_at_20%_50%,white,transparent_40%),radial-gradient(circle_at_80%_30%,white,transparent_40%)]" />
@@ -357,7 +423,7 @@ export default function Home() {
             </form>
           </div>
         </div>
-      </section>
+      </motion.section>
     </>
   );
 }
