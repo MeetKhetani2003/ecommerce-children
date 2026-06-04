@@ -4,8 +4,54 @@ import { useEffect, useState } from "react";
 import Link from 'next/link';
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, Check, Sparkles } from "lucide-react";
+import { Search, Heart, ShoppingBag, User, Menu, X, ChevronDown, Check, Sparkles } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
+
+const megaMenuGroups = [
+  {
+    title: "Nature & Animals",
+    categories: [
+      "Animal Costume",
+      "Birds Costume",
+      "Insect Costume",
+      "Water Animals Costume",
+      "Fruit Costume",
+      "Vegetable Costume",
+      "Flower Costume",
+    ]
+  },
+  {
+    title: "Cultural & Patriotic",
+    categories: [
+      "Indian State Costume",
+      "Indian Mythology Costume",
+      "Indian Dance Costume",
+      "Republic Day / Independence Day",
+      "National Heroes",
+      "Halloween Costumes",
+    ]
+  },
+  {
+    title: "Characters & Helpers",
+    categories: [
+      "Super Heroes",
+      "Cartoon Characters Costume",
+      "Our Helpers",
+      "Community Helpers",
+    ]
+  },
+  {
+    title: "Accessories & Offers",
+    categories: [
+      "Caps / Hats / Safa / Pagdi",
+      "Face Masks",
+      "Hair Wigs",
+      "Silver / Golden Jewellery",
+      "Umbrella / Fans",
+      "Offer Products",
+    ]
+  }
+];
 const logoUrl = "/assets/logo.png";
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
@@ -42,12 +88,55 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Nav */}
           <nav className="ml-6 hidden items-center gap-7 lg:flex">
-            {["New Arrivals", "Superhero", "Mythology", "Animals", "Dance", "School Events"].map((item) => (
-              <Link key={item} href={`/products?category=${item === "New Arrivals" ? "All" : item}`} className="group relative py-2 text-[14px] font-medium text-[#3A2A3D] transition-colors hover:text-[#8B1D8F]">
-                {item}
-                <span className="absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r from-[#8B1D8F] to-[#E91E7A] transition-all duration-300 group-hover:w-full" />
-              </Link>
-            ))}
+            <Link href="/" className="group relative py-2 text-[14px] font-medium text-[#3A2A3D] transition-colors hover:text-[#8B1D8F]">
+              Home
+              <span className="absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r from-[#8B1D8F] to-[#E91E7A] transition-all duration-300 group-hover:w-full" />
+            </Link>
+
+            {/* Categories Mega Menu Trigger */}
+            <div className="group relative py-2">
+              <button className="flex items-center gap-1 text-[14px] font-medium text-[#3A2A3D] transition-colors hover:text-[#8B1D8F] outline-none">
+                <span>Categories</span>
+                <ChevronDown className="h-3.5 w-3.5 text-[#A38AA6] transition-transform duration-200 group-hover:rotate-180" />
+              </button>
+
+              {/* Mega Menu Dropdown */}
+              <div className="invisible absolute left-1/2 top-full z-[100] w-[860px] -translate-x-[200px] pt-4 opacity-0 transition-all duration-300 group-hover:visible group-hover:opacity-100">
+                <div className="rounded-[24px] border border-[#F0E6F2] bg-white p-6 shadow-2xl shadow-black/10 backdrop-blur-xl">
+                  <div className="grid grid-cols-4 gap-6">
+                    {megaMenuGroups.map((group) => (
+                      <div key={group.title} className="space-y-3">
+                        <div className="text-[12.5px] font-semibold uppercase tracking-wider text-[#8B1D8F]">
+                          {group.title}
+                        </div>
+                        <ul className="space-y-2 border-l border-[#F8F0F9] pl-3">
+                          {group.categories.map((cat) => (
+                            <li key={cat}>
+                              <Link 
+                                href={`/products?category=${encodeURIComponent(cat)}`}
+                                className="block text-[13.5px] text-[#6B5A6F] transition-all duration-200 hover:translate-x-1 hover:text-[#8B1D8F]"
+                              >
+                                {cat}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Link href="/products?category=All" className="group relative py-2 text-[14px] font-medium text-[#3A2A3D] transition-colors hover:text-[#8B1D8F]">
+              New Arrivals
+              <span className="absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r from-[#8B1D8F] to-[#E91E7A] transition-all duration-300 group-hover:w-full" />
+            </Link>
+
+            <Link href="/products?category=Offer Products" className="group relative py-2 text-[14px] font-medium text-[#3A2A3D] transition-colors hover:text-[#8B1D8F]">
+              Offers
+              <span className="absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r from-[#8B1D8F] to-[#E91E7A] transition-all duration-300 group-hover:w-full" />
+            </Link>
           </nav>
 
           <div className="ml-auto flex items-center gap-1.5">
@@ -96,19 +185,53 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A38AA6]" />
                 </div>
                 <div className="space-y-1">
-                  {["New Arrivals", "Superhero", "Mythology", "Animals", "Birds", "Dance Wear", "Republic Day", "Halloween", "Community Helpers", "Fruit & Veg"].map((i) => (
-                    <Link key={i} href={`/products?category=${i === "New Arrivals" ? "All" : i}`} onClick={() => setMobileMenu(false)} className="flex items-center justify-between rounded-xl px-3 py-3 text-[14px] font-medium text-[#2E1F31] hover:bg-[#FCF7FD]">
-                      {i}
-                      <ChevronRight className="h-4 w-4 text-[#B99BBC]" />
-                    </Link>
-                  ))}
-                  <Link href="/wishlist" onClick={() => setMobileMenu(false)} className="flex items-center justify-between rounded-xl px-3 py-3 text-[14px] font-medium text-[#2E1F31] hover:bg-[#FCF7FD]">
-                    My Wishlist
-                    <ChevronRight className="h-4 w-4 text-[#B99BBC]" />
+                  <Link href="/" onClick={() => setMobileMenu(false)} className="block rounded-xl px-3 py-3 text-[14px] font-medium text-[#2E1F31] hover:bg-[#FCF7FD]">
+                    Home
                   </Link>
-                  <Link href="/profile" onClick={() => setMobileMenu(false)} className="flex items-center justify-between rounded-xl px-3 py-3 text-[14px] font-medium text-[#2E1F31] hover:bg-[#FCF7FD]">
+
+                  {/* Categories Accordion using details & summary */}
+                  <details className="group [&_summary::-webkit-details-marker]:hidden border-b border-[#F8F0F9] pb-1">
+                    <summary className="flex items-center justify-between rounded-xl px-3 py-3 text-[14px] font-medium text-[#2E1F31] hover:bg-[#FCF7FD] cursor-pointer outline-none">
+                      <span>Categories</span>
+                      <ChevronDown className="h-4 w-4 text-[#B99BBC] transition-transform duration-200 group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-1 pl-4 pr-2 pb-2 space-y-4 border-l border-[#F0E6F2]">
+                      {megaMenuGroups.map((group) => (
+                        <div key={group.title} className="space-y-1">
+                          <div className="text-[11px] font-semibold uppercase tracking-wider text-[#8B1D8F]/70 px-2 py-0.5">
+                            {group.title}
+                          </div>
+                          <div className="space-y-0.5 pl-2">
+                            {group.categories.map((cat) => (
+                              <Link 
+                                key={cat} 
+                                href={`/products?category=${encodeURIComponent(cat)}`}
+                                onClick={() => setMobileMenu(false)}
+                                className="block rounded-lg px-2 py-2 text-[13px] font-medium text-[#4A354D] hover:bg-[#FCF7FD] hover:text-[#8B1D8F]"
+                              >
+                                {cat}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+
+                  <Link href="/products?category=All" onClick={() => setMobileMenu(false)} className="block rounded-xl px-3 py-3 text-[14px] font-medium text-[#2E1F31] hover:bg-[#FCF7FD]">
+                    New Arrivals
+                  </Link>
+
+                  <Link href="/products?category=Offer Products" onClick={() => setMobileMenu(false)} className="block rounded-xl px-3 py-3 text-[14px] font-medium text-[#2E1F31] hover:bg-[#FCF7FD]">
+                    Offers
+                  </Link>
+
+                  <Link href="/wishlist" onClick={() => setMobileMenu(false)} className="block rounded-xl px-3 py-3 text-[14px] font-medium text-[#2E1F31] hover:bg-[#FCF7FD]">
+                    My Wishlist
+                  </Link>
+
+                  <Link href="/profile" onClick={() => setMobileMenu(false)} className="block rounded-xl px-3 py-3 text-[14px] font-medium text-[#2E1F31] hover:bg-[#FCF7FD]">
                     My Profile
-                    <ChevronRight className="h-4 w-4 text-[#B99BBC]" />
                   </Link>
                 </div>
               </div>

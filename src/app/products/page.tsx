@@ -5,8 +5,54 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 import { Filter, Star, Heart, ShoppingBag, ChevronDown, Search } from "lucide-react";
-import { products, categories } from "@/data/mockData";
+import { products } from "@/data/mockData";
 import { useShop } from "@/context/ShopContext";
+
+const categoryGroups = [
+  {
+    title: "Nature & Animals",
+    categories: [
+      "Animal Costume",
+      "Birds Costume",
+      "Insect Costume",
+      "Water Animals Costume",
+      "Fruit Costume",
+      "Vegetable Costume",
+      "Flower Costume",
+    ]
+  },
+  {
+    title: "Cultural & Patriotic",
+    categories: [
+      "Indian State Costume",
+      "Indian Mythology Costume",
+      "Indian Dance Costume",
+      "Republic Day / Independence Day",
+      "National Heroes",
+      "Halloween Costumes",
+    ]
+  },
+  {
+    title: "Characters & Helpers",
+    categories: [
+      "Super Heroes",
+      "Cartoon Characters Costume",
+      "Our Helpers",
+      "Community Helpers",
+    ]
+  },
+  {
+    title: "Accessories & Offers",
+    categories: [
+      "Caps / Hats / Safa / Pagdi",
+      "Face Masks",
+      "Hair Wigs",
+      "Silver / Golden Jewellery",
+      "Umbrella / Fans",
+      "Offer Products",
+    ]
+  }
+];
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
 import { Suspense } from "react";
@@ -23,8 +69,7 @@ function ProductsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const categoryParam = searchParams ? searchParams.get("category") : null;
-  
-  const [activeCategory, setActiveCategory] = useState<string>(categoryParam || "All");
+  const activeCategory = categoryParam || "All";
   const [sortBy, setSortBy] = useState<string>("featured");
   const [showFilters, setShowFilters] = useState(false);
   
@@ -70,8 +115,6 @@ function ProductsContent() {
     return result;
   }, [activeCategory, sortBy, activeAges, activePrices]);
 
-  const allCategories = ["All", ...categories.map(c => c.name)];
-
   return (
     <div className="mx-auto max-w-[1240px] px-4 py-8 md:py-12">
       <div className="mb-8 md:flex md:items-end md:justify-between">
@@ -116,27 +159,52 @@ function ProductsContent() {
         )}>
           <div className="rounded-[24px] border border-[#F0E6F2] bg-white p-5">
             <h3 className="mb-4 text-[15px] font-semibold text-[#1A0F1C]">Categories</h3>
-            <ul className="space-y-2">
-              {allCategories.map(cat => (
-                <li key={cat}>
-                  <button
-                    onClick={() => {
-                      setActiveCategory(cat);
-                      router.push(cat === "All" ? "/products" : `/products?category=${cat}`);
-                      handleMobileFilterAction();
-                    }}
-                    className={cn(
-                      "w-full rounded-xl px-3 py-2 text-left text-[14px] transition",
-                      activeCategory === cat 
-                        ? "bg-[#F3E7F5] font-medium text-[#8B1D8F]" 
-                        : "text-[#4A354D] hover:bg-[#FCF7FD]"
-                    )}
-                  >
-                    {cat}
-                  </button>
-                </li>
+            <div className="space-y-4 max-h-[460px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-200">
+              {/* All Costumes */}
+              <button
+                onClick={() => {
+                  router.push("/products");
+                  handleMobileFilterAction();
+                }}
+                className={cn(
+                  "w-full rounded-xl px-3 py-2 text-left text-[14px] transition font-medium",
+                  activeCategory === "All" 
+                    ? "bg-[#F3E7F5] text-[#8B1D8F]" 
+                    : "text-[#4A354D] hover:bg-[#FCF7FD]"
+                )}
+              >
+                All Costumes
+              </button>
+
+              {/* Grouped Categories */}
+              {categoryGroups.map((group) => (
+                <div key={group.title} className="space-y-1">
+                  <div className="text-[11.5px] font-bold uppercase tracking-wider text-[#8B1D8F]/80 px-3 py-1 bg-[#FCF7FD]/50 rounded-lg">
+                    {group.title}
+                  </div>
+                  <ul className="space-y-0.5 pl-2 border-l border-[#F3E7F5] ml-1">
+                    {group.categories.map((cat) => (
+                      <li key={cat}>
+                        <button
+                          onClick={() => {
+                            router.push(`/products?category=${encodeURIComponent(cat)}`);
+                            handleMobileFilterAction();
+                          }}
+                          className={cn(
+                            "w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition",
+                            activeCategory.toLowerCase() === cat.toLowerCase()
+                              ? "bg-[#F3E7F5]/70 font-semibold text-[#8B1D8F]" 
+                              : "text-[#6B5A6F] hover:bg-[#FCF7FD] hover:text-[#8B1D8F]"
+                          )}
+                        >
+                          {cat}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
             
             <div className="mt-8 border-t border-[#F0E6F2] pt-6">
               <h3 className="mb-4 text-[15px] font-semibold text-[#1A0F1C]">Age Group</h3>
@@ -194,7 +262,7 @@ function ProductsContent() {
               <h3 className="text-[18px] font-medium text-[#1A0F1C]">No costumes found</h3>
               <p className="mt-2 text-[14px] text-[#6B5A6F]">Try selecting a different category or filter.</p>
               <button 
-                onClick={() => { setActiveCategory("All"); router.push("/products"); }}
+                onClick={() => { router.push("/products"); }}
                 className="mt-6 rounded-full bg-[#1A0F1C] px-6 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#8B1D8F]"
               >
                 Clear all filters

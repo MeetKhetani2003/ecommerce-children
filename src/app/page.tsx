@@ -21,6 +21,13 @@ export default function Home() {
   const [activeSlide, setActiveSlide] = useState(0);
   const { wishlist, toggleWishlist, addToCart } = useShop();
   const carouselRef = useRef<HTMLDivElement>(null);
+  const testimonialCarouselRef = useRef<HTMLDivElement>(null);
+
+  const scrollTestimonialCarousel = (dir: "left" | "right") => {
+    if (!testimonialCarouselRef.current) return;
+    const amount = testimonialCarouselRef.current.clientWidth * 0.8;
+    testimonialCarouselRef.current.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
+  };
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -239,7 +246,7 @@ export default function Home() {
           <Link href="/products" className="text-[13.5px] font-medium text-[#8B1D8F] hover:underline">View all</Link>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-6">
-          {categories.map((c) => (
+          {categories.slice(0, 6).map((c) => (
             <Link key={c.name} href={`/products?category=${c.name}`} className="group relative overflow-hidden rounded-[20px] border border-[#F0E6F2] bg-white">
               <div className="aspect-[4/5] overflow-hidden">
                 <img src={c.image} alt={c.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
@@ -354,29 +361,85 @@ export default function Home() {
             <img src="https://images.pexels.com/photos/18139756/pexels-photo-18139756.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1000&h=1200" alt="Craftsmanship" className="absolute inset-0 h-full w-full object-cover" />
           </div>
         </div>
-      </motion.section>
-
-      {/* Testimonials */}
+      </motion.section>      {/* Testimonials */}
       <motion.section {...fadeInUp} className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
-        <div className="mb-5 flex items-baseline justify-between">
-          <h2 className="text-[22px] font-semibold tracking-tight md:text-[26px]">Loved by Parents</h2>
-          <div className="flex items-center gap-1 text-[13px] text-[#6B5A6F]">
-            <Star className="h-4 w-4 fill-[#F5A524] text-[#F5A524]" /> 4.8 average from 3,241 reviews
+        <div className="mb-6 flex items-end justify-between">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-[22px] font-semibold tracking-tight text-[#1A0F1C] md:text-[26px]">Loved by Parents</h2>
+              <span className="flex items-center gap-1 rounded-full bg-[#EBF3FE] px-2.5 py-1 text-[11px] font-medium text-[#2A75E9]">
+                <svg className="h-3 w-3" viewBox="0 0 24 24">
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.64 15.01 1 12 1 7.24 1 3.2 3.74 1.25 7.74l3.83 2.97C6.01 7.27 8.78 5.04 12 5.04z"
+                  />
+                  <path
+                    fill="#4285F4"
+                    d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.48-1.12 2.73-2.38 3.58l3.69 2.86c2.16-1.99 3.4-4.92 3.4-8.54z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.08 14.73c-.22-.66-.35-1.37-.35-2.1s.13-1.44.35-2.1L1.25 7.56C.45 9.17 0 10.97 0 12.87c0 1.9.45 3.7 1.25 5.31l3.83-3.45z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.69-2.86c-1.02.68-2.33 1.09-4.27 1.09-3.22 0-5.99-2.23-6.96-5.26l-3.83 2.97C3.2 20.26 7.24 23 12 23z"
+                  />
+                </svg>
+                Google Verified
+              </span>
+            </div>
+            <p className="mt-1 text-[13.5px] text-[#6B5A6F]">4.8/5 average rating based on 3,241 customer reviews</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => scrollTestimonialCarousel("left")} className="grid h-9 w-9 place-items-center rounded-full border border-[#EEDDF0] text-[#6B5A6F] transition hover:bg-[#FCF7FD]">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button onClick={() => scrollTestimonialCarousel("right")} className="grid h-9 w-9 place-items-center rounded-full border border-[#EEDDF0] text-[#6B5A6F] transition hover:bg-[#FCF7FD]">
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
-        <div className="grid gap-3.5 md:grid-cols-3">
+
+        <div ref={testimonialCarouselRef} className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {testimonials.map((t) => (
-            <div key={t.name} className="rounded-[20px] border border-[#F0E6F2] bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-1">
-                {Array.from({ length: t.rating }).map((_, i) => (
-                  <Star key={i} className="h-3.5 w-3.5 fill-[#F5A524] text-[#F5A524]" />
-                ))}
+            <div key={t.name} className="group relative w-[285px] shrink-0 snap-start md:w-[360px] rounded-[24px] border border-[#F0E6F2] bg-white p-6 shadow-sm hover:shadow-md transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: t.rating }).map((_, i) => (
+                    <Star key={i} className="h-4 w-4 fill-[#F5A524] text-[#F5A524]" />
+                  ))}
+                </div>
+                {/* Google Verified Review Icon Badge */}
+                <div className="flex items-center gap-1 rounded-full bg-[#F0F6FF] px-2.5 py-0.5 text-[10.5px] font-medium text-[#2A75E9]">
+                  <svg className="h-3 w-3" viewBox="0 0 24 24">
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.64 15.01 1 12 1 7.24 1 3.2 3.74 1.25 7.74l3.83 2.97C6.01 7.27 8.78 5.04 12 5.04z"
+                    />
+                    <path
+                      fill="#4285F4"
+                      d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.48-1.12 2.73-2.38 3.58l3.69 2.86c2.16-1.99 3.4-4.92 3.4-8.54z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.08 14.73c-.22-.66-.35-1.37-.35-2.1s.13-1.44.35-2.1L1.25 7.56C.45 9.17 0 10.97 0 12.87c0 1.9.45 3.7 1.25 5.31l3.83-3.45z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.69-2.86c-1.02.68-2.33 1.09-4.27 1.09-3.22 0-5.99-2.23-6.96-5.26l-3.83 2.97C3.2 20.26 7.24 23 12 23z"
+                    />
+                  </svg>
+                  <span>Google Verified</span>
+                </div>
               </div>
-              <p className="mt-3 text-[14px] leading-relaxed text-[#3A2A3D]">“{t.text}”</p>
-              <div className="mt-4 flex items-center gap-2.5">
-                <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-[#F3E7F5] to-[#FFE4F2] text-[12px] font-medium text-[#7A187C]">{t.name.split(" ").map(n=>n[0]).join("")}</div>
+              <p className="mt-4 text-[14px] leading-relaxed text-[#3A2A3D] min-h-[72px]">“{t.text}”</p>
+              <div className="mt-5 flex items-center gap-3 border-t border-[#F8F0F9] pt-4">
+                <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-[#F3E7F5] to-[#FFE4F2] text-[13px] font-semibold text-[#7A187C]">
+                  {t.name.split(" ").map(n=>n[0]).join("")}
+                </div>
                 <div>
-                  <div className="text-[13px] font-medium text-[#1A0F1C]">{t.name}</div>
+                  <div className="text-[13.5px] font-semibold text-[#1A0F1C]">{t.name}</div>
                   <div className="text-[11.5px] text-[#8B7A8F]">{t.role}</div>
                 </div>
               </div>
@@ -408,23 +471,7 @@ export default function Home() {
         </div>
       </motion.section>
 
-      {/* Newsletter */}
-      <motion.section {...fadeInUp} className="mx-auto mt-12 mb-12 max-w-[1240px] px-4 md:mt-16">
-        <div className="relative overflow-hidden rounded-[28px] border border-[#F0E6F2]">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#8B1D8F] via-[#A32B9D] to-[#C2187B]" />
-          <div className="absolute inset-0 opacity-[0.15] [background:radial-gradient(circle_at_20%_50%,white,transparent_40%),radial-gradient(circle_at_80%_30%,white,transparent_40%)]" />
-          <div className="relative grid items-center gap-6 px-6 py-9 md:grid-cols-[1.2fr_0.8fr] md:px-10 md:py-12">
-            <div>
-              <h3 className="text-[24px] font-semibold leading-tight text-white md:text-[28px]">Get school event reminders & early access</h3>
-              <p className="mt-2 max-w-[520px] text-[14px] text-white/85">We’ll ping you before Janmashtami, Annual Day, Republic Day, and Halloween with curated picks for your child’s age.</p>
-            </div>
-            <form onSubmit={(e)=>e.preventDefault()} className="flex gap-2">
-              <input required type="email" placeholder="Enter your email" className="h-12 w-full rounded-full bg-white px-5 text-[14px] outline-none placeholder:text-[#A38AA6] focus:ring-4 focus:ring-white/30" />
-              <button className="h-12 shrink-0 rounded-full bg-[#1A0F1C] px-6 text-[14px] font-medium text-white transition hover:bg-black">Subscribe</button>
-            </form>
-          </div>
-        </div>
-      </motion.section>
+
     </>
   );
 }

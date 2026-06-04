@@ -24,6 +24,7 @@ type ShopContextType = {
   cartItems: CartItem[];
   removeFromCart: (id: number) => void;
   updateQuantity: (id: number, delta: number) => void;
+  clearCart: () => void;
   showCart: boolean;
   setShowCart: (v: boolean) => void;
 };
@@ -64,11 +65,15 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const clearCart = () => {
+    setCartItems([]);
+  };
+
   const cartCount = cartItems.reduce((acc, curr) => acc + curr.quantity, 0);
 
   return (
     <ShopContext.Provider
-      value={{ wishlist, toggleWishlist, cartCount, cartItems, addToCart, removeFromCart, updateQuantity, showCart, setShowCart }}
+      value={{ wishlist, toggleWishlist, cartCount, cartItems, addToCart, removeFromCart, updateQuantity, clearCart, showCart, setShowCart }}
     >
       {children}
     </ShopContext.Provider>

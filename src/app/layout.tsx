@@ -1,6 +1,6 @@
 import "./globals.css";
 import Layout from "@/components/Layout";
-import { ShopProvider } from "@/context/ShopContext";
+import Providers from "@/components/Providers";
 
 export const metadata = {
   title: "Saheli Shrungar",
@@ -15,11 +15,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ShopProvider>
+        <Providers>
           <Layout>
             {children}
           </Layout>
-        </ShopProvider>
+        </Providers>
       </body>
     </html>
   );

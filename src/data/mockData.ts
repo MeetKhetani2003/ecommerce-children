@@ -41,7 +41,7 @@ export const products = [
   {
     id: 101,
     title: "Classic Superman Cape Set",
-    category: "Superhero",
+    category: "Super Heroes",
     price: 899,
     mrp: 1299,
     rating: 4.8,
@@ -61,7 +61,7 @@ export const products = [
   {
     id: 102,
     title: "Little Krishna Complete Set",
-    category: "Mythology",
+    category: "Indian Mythology Costume",
     price: 1199,
     mrp: 1699,
     rating: 4.9,
@@ -81,7 +81,7 @@ export const products = [
   {
     id: 103,
     title: "Lion King Fancy Dress",
-    category: "Animal",
+    category: "Animal Costume",
     price: 749,
     mrp: 999,
     rating: 4.7,
@@ -101,7 +101,7 @@ export const products = [
   {
     id: 104,
     title: "Bharatanatyam Dance Costume",
-    category: "Dance Wear",
+    category: "Indian Dance Costume",
     price: 1899,
     mrp: 2499,
     rating: 4.9,
@@ -121,7 +121,7 @@ export const products = [
   {
     id: 105,
     title: "Tiger Wild Animal Suit",
-    category: "Wild Animal",
+    category: "Animal Costume",
     price: 799,
     mrp: 1099,
     rating: 4.6,
@@ -141,7 +141,7 @@ export const products = [
   {
     id: 106,
     title: "Fairy Princess Gown",
-    category: "Girls Collection",
+    category: "Cartoon Characters Costume",
     price: 1399,
     mrp: 1899,
     rating: 4.8,
@@ -161,7 +161,7 @@ export const products = [
   {
     id: 107,
     title: "Republic Day Tricolor Set",
-    category: "National",
+    category: "Republic Day / Independence Day",
     price: 649,
     mrp: 899,
     rating: 4.7,
@@ -181,7 +181,7 @@ export const products = [
   {
     id: 108,
     title: "Honey Bee Insect Costume",
-    category: "Insect",
+    category: "Insect Costume",
     price: 699,
     mrp: 949,
     rating: 4.5,
@@ -202,34 +202,119 @@ export const products = [
 
 export const categories = [
   {
-    name: "Superhero",
-    image: "https://images.pexels.com/photos/6203482/pexels-photo-6203482.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
-    count: "24 styles",
-  },
-  {
-    name: "Mythology",
-    image: "https://images.pexels.com/photos/33621937/pexels-photo-33621937.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
-    count: "32 styles",
-  },
-  {
-    name: "Animals",
+    name: "Animal Costume",
     image: "https://images.pexels.com/photos/8501698/pexels-photo-8501698.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
     count: "18 styles",
   },
   {
-    name: "Dance Wear",
+    name: "Birds Costume",
+    image: "https://images.pexels.com/photos/31625368/pexels-photo-31625368.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "10 styles",
+  },
+  {
+    name: "Indian State Costume",
+    image: "https://images.pexels.com/photos/34322336/pexels-photo-34322336.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "15 styles",
+  },
+  {
+    name: "Fruit Costume",
+    image: "https://images.pexels.com/photos/8506372/pexels-photo-8506372.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "12 styles",
+  },
+  {
+    name: "Vegetable Costume",
+    image: "https://images.pexels.com/photos/8506372/pexels-photo-8506372.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "14 styles",
+  },
+  {
+    name: "Water Animals Costume",
+    image: "https://images.pexels.com/photos/8501698/pexels-photo-8501698.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "8 styles",
+  },
+  {
+    name: "Hair Wigs",
+    image: "https://images.pexels.com/photos/14211426/pexels-photo-14211426.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "20 styles",
+  },
+  {
+    name: "Super Heroes",
+    image: "https://images.pexels.com/photos/6203482/pexels-photo-6203482.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "24 styles",
+  },
+  {
+    name: "Insect Costume",
+    image: "https://images.pexels.com/photos/8506372/pexels-photo-8506372.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "9 styles",
+  },
+  {
+    name: "Our Helpers",
+    image: "https://images.pexels.com/photos/6202806/pexels-photo-6202806.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "16 styles",
+  },
+  {
+    name: "Flower Costume",
+    image: "https://images.pexels.com/photos/14525773/pexels-photo-14525773.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "11 styles",
+  },
+  {
+    name: "Cartoon Characters Costume",
+    image: "https://images.pexels.com/photos/14211426/pexels-photo-14211426.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "30 styles",
+  },
+  {
+    name: "Community Helpers",
+    image: "https://images.pexels.com/photos/6202806/pexels-photo-6202806.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "13 styles",
+  },
+  {
+    name: "Indian Mythology Costume",
+    image: "https://images.pexels.com/photos/33621937/pexels-photo-33621937.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "32 styles",
+  },
+  {
+    name: "Republic Day / Independence Day",
+    image: "https://images.pexels.com/photos/6202806/pexels-photo-6202806.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "22 styles",
+  },
+  {
+    name: "Indian Dance Costume",
     image: "https://images.pexels.com/photos/30481583/pexels-photo-30481583.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
     count: "15 styles",
   },
   {
-    name: "Republic Day",
-    image: "https://images.pexels.com/photos/6202806/pexels-photo-6202806.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
-    count: "12 styles",
+    name: "Caps / Hats / Safa / Pagdi",
+    image: "https://images.pexels.com/photos/34322336/pexels-photo-34322336.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "25 styles",
   },
   {
-    name: "Girls Collection",
-    image: "https://images.pexels.com/photos/14525773/pexels-photo-14525773.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
-    count: "41 styles",
+    name: "Face Masks",
+    image: "https://images.pexels.com/photos/6203482/pexels-photo-6203482.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "18 styles",
+  },
+  {
+    name: "Halloween Costumes",
+    image: "https://images.pexels.com/photos/14211426/pexels-photo-14211426.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "28 styles",
+  },
+  {
+    name: "National Heroes",
+    image: "https://images.pexels.com/photos/6202806/pexels-photo-6202806.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "17 styles",
+  },
+  {
+    name: "Silver / Golden Jewellery",
+    image: "https://images.pexels.com/photos/33621937/pexels-photo-33621937.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "35 styles",
+  },
+  {
+    name: "Offer Products",
+    image: "https://images.pexels.com/photos/6203482/pexels-photo-6203482.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "15 styles",
+  },
+  {
+    name: "Umbrella / Fans",
+    image: "https://images.pexels.com/photos/34322336/pexels-photo-34322336.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "12 styles",
   },
 ];
 
@@ -252,4 +337,28 @@ export const testimonials = [
     text: "We recommend Saheli Shrungar to all parents. Consistent sizing and quick support during annual day season.",
     rating: 5,
   },
+  {
+    name: "Vikram Singh",
+    role: "Delhi • Father of Kavya, 6",
+    text: "Bought the Superman Set. The cape looks majestic! No cheap synthetic smell, pure cotton lining is amazing.",
+    rating: 5,
+  },
+  {
+    name: "Sneha Rao",
+    role: "Bangalore • Mother of Ishaan, 8",
+    text: "Extremely fast express shipping. The costume fits Kavya like a glove. Highly recommend to school parents.",
+    rating: 5,
+  },
+  {
+    name: "Amit Shah",
+    role: "Pune • Father of Diya, 5",
+    text: "Stitching durability is top notch. It has survived three wash cycles already and still retains color.",
+    rating: 5,
+  },
+  {
+    name: "Meera Nair",
+    role: "Chennai • Mother of Neha, 10",
+    text: "Traditional Classical Bharatanatyam dance wear has actual zari borders. Outstanding quality at this price range.",
+    rating: 5,
+  }
 ];

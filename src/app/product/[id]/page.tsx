@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 import { products } from "@/data/mockData";
-import { Star, ShieldCheck, Truck, RotateCcw, Heart, ShoppingBag, ChevronRight } from "lucide-react";
+import { Star, ShieldCheck, Truck, RotateCcw, Heart, ShoppingBag, ChevronRight, X } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
@@ -46,11 +46,26 @@ const ImageMagnifier = ({ src, alt }: { src: string, alt: string }) => {
 
 export default function ProductSlug() {
   const { id } = useParams();
+  const router = useRouter();
   const product = products.find(p => p.id === Number(id));
   const { addToCart, wishlist, toggleWishlist } = useShop();
   
   const [activeImage, setActiveImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+
+  // Size guide modal state
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+
+  // Bulk inquiry form states
+  const [bulkFormOpen, setBulkFormOpen] = useState(false);
+  const [bulkName, setBulkName] = useState("");
+  const [bulkEmail, setBulkEmail] = useState("");
+  const [bulkPhone, setBulkPhone] = useState("");
+  const [bulkQty, setBulkQty] = useState("10");
+  const [bulkDate, setBulkDate] = useState("");
+  const [bulkMsg, setBulkMsg] = useState("");
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkInquiryStatus, setBulkInquiryStatus] = useState("");
 
   if (!product) {
     return (
@@ -60,6 +75,48 @@ export default function ProductSlug() {
       </div>
     );
   }
+
+  const handleBulkInquirySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBulkSubmitting(true);
+    setBulkInquiryStatus("");
+    try {
+      const res = await fetch("/api/inquiries/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: bulkName,
+          email: bulkEmail,
+          phone: bulkPhone,
+          message: bulkMsg,
+          productId: product.id,
+          productTitle: product.title,
+          quantity: Number(bulkQty),
+          eventDate: bulkDate,
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBulkInquiryStatus("Bulk order inquiry submitted successfully!");
+        setBulkName("");
+        setBulkEmail("");
+        setBulkPhone("");
+        setBulkQty("10");
+        setBulkDate("");
+        setBulkMsg("");
+        setTimeout(() => {
+          setBulkFormOpen(false);
+          setBulkInquiryStatus("");
+        }, 3000);
+      } else {
+        setBulkInquiryStatus("Submission failed: " + data.message);
+      }
+    } catch (err) {
+      setBulkInquiryStatus("An error occurred.");
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
 
   const isWishlisted = wishlist.includes(product.id);
   const images = product.images || [product.image];
@@ -141,7 +198,7 @@ export default function ProductSlug() {
             <div className="mt-8">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-[15px] font-medium text-[#1A0F1C]">Select Size</h3>
-                <button className="text-[13px] font-medium text-[#8B1D8F] hover:underline">Size Guide</button>
+                <button onClick={() => setSizeGuideOpen(true)} className="text-[13px] font-medium text-[#8B1D8F] hover:underline focus:outline-none">Size Guide</button>
               </div>
               <div className="flex flex-wrap gap-3">
                 {(product as any).sizes.map((size: string) => (
@@ -168,9 +225,57 @@ export default function ProductSlug() {
             >
               <ShoppingBag className="h-5 w-5" /> Add to Cart
             </button>
-            <button className="flex items-center justify-center gap-2 rounded-full bg-[#8B1D8F] py-4 text-[15px] font-medium text-white transition hover:bg-[#7A187C]">
+            <button 
+              onClick={() => {
+                addToCart(product);
+                router.push("/cart");
+              }}
+              className="flex items-center justify-center gap-2 rounded-full bg-[#8B1D8F] py-4 text-[15px] font-medium text-white transition hover:bg-[#7A187C]"
+            >
               Buy Now
             </button>
+          </div>
+
+          {/* Bulk Order Inquiry Section */}
+          <div className="mt-8 rounded-2xl border border-dashed border-[#E1BFE6] bg-[#FCF7FD]/50 p-5">
+            <h3 className="text-[15px] font-semibold text-[#1A0F1C] flex items-center gap-2">
+              <ShoppingBag className="h-4.5 w-4.5 text-[#8B1D8F]" /> Wholesale Bulk Inquiry
+            </h3>
+            <p className="text-[12.5px] text-[#6B5A6F] mt-1">Get custom discounted quotes for school events or dance groups (minimum 10+ units).</p>
+            
+            {!bulkFormOpen ? (
+              <button onClick={() => setBulkFormOpen(true)} className="mt-4 rounded-xl border border-[#8B1D8F] bg-white px-4 py-2 text-[12.5px] font-semibold text-[#8B1D8F] hover:bg-[#F3E7F5] transition">
+                Inquire Bulk Pricing
+              </button>
+            ) : (
+              <form onSubmit={handleBulkInquirySubmit} className="mt-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <input required type="text" placeholder="Your Name" value={bulkName} onChange={(e)=>setBulkName(e.target.value)} className="h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none" />
+                  <input required type="email" placeholder="Your Email" value={bulkEmail} onChange={(e)=>setBulkEmail(e.target.value)} className="h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <input required type="tel" placeholder="Phone Number" value={bulkPhone} onChange={(e)=>setBulkPhone(e.target.value)} className="h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none" />
+                  <div className="flex gap-2 items-center">
+                    <input required type="number" min={10} placeholder="Qty" value={bulkQty} onChange={(e)=>setBulkQty(e.target.value)} className="h-9 w-14 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12.5px] outline-none text-center" />
+                    <input required type="text" placeholder="Event Date" value={bulkDate} onChange={(e)=>setBulkDate(e.target.value)} className="h-9 flex-1 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12.5px] outline-none" />
+                  </div>
+                </div>
+                <textarea required rows={2} placeholder="Custom sizes, custom requirements, event details..." value={bulkMsg} onChange={(e)=>setBulkMsg(e.target.value)} className="w-full rounded-lg border border-[#EEDDF0] bg-white p-2.5 text-[12.5px] outline-none" />
+                
+                {bulkInquiryStatus && (
+                  <div className="text-[12px] font-semibold text-green-700 bg-green-50 px-2 py-1 rounded border border-green-200">{bulkInquiryStatus}</div>
+                )}
+                
+                <div className="flex gap-2">
+                  <button type="submit" disabled={bulkSubmitting} className="rounded-lg bg-[#8B1D8F] px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-[#7A187C] disabled:opacity-50">
+                    {bulkSubmitting ? "Sending..." : "Submit Inquiry"}
+                  </button>
+                  <button type="button" onClick={() => setBulkFormOpen(false)} className="rounded-lg border border-gray-200 px-3 py-2 text-[12.5px] text-gray-500 hover:bg-gray-50">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
 
           {/* Trust badges */}
@@ -276,6 +381,60 @@ export default function ProductSlug() {
             ))}
         </div>
       </div>
+
+      {/* Size Guide Modal */}
+      {sizeGuideOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-[480px] overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#F0E6F2] p-5">
+              <h3 className="text-[16px] font-semibold text-[#1A0F1C] flex items-center gap-2">
+                <ShieldCheck className="h-4.5 w-4.5 text-[#8B1D8F]" /> Size Chart & Guide
+              </h3>
+              <button onClick={() => setSizeGuideOpen(false)} className="grid h-8 w-8 place-items-center rounded-full hover:bg-gray-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-[12.5px] text-[#6B5A6F] mb-4">Please measure your child's height and chest to select the perfect event costume size.</p>
+              
+              <table className="w-full border-collapse text-[13px] text-[#4A354D]">
+                <thead>
+                  <tr className="bg-[#FCF7FD] text-[#8B7A8F] font-semibold border-b border-[#EEDDF0]">
+                    <th className="p-2.5 text-left">Age Group</th>
+                    <th className="p-2.5 text-center">Standard Size</th>
+                    <th className="p-2.5 text-right">Height</th>
+                    <th className="p-2.5 text-right">Chest</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { age: "2-3 Years", size: "Size 24", height: "32 - 36 in", chest: "22 in" },
+                    { age: "4-5 Years", size: "Size 26", height: "36 - 40 in", chest: "24 in" },
+                    { age: "6-7 Years", size: "Size 28", height: "40 - 44 in", chest: "26 in" },
+                    { age: "8-9 Years", size: "Size 30", height: "44 - 48 in", chest: "28 in" },
+                    { age: "10-12 Years", size: "Size 32", height: "48 - 52 in", chest: "30 in" },
+                  ].map((row, idx) => (
+                    <tr key={idx} className="border-b border-[#F8F0F9] last:border-0 hover:bg-[#FCF7FD]/30">
+                      <td className="p-2.5 font-medium text-[#1A0F1C]">{row.age}</td>
+                      <td className="p-2.5 text-center font-semibold text-[#8B1D8F]">{row.size}</td>
+                      <td className="p-2.5 text-right">{row.height}</td>
+                      <td className="p-2.5 text-right">{row.chest}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="mt-5 rounded-xl bg-[#FCF7FD] p-3 text-[11.5px] text-gray-500 border border-[#F0E6F2]">
+                <strong>Fitting Tip:</strong> If your child is between sizes, we recommend ordering one size larger for a comfortable, loose stage fit.
+              </div>
+
+              <button onClick={() => setSizeGuideOpen(false)} className="mt-6 w-full rounded-full bg-[#1A0F1C] py-3 text-[14px] font-semibold text-white hover:bg-black">
+                Close Guide
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
