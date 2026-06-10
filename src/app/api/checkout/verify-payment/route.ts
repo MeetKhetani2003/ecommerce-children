@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/utils/dbConnect";
 import { Order } from "@/models/Order";
 import { Reservation } from "@/models/Reservation";
-import { sendInvoiceEmail } from "@/utils/emailService";
 import crypto from "crypto";
 
 export async function POST(req: Request) {
@@ -57,22 +56,7 @@ export async function POST(req: Request) {
       await reservation.save();
     }
 
-    // Send invoice email (asynchronously)
-    try {
-      await sendInvoiceEmail({
-        orderId: order._id.toString(),
-        customerName: order.shippingDetails.name,
-        email: order.email,
-        items: order.items,
-        subtotal: order.subtotal,
-        discount: order.discount,
-        total: order.total,
-        address: order.shippingDetails.address,
-        phone: order.shippingDetails.phone
-      });
-    } catch (emailErr) {
-      console.error("Error sending invoice email in payment verification:", emailErr);
-    }
+
 
     return NextResponse.json({ success: true, message: "Payment verified and order finalized" });
 

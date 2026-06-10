@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
-import { User, MapPin, Package, Heart, LogOut, Shield, Compass, CheckCircle, Truck, ShoppingBag } from "lucide-react";
+import { User, MapPin, Package, Heart, LogOut, Shield, Compass, CheckCircle, Truck, ShoppingBag, Trash2 } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 
 export default function Profile() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const { wishlist } = useShop();
 
   const [activeSection, setActiveSection] = useState<"info" | "orders" | "wishlist" | "addresses">("info");
@@ -16,6 +16,7 @@ export default function Profile() {
 
   // Address fields
   const [addresses, setAddresses] = useState<string[]>([]);
+  const [defaultAddress, setDefaultAddress] = useState<string>("");
   const [newAddress, setNewAddress] = useState("");
 
   const isAdmin = (session?.user as any)?.role === "admin";
@@ -24,8 +25,63 @@ export default function Profile() {
     if (session?.user?.email) {
       fetchOrders();
       setAddresses((session.user as any).addresses || []);
+      setDefaultAddress((session.user as any).defaultAddress || "");
     }
   }, [session, activeSection]);
+
+  const saveAddressesToDb = async (newAddressesList: string[], newDefault: string) => {
+    if (!session?.user?.email) return;
+    try {
+      const res = await fetch("/api/user/addresses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: session.user.email,
+          addresses: newAddressesList,
+          defaultAddress: newDefault,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await update();
+      }
+    } catch (err) {
+      console.error("Failed to save addresses:", err);
+    }
+  };
+
+  const handleAddAddress = async () => {
+    if (!newAddress.trim()) return;
+    const trimmed = newAddress.trim();
+    const updatedAddresses = [...addresses, trimmed];
+    const updatedDefault = defaultAddress ? defaultAddress : trimmed;
+
+    setAddresses(updatedAddresses);
+    if (!defaultAddress) {
+      setDefaultAddress(updatedDefault);
+    }
+    setNewAddress("");
+
+    await saveAddressesToDb(updatedAddresses, updatedDefault);
+  };
+
+  const handleDeleteAddress = async (addrToDelete: string) => {
+    const updatedAddresses = addresses.filter((a) => a !== addrToDelete);
+    let updatedDefault = defaultAddress;
+    if (defaultAddress === addrToDelete) {
+      updatedDefault = updatedAddresses.length > 0 ? updatedAddresses[0] : "";
+    }
+
+    setAddresses(updatedAddresses);
+    setDefaultAddress(updatedDefault);
+
+    await saveAddressesToDb(updatedAddresses, updatedDefault);
+  };
+
+  const handleSetDefaultAddress = async (addr: string) => {
+    setDefaultAddress(addr);
+    await saveAddressesToDb(addresses, addr);
+  };
 
   const fetchOrders = async () => {
     if (!session?.user?.email) return;
@@ -349,9 +405,36 @@ export default function Profile() {
                       <p className="text-[13.5px] text-[#8B7A8F]">No saved addresses. Add one below.</p>
                     ) : (
                       addresses.map((addr, idx) => (
-                        <div key={idx} className="flex items-start gap-3 rounded-xl border border-[#F0E6F2] p-4 text-[13.5px] text-[#4A354D]">
-                          <MapPin className="h-5 w-5 text-[#8B1D8F] shrink-0 mt-0.5" />
-                          <span>{addr}</span>
+                        <div key={idx} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border p-4.5 text-[13.5px] transition-all bg-[#FFFCFE]/45 ${addr === defaultAddress ? "border-[#8B1D8F] shadow-sm shadow-[#8B1D8F]/5" : "border-[#F0E6F2] hover:border-[#E1BFE6]"}`}>
+                          <div className="flex items-start gap-3 min-w-0">
+                            <MapPin className={`h-5 w-5 shrink-0 mt-0.5 ${addr === defaultAddress ? "text-[#8B1D8F]" : "text-[#A38AA6]"}`} />
+                            <div className="min-w-0">
+                              <p className="text-[#1A0F1C] font-medium leading-relaxed break-words">{addr}</p>
+                              {addr === defaultAddress && (
+                                <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#F3E7F5] px-2.5 py-0.5 text-[10px] font-bold text-[#8B1D8F] border border-[#E9D5ED]">
+                                  ★ Default Address
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2.5 sm:self-center self-end shrink-0">
+                            {addr !== defaultAddress && (
+                              <button
+                                onClick={() => handleSetDefaultAddress(addr)}
+                                className="rounded-full border border-[#EEDDF0] px-3.5 py-1.5 text-[12px] font-semibold text-[#6B5A6F] hover:bg-[#FCF7FD] hover:text-[#8B1D8F] hover:border-[#E1BFE6] transition active:scale-[0.97] cursor-pointer outline-none"
+                              >
+                                Set as Default
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteAddress(addr)}
+                              className="grid h-8 w-8 place-items-center rounded-full text-[#A38AA6] hover:bg-red-50 hover:text-red-500 border border-[#F0E6F2] hover:border-red-200 transition active:scale-[0.95] cursor-pointer outline-none"
+                              title="Delete Address"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       ))
                     )}
@@ -364,15 +447,11 @@ export default function Profile() {
                           value={newAddress}
                           onChange={(e) => setNewAddress(e.target.value)}
                           placeholder="Enter complete shipping address"
-                          className="h-11 flex-1 rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none"
+                          className="h-11 flex-1 rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
                         />
                         <button
-                          onClick={() => {
-                            if (!newAddress.trim()) return;
-                            setAddresses(prev => [...prev, newAddress]);
-                            setNewAddress("");
-                          }}
-                          className="rounded-xl bg-[#1A0F1C] px-5 text-[13.5px] font-medium text-white hover:bg-black"
+                          onClick={handleAddAddress}
+                          className="rounded-xl bg-[#1A0F1C] px-5 text-[13.5px] font-medium text-white hover:bg-black transition active:scale-[0.98] cursor-pointer"
                         >
                           Save
                         </button>

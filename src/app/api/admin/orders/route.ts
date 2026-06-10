@@ -7,8 +7,17 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const email = searchParams.get("email");
+    const orderId = searchParams.get("orderId");
 
     await dbConnect();
+
+    if (orderId) {
+      const order = await Order.findById(orderId);
+      if (!order) {
+        return NextResponse.json({ success: false, message: "Order not found" }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, order });
+    }
     
     let query = {};
     if (email) {

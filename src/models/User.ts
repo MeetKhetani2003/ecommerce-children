@@ -6,6 +6,7 @@ const UserSchema = new Schema({
   image: { type: String },
   role: { type: String, enum: ["user", "admin"], default: "user" },
   addresses: [{ type: String }],
+  defaultAddress: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now },
 });
 

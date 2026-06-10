@@ -45,9 +45,9 @@ export const products = [
     price: 899,
     mrp: 1299,
     rating: 4.8,
-    image: "https://images.pexels.com/photos/6203466/pexels-photo-6203466.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    image: "/assets/cos.jpg",
     images: [
-      "https://images.pexels.com/photos/6203466/pexels-photo-6203466.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+      "/assets/cos.jpg",
       "https://images.pexels.com/photos/6203485/pexels-photo-6203485.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
       "https://images.pexels.com/photos/6203482/pexels-photo-6203482.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000"
     ],

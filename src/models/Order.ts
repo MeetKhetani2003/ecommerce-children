@@ -26,6 +26,7 @@ const OrderSchema = new Schema({
   paymentStatus: { type: String, enum: ["pending", "paid", "failed"], default: "pending" },
   shippingStatus: { type: String, enum: ["Processing", "Shipped", "Delivered", "Cancelled"], default: "Processing" },
   trackingNumber: { type: String },
+  invoiceSent: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 

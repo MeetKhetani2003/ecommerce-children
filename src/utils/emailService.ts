@@ -1,4 +1,7 @@
 import nodemailer from "nodemailer";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import fs from "fs";
+import path from "path";
 
 interface InvoiceItem {
   title: string;
@@ -16,6 +19,212 @@ interface InvoiceDetails {
   total: number;
   address: string;
   phone: string;
+}
+
+export async function generateInvoicePDF(details: InvoiceDetails): Promise<Buffer> {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595.28, 841.89]); // A4 Size
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  // 1. Embed Logo image
+  let logoImage = null;
+  try {
+    const logoPath = path.join(process.cwd(), "public", "assets", "logo.png");
+    if (fs.existsSync(logoPath)) {
+      const logoBytes = fs.readFileSync(logoPath);
+      logoImage = await pdfDoc.embedPng(logoBytes);
+    }
+  } catch (logoErr) {
+    console.error("[PDF Generator] Failed to embed logo image:", logoErr);
+  }
+
+  // 2. Header Section
+  if (logoImage) {
+    // Render brand logo maintaining 1:1 aspect ratio of the 500x500 PNG.
+    // The logo contains transparent padding:
+    // Visible content is 351x141 pixels, located at: minX=75, maxX=425, minY=181, maxY=321.
+    // To position the visible content precisely at targetX = 50, targetY = 755 with a targetWidth = 100
+    // and targetHeight = 40 (preserving the 2.5:1 ratio of the visible text):
+    const targetX = 50;
+    const targetY = 755;
+    const targetWidth = 100;
+    const scale = targetWidth / 350; // Scale factor for the content
+    
+    const drawWidth = 500 * scale;
+    const drawHeight = 500 * scale;
+    const drawX = targetX - (75 * scale);
+    const drawY = targetY - (179 * scale); // 500 - 321 = 179 pixels padding from the bottom
+
+    page.drawImage(logoImage, {
+      x: drawX,
+      y: drawY,
+      width: drawWidth,
+      height: drawHeight,
+    });
+  } else {
+    // Fallback text header
+    page.drawText("SAHELI SHRUNGAR", {
+      x: 50,
+      y: 775,
+      size: 20,
+      font: boldFont,
+      color: rgb(139/255, 29/255, 143/255),
+    });
+  }
+
+  // Company details below logo
+  page.drawText("Saheli Shrungar Costumes", { x: 50, y: 738, size: 9, font: boldFont, color: rgb(26/255, 15/255, 28/255) });
+  page.drawText("Mumbai, Maharashtra, India", { x: 50, y: 726, size: 8, font: font, color: rgb(107/255, 90/255, 111/255) });
+  page.drawText("Email: support@sahelishrungar.com", { x: 50, y: 714, size: 8, font: font, color: rgb(107/255, 90/255, 111/255) });
+
+  // Invoice Title and Metadata on Right
+  page.drawText("TAX INVOICE / BILL", {
+    x: 380,
+    y: 775,
+    size: 14,
+    font: boldFont,
+    color: rgb(139/255, 29/255, 143/255)
+  });
+
+  const invoiceNo = `INV-${details.orderId.substring(details.orderId.length - 8).toUpperCase()}`;
+  page.drawText(`Invoice No: ${invoiceNo}`, { x: 380, y: 757, size: 9, font: boldFont, color: rgb(26/255, 15/255, 28/255) });
+  page.drawText(`Date: ${new Date().toLocaleDateString("en-IN", { dateStyle: "medium" })}`, { x: 380, y: 745, size: 8.5, font: font, color: rgb(74/255, 53/255, 77/255) });
+  page.drawText(`Order ID: #${details.orderId}`, { x: 380, y: 733, size: 8.5, font: font, color: rgb(74/255, 53/255, 77/255) });
+  page.drawText(`Payment Mode: Razorpay Online`, { x: 380, y: 721, size: 8.5, font: font, color: rgb(74/255, 53/255, 77/255) });
+
+  // Divider (y = 705)
+  page.drawLine({
+    start: { x: 50, y: 705 },
+    end: { x: 545, y: 705 },
+    thickness: 1,
+    color: rgb(240/255, 230/255, 242/255)
+  });
+
+  // 3. Billing & Shipping Info Columns (y = 685)
+  const infoY = 685;
+  page.drawText("BILL TO / CUSTOMER", { x: 50, y: infoY, size: 9, font: boldFont, color: rgb(139/255, 29/255, 143/255) });
+  page.drawText(details.customerName, { x: 50, y: infoY - 16, size: 10, font: boldFont, color: rgb(26/255, 15/255, 28/255) });
+  page.drawText(`Phone: ${details.phone}`, { x: 50, y: infoY - 30, size: 9, font: font, color: rgb(74/255, 53/255, 77/255) });
+  page.drawText(`Email: ${details.email}`, { x: 50, y: infoY - 42, size: 9, font: font, color: rgb(74/255, 53/255, 77/255) });
+
+  page.drawText("DELIVER / SHIP TO", { x: 300, y: infoY, size: 9, font: boldFont, color: rgb(139/255, 29/255, 143/255) });
+  page.drawText(details.customerName, { x: 300, y: infoY - 16, size: 10, font: boldFont, color: rgb(26/255, 15/255, 28/255) });
+  page.drawText(details.address, {
+    x: 300,
+    y: infoY - 30,
+    size: 9,
+    font: font,
+    color: rgb(107/255, 90/255, 111/255),
+    maxWidth: 245,
+    lineHeight: 12
+  });
+
+  // Divider (y = 620)
+  page.drawLine({
+    start: { x: 50, y: 620 },
+    end: { x: 545, y: 620 },
+    thickness: 1,
+    color: rgb(240/255, 230/255, 242/255)
+  });
+
+  // 4. Items Table Section
+  const tableTopY = 595;
+  // Header background block
+  page.drawRectangle({
+    x: 50,
+    y: tableTopY - 20,
+    width: 495,
+    height: 20,
+    color: rgb(252/255, 247/255, 253/255)
+  });
+
+  page.drawText("S.No", { x: 55, y: tableTopY - 14, size: 8.5, font: boldFont, color: rgb(139/255, 122/255, 143/255) });
+  page.drawText("Costume Description", { x: 90, y: tableTopY - 14, size: 8.5, font: boldFont, color: rgb(139/255, 122/255, 143/255) });
+  page.drawText("Qty", { x: 310, y: tableTopY - 14, size: 8.5, font: boldFont, color: rgb(139/255, 122/255, 143/255) });
+  page.drawText("Price (INR)", { x: 370, y: tableTopY - 14, size: 8.5, font: boldFont, color: rgb(139/255, 122/255, 143/255) });
+  page.drawText("Total (INR)", { x: 470, y: tableTopY - 14, size: 8.5, font: boldFont, color: rgb(139/255, 122/255, 143/255) });
+
+  // Border lines
+  page.drawLine({ start: { x: 50, y: tableTopY }, end: { x: 545, y: tableTopY }, thickness: 1, color: rgb(220/255, 200/255, 225/255) });
+  page.drawLine({ start: { x: 50, y: tableTopY - 20 }, end: { x: 545, y: tableTopY - 20 }, thickness: 1, color: rgb(220/255, 200/255, 225/255) });
+
+  let itemY = tableTopY - 38;
+  details.items.forEach((item, index) => {
+    // S.No
+    page.drawText((index + 1).toString(), { x: 55, y: itemY, size: 9, font: font, color: rgb(74/255, 53/255, 77/255) });
+    // Item Name
+    page.drawText(item.title, { x: 90, y: itemY, size: 9.5, font: boldFont, color: rgb(26/255, 15/255, 28/255), maxWidth: 210 });
+    // Qty
+    page.drawText(item.quantity.toString(), { x: 320, y: itemY, size: 9, font: font, color: rgb(74/255, 53/255, 77/255) });
+    // Price
+    page.drawText(`Rs. ${item.price.toFixed(2)}`, { x: 370, y: itemY, size: 9, font: font, color: rgb(74/255, 53/255, 77/255) });
+    // Total Amount
+    page.drawText(`Rs. ${(item.price * item.quantity).toFixed(2)}`, { x: 470, y: itemY, size: 9.5, font: boldFont, color: rgb(26/255, 15/255, 28/255) });
+
+    itemY -= 24;
+    // Light bottom separator line
+    page.drawLine({
+      start: { x: 50, y: itemY + 12 },
+      end: { x: 545, y: itemY + 12 },
+      thickness: 0.5,
+      color: rgb(248/255, 240/255, 249/255)
+    });
+  });
+
+  // Table Outer Frame Box
+  const tableBottomY = itemY + 12;
+  page.drawLine({ start: { x: 50, y: tableTopY }, end: { x: 50, y: tableBottomY }, thickness: 1, color: rgb(220/255, 200/255, 225/255) });
+  page.drawLine({ start: { x: 545, y: tableTopY }, end: { x: 545, y: tableBottomY }, thickness: 1, color: rgb(220/255, 200/255, 225/255) });
+  page.drawLine({ start: { x: 50, y: tableBottomY }, end: { x: 545, y: tableBottomY }, thickness: 1, color: rgb(220/255, 200/255, 225/255) });
+
+  // 5. Totals Block (below table)
+  let totalsY = tableBottomY - 20;
+  page.drawText("Subtotal:", { x: 330, y: totalsY, size: 9.5, font: font, color: rgb(74/255, 53/255, 77/255) });
+  page.drawText(`Rs. ${details.subtotal.toFixed(2)}`, { x: 470, y: totalsY, size: 9.5, font: boldFont, color: rgb(26/255, 15/255, 28/255) });
+
+  totalsY -= 18;
+  page.drawText("Discount Coupon:", { x: 330, y: totalsY, size: 9.5, font: font, color: rgb(74/255, 53/255, 77/255) });
+  page.drawText(`-Rs. ${details.discount.toFixed(2)}`, { x: 470, y: totalsY, size: 9.5, font: boldFont, color: rgb(194/255, 24/255, 123/255) });
+
+  totalsY -= 18;
+  page.drawText("Shipping / Delivery:", { x: 330, y: totalsY, size: 9.5, font: font, color: rgb(74/255, 53/255, 77/255) });
+  page.drawText("FREE", { x: 470, y: totalsY, size: 9.5, font: boldFont, color: rgb(15/255, 138/255, 75/255) });
+
+  totalsY -= 12;
+  page.drawLine({
+    start: { x: 330, y: totalsY },
+    end: { x: 545, y: totalsY },
+    thickness: 1.2,
+    color: rgb(139/255, 29/255, 143/255)
+  });
+
+  totalsY -= 18;
+  page.drawText("Grand Total Paid:", { x: 330, y: totalsY, size: 11, font: boldFont, color: rgb(139/255, 29/255, 143/255) });
+  page.drawText(`Rs. ${details.total.toFixed(2)}`, { x: 470, y: totalsY, size: 11, font: boldFont, color: rgb(139/255, 29/255, 143/255) });
+
+  // 6. Tax Invoice Footer Notes
+  page.drawText("Terms & Conditions / Compliance Notes:", { x: 50, y: 130, size: 8.5, font: boldFont, color: rgb(74/255, 53/255, 77/255) });
+  page.drawText("• This is a computer-generated tax invoice bill and does not require a physical signature.", { x: 50, y: 116, size: 8, font: font, color: rgb(107/255, 90/255, 111/255) });
+  page.drawText("• For size exchange or returns, contact support team with Invoice Number.", { x: 50, y: 104, size: 8, font: font, color: rgb(107/255, 90/255, 111/255) });
+
+  page.drawText("Thank you for shopping with Saheli Shrungar! We hope your little star shines in their event.", {
+    x: 50,
+    y: 65,
+    size: 8.5,
+    font: font,
+    color: rgb(139/255, 122/255, 143/255)
+  });
+  page.drawText("For help or support, contact us at support@sahelishrungar.com", {
+    x: 135,
+    y: 50,
+    size: 8.5,
+    font: font,
+    color: rgb(139/255, 122/255, 143/255)
+  });
+
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
 }
 
 export async function sendInvoiceEmail(details: InvoiceDetails) {
@@ -131,29 +340,54 @@ export async function sendInvoiceEmail(details: InvoiceDetails) {
     </div>
   `;
 
-  // Check if SMTP configurations are present in env
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  // Check SMTP configurations, falling back to Gmail SMTP if EMAIL_USER and EMAIL_PASS are present
+  let host = process.env.SMTP_HOST;
+  let port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 465;
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
 
-  if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
+  if (!host && process.env.EMAIL_USER) {
+    host = "smtp.gmail.com";
+    port = 465;
+  }
+
+  // Generate PDF invoice buffer
+  let pdfBuffer: Buffer | null = null;
+  try {
+    pdfBuffer = await generateInvoicePDF(details);
+  } catch (pdfErr) {
+    console.error("[Email Service] Failed to generate invoice PDF:", pdfErr);
+  }
+
+  if (host && user && pass) {
     try {
       const transporter = nodemailer.createTransport({
-        host: SMTP_HOST,
-        port: parseInt(SMTP_PORT),
-        secure: parseInt(SMTP_PORT) === 465,
+        host,
+        port,
+        secure: port === 465,
         auth: {
-          user: SMTP_USER,
-          pass: SMTP_PASS,
+          user,
+          pass,
         },
       });
 
       await transporter.sendMail({
-        from: `"Saheli Shrungar Costumes" <${SMTP_USER}>`,
+        from: `"Saheli Shrungar Costumes" <${user}>`,
         to: email,
         subject: `Invoice for Order #${orderId} - Saheli Shrungar`,
         html: emailHtml,
+        attachments: pdfBuffer
+          ? [
+              {
+                filename: `Invoice_${orderId}.pdf`,
+                content: pdfBuffer,
+                contentType: "application/pdf",
+              },
+            ]
+          : [],
       });
 
-      console.log(`[Email Service] Invoice sent to ${email} for order ${orderId}`);
+      console.log(`[Email Service] Invoice sent to ${email} with PDF attachment for order ${orderId}`);
       return;
     } catch (error) {
       console.error("[Email Service] Failed to send email via SMTP:", error);
@@ -247,28 +481,36 @@ export async function sendBulkInquiryEmails(details: BulkInquiryDetails) {
     </div>
   `;
 
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  let host = process.env.SMTP_HOST;
+  let port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 465;
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
 
-  if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
+  if (!host && process.env.EMAIL_USER) {
+    host = "smtp.gmail.com";
+    port = 465;
+  }
+
+  if (host && user && pass) {
     try {
       const transporter = nodemailer.createTransport({
-        host: SMTP_HOST,
-        port: parseInt(SMTP_PORT),
-        secure: parseInt(SMTP_PORT) === 465,
-        auth: { user: SMTP_USER, pass: SMTP_PASS },
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
       });
 
       // Send to Admin
       await transporter.sendMail({
-        from: `"Saheli Bulk Orders" <${SMTP_USER}>`,
-        to: SMTP_USER,
+        from: `"Saheli Bulk Orders" <${user}>`,
+        to: user,
         subject: `NEW Wholesale Bulk Inquiry: ${productTitle} (${quantity} units)`,
         html: adminHtml,
       });
 
       // Send to Customer
       await transporter.sendMail({
-        from: `"Saheli Shrungar Costumes" <${SMTP_USER}>`,
+        from: `"Saheli Shrungar Costumes" <${user}>`,
         to: email,
         subject: `Bulk Inquiry Submitted: ${productTitle}`,
         html: customerHtml,

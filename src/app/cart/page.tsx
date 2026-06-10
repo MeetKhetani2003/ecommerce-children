@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -10,7 +10,7 @@ import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Tag, Check, AlertCircle }
 
 export default function Cart() {
   const { cartItems, updateQuantity, removeFromCart, clearCart } = useShop();
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const router = useRouter();
 
   // Coupon states
@@ -25,6 +25,55 @@ export default function Cart() {
   const [shippingPhone, setShippingPhone] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [processing, setProcessing] = useState(false);
+
+  // Saved address dropdown/saving states
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState<string>("");
+  const [newAddressText, setNewAddressText] = useState("");
+  const [saveNewAddress, setSaveNewAddress] = useState(true);
+  const [newAddressAsDefault, setNewAddressAsDefault] = useState(false);
+
+  useEffect(() => {
+    const savedAddresses = (session?.user as any)?.addresses || [];
+    const defaultAddress = (session?.user as any)?.defaultAddress || "";
+
+    if (session) {
+      if (session.user?.name && !shippingName) {
+        setShippingName(session.user.name);
+      }
+      if (savedAddresses.length > 0) {
+        let initialIndex = 0;
+        if (defaultAddress) {
+          const idx = savedAddresses.indexOf(defaultAddress);
+          if (idx !== -1) {
+            initialIndex = idx;
+          }
+        }
+        setSelectedAddressIndex(initialIndex.toString());
+        setShippingAddress(savedAddresses[initialIndex]);
+      } else {
+        setSelectedAddressIndex("new");
+        setShippingAddress("");
+      }
+    } else {
+      setSelectedAddressIndex("new");
+      setShippingAddress("");
+    }
+  }, [session]);
+
+  const handleAddressSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedAddressIndex(val);
+    const savedAddresses = (session?.user as any)?.addresses || [];
+
+    if (val === "new") {
+      setShippingAddress(newAddressText);
+    } else {
+      const idx = parseInt(val, 10);
+      if (!isNaN(idx) && savedAddresses[idx]) {
+        setShippingAddress(savedAddresses[idx]);
+      }
+    }
+  };
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const discountAmount = Math.round((subtotal * discountPercent) / 100);
@@ -84,6 +133,34 @@ export default function Cart() {
     setProcessing(true);
 
     try {
+      if (session?.user?.email && selectedAddressIndex === "new" && saveNewAddress && newAddressText.trim()) {
+        try {
+          const trimmedNewAddr = newAddressText.trim();
+          const currentAddresses = (session.user as any).addresses || [];
+          const currentDefault = (session.user as any).defaultAddress || "";
+
+          const updatedAddresses = [...currentAddresses, trimmedNewAddr];
+          const updatedDefault = newAddressAsDefault || !currentDefault ? trimmedNewAddr : currentDefault;
+
+          const saveRes = await fetch("/api/user/addresses", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: session.user.email,
+              addresses: updatedAddresses,
+              defaultAddress: updatedDefault,
+            }),
+          });
+          const saveData = await saveRes.json();
+          if (saveData.success) {
+            await update();
+            // Select newly added address index
+            setSelectedAddressIndex((updatedAddresses.length - 1).toString());
+          }
+        } catch (saveErr) {
+          console.error("Failed to save address during checkout:", saveErr);
+        }
+      }
       // 1. Load Razorpay script
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
@@ -138,7 +215,7 @@ export default function Cart() {
             if (verifyData.success) {
               clearCart();
               alert("Payment Success! [SIMULATED] Costume order placed successfully. Check your email for invoice bill.");
-              router.push("/profile");
+              router.push(`/success?orderId=${orderData.orderId}`);
             } else {
               alert("Verification failed: " + verifyData.message);
               setProcessing(false);
@@ -190,7 +267,7 @@ export default function Cart() {
             if (verifyData.success) {
               clearCart();
               alert("Payment Success! Costume order placed successfully. Check your email for invoice bill.");
-              router.push("/profile");
+              router.push(`/success?orderId=${orderData.orderId}`);
             } else {
               alert("Verification failed: " + verifyData.message);
             }
@@ -304,16 +381,74 @@ export default function Cart() {
                   className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
                 />
               </div>
-              <div>
-                <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">Shipping Address</label>
-                <input
-                  type="text"
-                  value={shippingAddress}
-                  onChange={(e) => setShippingAddress(e.target.value)}
-                  placeholder="Street Address, City, Pincode"
-                  className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
-                />
-              </div>
+              {session && ((session.user as any).addresses || []).length > 0 && (
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Select Saved Shipping Address</label>
+                  <select
+                    value={selectedAddressIndex}
+                    onChange={handleAddressSelectChange}
+                    className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-white px-4 text-[13.5px] text-[#2E1F31] outline-none focus:border-[#E1BFE6] cursor-pointer"
+                  >
+                    {((session.user as any).addresses || []).map((addr: string, idx: number) => {
+                      const isDefault = addr === (session.user as any).defaultAddress;
+                      return (
+                        <option key={idx} value={idx.toString()}>
+                          {isDefault ? `★ [Default] ${addr}` : addr}
+                        </option>
+                      );
+                    })}
+                    <option value="new">+ Deliver to a new address</option>
+                  </select>
+                </div>
+              )}
+
+              {(!session || selectedAddressIndex === "new" || ((session.user as any).addresses || []).length === 0) && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">Shipping Address</label>
+                    <input
+                      type="text"
+                      value={newAddressText}
+                      onChange={(e) => {
+                        setNewAddressText(e.target.value);
+                        setShippingAddress(e.target.value);
+                      }}
+                      placeholder="Street Address, City, Pincode"
+                      className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
+                    />
+                  </div>
+                  {session && (
+                    <div className="space-y-2 pt-1 pl-1">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="saveAddressCheckbox"
+                          checked={saveNewAddress}
+                          onChange={(e) => setSaveNewAddress(e.target.checked)}
+                          className="h-4 w-4 rounded border-[#EEDDF0] text-[#8B1D8F] focus:ring-[#8B1D8F]"
+                        />
+                        <label htmlFor="saveAddressCheckbox" className="text-[12.5px] text-[#6B5A6F] cursor-pointer select-none">
+                          Save this address to my profile
+                        </label>
+                      </div>
+                      {saveNewAddress && (
+                        <div className="flex items-center gap-2 pl-6">
+                          <input
+                            type="checkbox"
+                            id="setDefaultCheckbox"
+                            checked={newAddressAsDefault}
+                            onChange={(e) => setNewAddressAsDefault(e.target.checked)}
+                            className="h-3.5 w-3.5 rounded border-[#EEDDF0] text-[#8B1D8F] focus:ring-[#8B1D8F]"
+                          />
+                          <label htmlFor="setDefaultCheckbox" className="text-[12px] text-[#8B7A8F] cursor-pointer select-none">
+                            Make this my default shipping address
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               <div>
                 <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">Contact Phone Number</label>
                 <input

@@ -29,6 +29,7 @@ const handler = NextAuth({
             image: "",
             role: credentials.role || "user",
             addresses: [],
+            defaultAddress: "",
           });
         }
         return {
@@ -52,6 +53,7 @@ const handler = NextAuth({
             image: user.image || "",
             role: "user",
             addresses: [],
+            defaultAddress: "",
           });
         }
         return true;
@@ -69,6 +71,7 @@ const handler = NextAuth({
             (session.user as any).role = dbUser.role;
             (session.user as any).id = dbUser._id.toString();
             (session.user as any).addresses = dbUser.addresses || [];
+            (session.user as any).defaultAddress = dbUser.defaultAddress || "";
           }
         } catch (err) {
           console.error("Error during session callback:", err);

@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Heart, ShoppingBag, User, Menu, X, ChevronDown, Check, Sparkles } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
+import { useSession, signOut } from "next-auth/react";
+import LoginModal from "@/components/LoginModal";
 
 const megaMenuGroups = [
   {
@@ -57,6 +59,8 @@ const logoUrl = "/assets/logo.png";
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession();
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { wishlist, cartCount, showCart, setShowCart } = useShop();
@@ -157,9 +161,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <ShoppingBag className="h-[18px] w-[18px]" />
               {cartCount > 0 && <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-[#8B1D8F] px-1 text-[10px] font-medium leading-none text-white">{cartCount}</span>}
             </Link>
-            <Link href="/profile" className="hidden grid h-10 w-10 place-items-center rounded-full text-[#4A354D] transition hover:bg-[#F8F0F9] hover:text-[#8B1D8F] md:grid">
-              <User className="h-[18px] w-[18px]" />
-            </Link>
+            {session ? (
+              <Link href="/profile" className="hidden h-10 w-10 place-items-center rounded-full text-[#4A354D] transition hover:bg-[#F8F0F9] hover:text-[#8B1D8F] md:grid">
+                {session.user?.image ? (
+                  <img src={session.user.image} alt="Profile" className="h-6 w-6 rounded-full border border-[#EEDDF0] object-cover" />
+                ) : (
+                  <div className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br from-[#8B1D8F] to-[#E91E7A] text-[10px] font-bold text-white uppercase">
+                    {session.user?.name ? session.user.name.substring(0, 1) : "U"}
+                  </div>
+                )}
+              </Link>
+            ) : (
+              <button
+                onClick={() => setIsLoginOpen(true)}
+                className="hidden md:flex items-center gap-1.5 rounded-full border border-[#8B1D8F]/30 px-4 py-1.5 text-[13.5px] font-semibold text-[#8B1D8F] hover:bg-[#8B1D8F] hover:text-white transition-all duration-300 cursor-pointer outline-none"
+              >
+                <User className="h-4 w-4" />
+                <span>Login</span>
+              </button>
+            )}
             <button onClick={() => setMobileMenu(true)} className="grid h-10 w-10 place-items-center rounded-full text-[#4A354D] transition hover:bg-[#F8F0F9] lg:hidden">
               <Menu className="h-[20px] w-[20px]" />
             </button>
@@ -230,9 +250,32 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     My Wishlist
                   </Link>
 
-                  <Link href="/profile" onClick={() => setMobileMenu(false)} className="block rounded-xl px-3 py-3 text-[14px] font-medium text-[#2E1F31] hover:bg-[#FCF7FD]">
-                    My Profile
-                  </Link>
+                  {session ? (
+                    <>
+                      <Link href="/profile" onClick={() => setMobileMenu(false)} className="block rounded-xl px-3 py-3 text-[14px] font-medium text-[#2E1F31] hover:bg-[#FCF7FD]">
+                        My Profile
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setMobileMenu(false);
+                          signOut();
+                        }}
+                        className="w-full text-left block rounded-xl px-3 py-3 text-[14px] font-medium text-red-500 hover:bg-red-50 cursor-pointer outline-none"
+                      >
+                        Sign Out
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setMobileMenu(false);
+                        setIsLoginOpen(true);
+                      }}
+                      className="w-full text-left block rounded-xl px-3 py-3 text-[14px] font-semibold text-[#8B1D8F] hover:bg-[#FCF7FD] cursor-pointer outline-none"
+                    >
+                      Login / Sign Up
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -294,6 +337,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Login Modal */}
+      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
     </div>
   );
 }
