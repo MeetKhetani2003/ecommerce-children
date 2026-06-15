@@ -24,6 +24,7 @@ const OrderSchema = new Schema({
   paymentId: { type: String },
   razorpayOrderId: { type: String },
   paymentStatus: { type: String, enum: ["pending", "paid", "failed"], default: "pending" },
+  paymentMethod: { type: String, enum: ["online", "cod"], default: "online" },
   shippingStatus: { type: String, enum: ["Processing", "Shipped", "Delivered", "Cancelled"], default: "Processing" },
   trackingNumber: { type: String },
   invoiceSent: { type: Boolean, default: false },

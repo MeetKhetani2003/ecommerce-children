@@ -8,7 +8,7 @@ import Razorpay from "razorpay";
 
 export async function POST(req: Request) {
   try {
-    const { cartItems, shippingDetails, email, couponCode, userId } = await req.json();
+    const { cartItems, shippingDetails, email, couponCode, userId, paymentMethod } = await req.json();
 
     if (!cartItems || cartItems.length === 0 || !shippingDetails || !email) {
       return NextResponse.json({ success: false, message: "Missing required details" }, { status: 400 });
@@ -80,8 +80,28 @@ export async function POST(req: Request) {
       total,
       couponUsed: couponCode || null,
       paymentStatus: "pending",
+      paymentMethod: paymentMethod || "online",
       shippingStatus: "Processing"
     });
+
+    // If Cash on Delivery, we don't need an active Reservation or Razorpay Order
+    if (paymentMethod === "cod") {
+      await Reservation.create({
+        orderId: localOrder._id,
+        items: itemsToOrder.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity
+        })),
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        active: false // Inactive since it's COD
+      });
+
+      return NextResponse.json({
+        success: true,
+        orderId: localOrder._id.toString(),
+        isCod: true
+      });
+    }
 
     // 5. Create Stock Reservation entry (expires in 10 minutes)
     await Reservation.create({

@@ -15,6 +15,22 @@ const ProductSchema = new Schema({
   sizes: [{ type: String }],
   whatsIncluded: [{ type: String }],
   careInstructions: { type: String },
+  images: [{ type: String }],
+  sku: { type: String, unique: true },
+  reviews: {
+    type: [{
+      userName: { type: String, required: true },
+      userEmail: { type: String, required: true },
+      rating: { type: Number, required: true, min: 1, max: 5 },
+      comment: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now }
+    }],
+    default: []
+  }
 });
 
-export const Product = models.Product || model("Product", ProductSchema);
+if (models.Product) {
+  delete (models as any).Product;
+}
+
+export const Product = model("Product", ProductSchema);

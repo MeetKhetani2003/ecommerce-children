@@ -25,6 +25,7 @@ export default function Cart() {
   const [shippingPhone, setShippingPhone] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "cod">("online");
 
   // Saved address dropdown/saving states
   const [selectedAddressIndex, setSelectedAddressIndex] = useState<string>("");
@@ -161,13 +162,7 @@ export default function Cart() {
           console.error("Failed to save address during checkout:", saveErr);
         }
       }
-      // 1. Load Razorpay script
-      const scriptLoaded = await loadRazorpayScript();
-      if (!scriptLoaded) {
-        throw new Error("Razorpay SDK failed to load. Check your internet connection.");
-      }
-
-      // 2. Call backend to create Order & reserve stock
+      // 1. Call backend to create Order & reserve stock
       const orderRes = await fetch("/api/checkout/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -185,12 +180,27 @@ export default function Cart() {
           email: session.user?.email,
           userId: (session.user as any)?.id,
           couponCode: appliedCoupon,
+          paymentMethod,
         }),
       });
 
       const orderData = await orderRes.json();
       if (!orderData.success) {
         throw new Error(orderData.message || "Order creation failed.");
+      }
+
+      // If COD, bypass Razorpay flow entirely
+      if (orderData.isCod) {
+        clearCart();
+        alert("Costume order placed successfully via Cash on Delivery!");
+        router.push(`/success?orderId=${orderData.orderId}`);
+        return;
+      }
+
+      // 2. Load Razorpay script for Online payment
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error("Razorpay SDK failed to load. Check your internet connection.");
       }
 
       // If Razorpay key is mock/placeholder, simulate checkout in front-end
@@ -529,6 +539,41 @@ export default function Cart() {
               </div>
             </div>
 
+            {/* Payment Method Selection */}
+            <div className="mt-6 border-t border-[#F0E6F2] pt-4">
+              <h3 className="text-[14px] font-semibold text-[#1A0F1C] mb-3">Payment Method</h3>
+              <div className="space-y-2.5">
+                <label className="flex items-center gap-3 rounded-xl border border-[#EEDDF0] bg-white p-3 cursor-pointer select-none hover:border-[#E1BFE6] transition">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="online"
+                    checked={paymentMethod === "online"}
+                    onChange={() => setPaymentMethod("online")}
+                    className="h-4 w-4 text-[#8B1D8F] focus:ring-[#8B1D8F]"
+                  />
+                  <div>
+                    <div className="text-[13px] font-medium text-[#1A0F1C]">Online Payment</div>
+                    <div className="text-[11px] text-[#8B7A8F]">Pay securely via UPI, Card, Netbanking</div>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 rounded-xl border border-[#EEDDF0] bg-white p-3 cursor-pointer select-none hover:border-[#E1BFE6] transition">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="cod"
+                    checked={paymentMethod === "cod"}
+                    onChange={() => setPaymentMethod("cod")}
+                    className="h-4 w-4 text-[#8B1D8F] focus:ring-[#8B1D8F]"
+                  />
+                  <div>
+                    <div className="text-[13px] font-medium text-[#1A0F1C]">Cash on Delivery (COD)</div>
+                    <div className="text-[11px] text-[#8B7A8F]">Pay in cash when order is delivered</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             {checkoutError && (
               <div className="mt-4 rounded-xl bg-red-50 border border-red-200 p-3 text-[12.5px] text-red-700 flex items-start gap-2">
                 <AlertCircle className="h-4.5 w-4.5 shrink-0 mt-0.5" />
@@ -541,10 +586,12 @@ export default function Cart() {
               disabled={processing}
               className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-[#8B1D8F] py-4 text-[15px] font-semibold text-white transition hover:bg-[#7A187C] disabled:opacity-50"
             >
-              {processing ? "Initiating Secure Payment..." : "Place Order & Pay"}
+              {processing ? "Processing Order..." : paymentMethod === "cod" ? "Confirm Order (COD)" : "Place Order & Pay"}
               <ArrowRight className="h-4.5 w-4.5" />
             </button>
-            <div className="mt-3 text-center text-[11px] text-[#8B7A8F]">Secure checkout powered by Razorpay.</div>
+            <div className="mt-3 text-center text-[11px] text-[#8B7A8F]">
+              {paymentMethod === "cod" ? "Complete your order with COD." : "Secure checkout powered by Razorpay."}
+            </div>
           </div>
 
         </div>

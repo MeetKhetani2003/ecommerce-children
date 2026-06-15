@@ -7,6 +7,19 @@ const UserSchema = new Schema({
   role: { type: String, enum: ["user", "admin"], default: "user" },
   addresses: [{ type: String }],
   defaultAddress: { type: String, default: "" },
+  cart: [{
+    id: { type: Number },
+    title: { type: String },
+    category: { type: String },
+    price: { type: Number },
+    mrp: { type: Number },
+    rating: { type: Number },
+    image: { type: String },
+    tag: { type: String },
+    description: { type: String },
+    quantity: { type: Number }
+  }],
+  wishlist: [{ type: Number }],
   createdAt: { type: Date, default: Date.now },
 });
 

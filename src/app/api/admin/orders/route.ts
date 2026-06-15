@@ -34,10 +34,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { orderId, shippingStatus, trackingNumber } = await req.json();
+    const { orderId, shippingStatus, trackingNumber, paymentStatus } = await req.json();
 
-    if (!orderId || !shippingStatus) {
-      return NextResponse.json({ success: false, message: "Order ID and status are required" }, { status: 400 });
+    if (!orderId) {
+      return NextResponse.json({ success: false, message: "Order ID is required" }, { status: 400 });
     }
 
     await dbConnect();
@@ -46,18 +46,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Order not found" }, { status: 404 });
     }
 
-    // Restore stock if transitioning to "Cancelled"
-    if (shippingStatus === "Cancelled" && order.shippingStatus !== "Cancelled") {
-      for (const item of order.items) {
-        const product = await Product.findOne({ id: item.productId });
-        if (product) {
-          product.stock += item.quantity;
-          await product.save();
+    // Update shipping status and handle stock restoration if cancelled
+    if (shippingStatus) {
+      if (shippingStatus === "Cancelled" && order.shippingStatus !== "Cancelled") {
+        for (const item of order.items) {
+          const product = await Product.findOne({ id: item.productId });
+          if (product) {
+            product.stock += item.quantity;
+            await product.save();
+          }
         }
       }
+      order.shippingStatus = shippingStatus;
     }
 
-    order.shippingStatus = shippingStatus;
+    // Update payment status if provided
+    if (paymentStatus) {
+      order.paymentStatus = paymentStatus;
+    }
+
     if (trackingNumber !== undefined) {
       order.trackingNumber = trackingNumber;
     }

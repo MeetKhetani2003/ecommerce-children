@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { 
   Package, ShoppingBag, Users, HelpCircle, Plus, Edit, Trash2, 
-  X, RefreshCw 
+  X, RefreshCw, LayoutDashboard, DollarSign, Heart, ShoppingCart
 } from "lucide-react";
 
 export default function AdminDashboard() {
   const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState<"products" | "orders" | "users" | "inquiries">("products");
+  const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "users" | "inquiries">("overview");
 
   // State lists
   const [products, setProducts] = useState<any[]>([]);
@@ -20,19 +21,18 @@ export default function AdminDashboard() {
 
   // Loading & Action states
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any | null>(null);
-
-  // Form states (Add/Edit Product)
-  const [formTitle, setFormTitle] = useState("");
-  const [formCategory, setFormCategory] = useState("Animal Costume");
-  const [formPrice, setFormPrice] = useState("");
-  const [formMrp, setFormMrp] = useState("");
-  const [formImage, setFormImage] = useState("");
-  const [formStock, setFormStock] = useState("50");
-  const [formDescription, setFormDescription] = useState("");
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
   const isAdmin = (session?.user as any)?.role === "admin";
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["overview", "products", "orders", "users", "inquiries"].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -43,7 +43,24 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      if (activeTab === "products") {
+      if (activeTab === "overview") {
+        const [prodRes, orderRes, userRes, inqRes] = await Promise.all([
+          fetch("/api/products"),
+          fetch("/api/admin/orders"),
+          fetch("/api/admin/users"),
+          fetch("/api/inquiries")
+        ]);
+        const [prodData, orderData, userData, inqData] = await Promise.all([
+          prodRes.json(),
+          orderRes.json(),
+          userRes.json(),
+          inqRes.json()
+        ]);
+        if (prodData.success) setProducts(prodData.products);
+        if (orderData.success) setOrders(orderData.orders);
+        if (userData.success) setUsers(userData.users);
+        if (inqData.success) setInquiries(inqData.inquiries);
+      } else if (activeTab === "products") {
         const res = await fetch("/api/products");
         const data = await res.json();
         if (data.success) setProducts(data.products);
@@ -87,75 +104,6 @@ export default function AdminDashboard() {
   };
 
   // Product CRUD
-  const openAddModal = () => {
-    setEditingProduct(null);
-    setFormTitle("");
-    setFormCategory("Animal Costume");
-    setFormPrice("");
-    setFormMrp("");
-    setFormImage("");
-    setFormStock("50");
-    setFormDescription("");
-    setModalOpen(true);
-  };
-
-  const openEditModal = (p: any) => {
-    setEditingProduct(p);
-    setFormTitle(p.title);
-    setFormCategory(p.category);
-    setFormPrice(p.price.toString());
-    setFormMrp(p.mrp.toString());
-    setFormImage(p.image);
-    setFormStock(p.stock ? p.stock.toString() : "50");
-    setFormDescription(p.description || "");
-    setModalOpen(true);
-  };
-
-  const handleProductSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = {
-      title: formTitle,
-      category: formCategory,
-      price: parseFloat(formPrice),
-      mrp: parseFloat(formMrp),
-      image: formImage || "https://images.pexels.com/photos/8501698/pexels-photo-8501698.jpeg",
-      stock: parseInt(formStock),
-      description: formDescription,
-    };
-
-    try {
-      if (editingProduct) {
-        // Edit product
-        const res = await fetch(`/api/products/${editingProduct.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (data.success) {
-          alert("Product updated successfully!");
-          setModalOpen(false);
-          fetchData();
-        }
-      } else {
-        // Add product
-        const res = await fetch("/api/products", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (data.success) {
-          alert("Product created successfully!");
-          setModalOpen(false);
-          fetchData();
-        }
-      }
-    } catch (error) {
-      console.error(error);
-      alert("An error occurred.");
-    }
-  };
 
   const handleDeleteProduct = async (id: number) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
@@ -182,6 +130,23 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success) {
         alert(`Order status updated to ${status}`);
+        fetchData();
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleOrderPaymentStatusUpdate = async (orderId: string, paymentStatus: string) => {
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId, paymentStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Payment status updated to ${paymentStatus}`);
         fetchData();
       }
     } catch (error) {
@@ -257,6 +222,7 @@ export default function AdminDashboard() {
         {/* Navigation Sidebar */}
         <aside className="flex flex-col gap-1">
           {[
+            { id: "overview", label: "Overview Dashboard", icon: LayoutDashboard },
             { id: "products", label: "Products CRUD", icon: Package },
             { id: "orders", label: "Orders Tracking", icon: ShoppingBag },
             { id: "users", label: "User Accounts", icon: Users },
@@ -284,14 +250,138 @@ export default function AdminDashboard() {
             <div className="flex h-[400px] items-center justify-center text-[14px] text-[#8B7A8F]">Loading admin information...</div>
           ) : (
             <>
+              {/* 0. OVERVIEW TAB */}
+              {activeTab === "overview" && (
+                <div>
+                  <h2 className="mb-6 text-[18px] font-semibold text-[#1A0F1C]">Business Overview Dashboard</h2>
+                  
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+                    {/* Profit Card */}
+                    <div className="rounded-2xl border border-green-100 bg-green-50/30 p-5 flex items-center gap-4">
+                      <div className="rounded-xl bg-green-500 p-3 text-white">
+                        <DollarSign className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <div className="text-[12px] font-medium text-green-800">Total Profit (Paid)</div>
+                        <div className="text-[22px] font-bold text-[#1A0F1C] mt-0.5">₹{orders.filter(o => o.paymentStatus === "paid").reduce((sum, o) => sum + o.total, 0)}</div>
+                      </div>
+                    </div>
+
+                    {/* Orders Card */}
+                    <div className="rounded-2xl border border-purple-100 bg-purple-50/30 p-5 flex items-center gap-4">
+                      <div className="rounded-xl bg-[#8B1D8F] p-3 text-white">
+                        <ShoppingBag className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <div className="text-[12px] font-medium text-purple-800">Total Orders</div>
+                        <div className="text-[22px] font-bold text-[#1A0F1C] mt-0.5">{orders.length}</div>
+                      </div>
+                    </div>
+
+                    {/* Products Card */}
+                    <div className="rounded-2xl border border-blue-100 bg-blue-50/30 p-5 flex items-center gap-4">
+                      <div className="rounded-xl bg-blue-500 p-3 text-white">
+                        <Package className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <div className="text-[12px] font-medium text-blue-800">Costumes Count</div>
+                        <div className="text-[22px] font-bold text-[#1A0F1C] mt-0.5">{products.length}</div>
+                      </div>
+                    </div>
+
+                    {/* Support Inquiries Card */}
+                    <div className="rounded-2xl border border-orange-100 bg-orange-50/30 p-5 flex items-center gap-4">
+                      <div className="rounded-xl bg-orange-500 p-3 text-white">
+                        <HelpCircle className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <div className="text-[12px] font-medium text-orange-800">Inquiries</div>
+                        <div className="text-[22px] font-bold text-[#1A0F1C] mt-0.5">{inquiries.length}</div>
+                      </div>
+                    </div>
+
+                    {/* Wishlist Card */}
+                    <div className="rounded-2xl border border-red-100 bg-red-50/30 p-5 flex items-center gap-4">
+                      <div className="rounded-xl bg-red-500 p-3 text-white">
+                        <Heart className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <div className="text-[12px] font-medium text-red-800">Wishlist Items</div>
+                        <div className="text-[22px] font-bold text-[#1A0F1C] mt-0.5">{users.reduce((sum, u) => sum + (u.wishlist?.length || 0), 0)}</div>
+                      </div>
+                    </div>
+
+                    {/* Cart/Bag Card */}
+                    <div className="rounded-2xl border border-indigo-100 bg-indigo-50/30 p-5 flex items-center gap-4">
+                      <div className="rounded-xl bg-indigo-500 p-3 text-white">
+                        <ShoppingCart className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <div className="text-[12px] font-medium text-indigo-800">Items in Bags</div>
+                        <div className="text-[22px] font-bold text-[#1A0F1C] mt-0.5">{users.reduce((sum, u) => sum + (u.cart?.reduce((acc: number, item: any) => acc + (item.quantity || 0), 0) || 0), 0)}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recent Activity Grid */}
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {/* Recent Orders */}
+                    <div className="rounded-2xl border border-[#F0E6F2] p-5">
+                      <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F8F0F9]">
+                        <h3 className="text-[15px] font-bold text-[#1A0F1C]">Recent Orders</h3>
+                        <button onClick={() => setActiveTab("orders")} className="text-[12px] font-semibold text-[#8B1D8F] hover:underline">View All</button>
+                      </div>
+                      <div className="space-y-3">
+                        {orders.slice(0, 5).map((order) => (
+                          <div key={order._id} className="flex items-center justify-between text-[13px] border-b border-[#FDFBFE] pb-2 last:border-0 last:pb-0">
+                            <div>
+                              <div className="font-semibold text-[#1A0F1C]">{order.shippingDetails.name}</div>
+                              <div className="text-[11px] text-[#8B7A8F]">{new Date(order.createdAt).toLocaleDateString()} • {order.paymentMethod === "cod" ? "COD" : "Online"}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-[#1A0F1C]">₹{order.total}</div>
+                              <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${order.paymentStatus === "paid" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
+                                {order.paymentStatus}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                        {orders.length === 0 && <p className="text-[13px] text-gray-400 italic text-center py-4">No recent orders.</p>}
+                      </div>
+                    </div>
+
+                    {/* Recent Support Inquiries */}
+                    <div className="rounded-2xl border border-[#F0E6F2] p-5">
+                      <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F8F0F9]">
+                        <h3 className="text-[15px] font-bold text-[#1A0F1C]">Recent Inquiries</h3>
+                        <button onClick={() => setActiveTab("inquiries")} className="text-[12px] font-semibold text-[#8B1D8F] hover:underline">View All</button>
+                      </div>
+                      <div className="space-y-3">
+                        {inquiries.slice(0, 5).map((inq) => (
+                          <div key={inq._id} className="text-[13px] border-b border-[#FDFBFE] pb-2 last:border-0 last:pb-0">
+                            <div className="flex justify-between font-semibold">
+                              <span className="text-[#1A0F1C]">{inq.name}</span>
+                              <span className="text-[11px] font-normal text-[#8B7A8F]">{new Date(inq.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <p className="text-[12px] text-[#6B5A6F] mt-1 truncate">"{inq.message}"</p>
+                          </div>
+                        ))}
+                        {inquiries.length === 0 && <p className="text-[13px] text-gray-400 italic text-center py-4">No recent support messages.</p>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* 1. PRODUCTS TAB */}
               {activeTab === "products" && (
                 <div>
                   <div className="mb-6 flex items-center justify-between">
                     <h2 className="text-[18px] font-semibold text-[#1A0F1C]">Saheli Costumes Inventory</h2>
-                    <button onClick={openAddModal} className="flex items-center gap-1.5 rounded-full bg-[#8B1D8F] px-4 py-2 text-[13px] font-medium text-white transition hover:bg-[#7A187C]">
+                    <Link href="/admin/products/create" className="flex items-center gap-1.5 rounded-full bg-[#8B1D8F] px-4 py-2 text-[13px] font-medium text-white transition hover:bg-[#7A187C]">
                       <Plus className="h-4 w-4" /> Add Costume
-                    </button>
+                    </Link>
                   </div>
                   
                   <div className="overflow-x-auto">
@@ -320,9 +410,9 @@ export default function AdminDashboard() {
                             </td>
                             <td className="py-3.5 text-center">
                               <div className="flex items-center justify-center gap-1.5">
-                                <button onClick={() => openEditModal(p)} className="grid h-8 w-8 place-items-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-gray-50 hover:text-[#8B1D8F]">
+                                <Link href={`/admin/products/${p.id}/edit`} className="grid h-8 w-8 place-items-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-gray-50 hover:text-[#8B1D8F]">
                                   <Edit className="h-3.5 w-3.5" />
-                                </button>
+                                </Link>
                                 <button onClick={() => handleDeleteProduct(p.id)} className="grid h-8 w-8 place-items-center rounded-lg border border-red-100 text-red-500 transition hover:bg-red-50">
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
@@ -339,7 +429,12 @@ export default function AdminDashboard() {
               {/* 2. ORDERS TAB */}
               {activeTab === "orders" && (
                 <div>
-                  <h2 className="mb-6 text-[18px] font-semibold text-[#1A0F1C]">Customer Order Tracking</h2>
+                  <div className="mb-6 flex items-center justify-between">
+                    <h2 className="text-[18px] font-semibold text-[#1A0F1C]">Customer Order Tracking</h2>
+                    <Link href="/admin/orders/create" className="flex items-center gap-1.5 rounded-full bg-[#8B1D8F] px-4 py-2 text-[13px] font-medium text-white transition hover:bg-[#7A187C]">
+                      <Plus className="h-4 w-4" /> Create Offline Order
+                    </Link>
+                  </div>
                   <div className="space-y-4">
                     {orders.length === 0 ? (
                       <p className="text-[14px] text-center text-[#8B7A8F] py-8">No orders placed yet.</p>
@@ -352,16 +447,27 @@ export default function AdminDashboard() {
                               <div className="text-[12px] text-[#8B7A8F] mt-0.5">Date: {new Date(order.createdAt).toLocaleString("en-IN")}</div>
                             </div>
                             <div className="flex items-center gap-3">
-                              {/* Payment status badge */}
-                              <span className={`rounded-full px-3 py-1 text-[11.5px] font-medium ${order.paymentStatus === "paid" ? "bg-green-50 text-green-700 border border-green-200" : "bg-yellow-50 text-yellow-700 border border-yellow-200"}`}>
-                                {order.paymentStatus === "paid" ? "Paid" : "Pending Payment"}
+                              {/* Payment Method Badge */}
+                              <span className="rounded-full bg-purple-50 text-purple-700 border border-purple-200 px-3 py-1 text-[11px] font-semibold uppercase">
+                                {order.paymentMethod === "cod" ? "COD" : "Online"}
                               </span>
+
+                              {/* Payment Status Dropdown */}
+                              <select
+                                value={order.paymentStatus}
+                                onChange={(e) => handleOrderPaymentStatusUpdate(order._id, e.target.value)}
+                                className="rounded-full border border-[#EEDDF0] bg-white px-3 py-1 text-[12.5px] font-medium text-[#4A354D] outline-none cursor-pointer"
+                              >
+                                <option value="pending">Pending Payment</option>
+                                <option value="paid">Paid</option>
+                                <option value="failed">Failed</option>
+                              </select>
                               
                               {/* Shipping Status Dropdown */}
                               <select
                                 value={order.shippingStatus}
                                 onChange={(e) => handleOrderStatusUpdate(order._id, e.target.value)}
-                                className="rounded-full border border-[#EEDDF0] bg-white px-3 py-1 text-[12.5px] font-medium text-[#4A354D] outline-none"
+                                className="rounded-full border border-[#EEDDF0] bg-white px-3 py-1 text-[12.5px] font-medium text-[#4A354D] outline-none cursor-pointer"
                               >
                                 <option value="Processing">Processing</option>
                                 <option value="Shipped">Shipped</option>
@@ -420,31 +526,48 @@ export default function AdminDashboard() {
                       </thead>
                       <tbody>
                         {users.map((u) => (
-                          <tr key={u._id} className="border-b border-[#F8F0F9] last:border-0 hover:bg-[#FCF7FD]/30">
-                            <td className="py-3.5 pr-4">
-                              <div className="flex items-center gap-3">
-                                <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-[#8B1D8F] to-[#E91E7A] text-[12px] font-semibold text-white">
-                                  {u.name.split(" ").map((n: string)=>n[0]).join("")}
+                          <React.Fragment key={u._id}>
+                            <tr className="border-b border-[#F8F0F9] last:border-0 hover:bg-[#FCF7FD]/30">
+                              <td className="py-3.5 pr-4">
+                                <Link href={`/admin/users/${u._id}`} className="flex items-center gap-3 hover:underline">
+                                  {u.image ? (
+                                    <img src={u.image} alt="" className="h-8 w-8 rounded-full border border-[#EEDDF0] object-cover" />
+                                  ) : (
+                                    <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-[#8B1D8F] to-[#E91E7A] text-[12px] font-semibold text-white">
+                                      {u.name.split(" ").map((n: string)=>n[0]).join("")}
+                                    </div>
+                                  )}
+                                  <span className="font-semibold text-[#1A0F1C]">{u.name}</span>
+                                </Link>
+                              </td>
+                              <td className="py-3.5 pr-4 text-[#6B5A6F]">{u.email}</td>
+                              <td className="py-3.5 pr-4 text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
+                              <td className="py-3.5 pr-4">
+                                <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${u.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-600"}`}>
+                                  {u.role}
+                                </span>
+                              </td>
+                              <td className="py-3.5 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <Link
+                                    href={`/admin/users/${u._id}`}
+                                    className="rounded-full bg-[#8B1D8F] px-3.5 py-1 text-[12.5px] font-semibold text-white hover:bg-[#7A187C] transition"
+                                  >
+                                    View Profile
+                                  </Link>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleUserRole(u.email, u.role);
+                                    }}
+                                    className="rounded-full border border-[#EEDDF0] px-3.5 py-1 text-[12px] font-semibold text-[#8B1D8F] hover:bg-[#FCF7FD]"
+                                  >
+                                    Toggle {u.role === "admin" ? "User" : "Admin"}
+                                  </button>
                                 </div>
-                                <span className="font-semibold text-[#1A0F1C]">{u.name}</span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 pr-4 text-[#6B5A6F]">{u.email}</td>
-                            <td className="py-3.5 pr-4 text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
-                            <td className="py-3.5 pr-4">
-                              <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${u.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-600"}`}>
-                                {u.role}
-                              </span>
-                            </td>
-                            <td className="py-3.5 text-center">
-                              <button
-                                onClick={() => handleToggleUserRole(u.email, u.role)}
-                                className="rounded-full border border-[#EEDDF0] px-3.5 py-1 text-[12px] font-semibold text-[#8B1D8F] hover:bg-[#FCF7FD]"
-                              >
-                                Toggle {u.role === "admin" ? "User" : "Admin"}
-                              </button>
-                            </td>
-                          </tr>
+                              </td>
+                            </tr>
+                          </React.Fragment>
                         ))}
                       </tbody>
                     </table>
@@ -485,83 +608,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ADD/EDIT PRODUCT MODAL */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-[500px] overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#F0E6F2] p-5">
-              <h3 className="text-[16px] font-semibold text-[#1A0F1C]">
-                {editingProduct ? "Modify Costume Details" : "Add New Costume"}
-              </h3>
-              <button onClick={() => setModalOpen(false)} className="grid h-8 w-8 place-items-center rounded-full hover:bg-gray-100">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <form onSubmit={handleProductSubmit} className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div>
-                <label className="mb-1 block text-[12.5px] font-medium text-[#4A354D]">Title / Costume Name</label>
-                <input required type="text" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="h-10 w-full rounded-xl border border-[#EEDDF0] px-3.5 text-[13.5px] outline-none focus:border-[#E1BFE6]" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-[12.5px] font-medium text-[#4A354D]">Category</label>
-                  <select value={formCategory} onChange={(e) => setFormCategory(e.target.value)} className="h-10 w-full rounded-xl border border-[#EEDDF0] px-2 text-[13px] outline-none bg-white">
-                    <option value="Animal Costume">Animal Costume</option>
-                    <option value="Birds Costume">Birds Costume</option>
-                    <option value="Indian State Costume">Indian State Costume</option>
-                    <option value="Fruit Costume">Fruit Costume</option>
-                    <option value="Vegetable Costume">Vegetable Costume</option>
-                    <option value="Water Animals Costume">Water Animals Costume</option>
-                    <option value="Hair Wigs">Hair Wigs</option>
-                    <option value="Super Heroes">Super Heroes</option>
-                    <option value="Insect Costume">Insect Costume</option>
-                    <option value="Our Helpers">Our Helpers</option>
-                    <option value="Flower Costume">Flower Costume</option>
-                    <option value="Cartoon Characters Costume">Cartoon Characters Costume</option>
-                    <option value="Community Helpers">Community Helpers</option>
-                    <option value="Indian Mythology Costume">Indian Mythology Costume</option>
-                    <option value="Republic Day / Independence Day">Republic Day / Independence Day</option>
-                    <option value="Indian Dance Costume">Indian Dance Costume</option>
-                    <option value="Caps / Hats / Safa / Pagdi">Caps / Hats / Safa / Pagdi</option>
-                    <option value="Face Masks">Face Masks</option>
-                    <option value="Halloween Costumes">Halloween Costumes</option>
-                    <option value="National Heroes">National Heroes</option>
-                    <option value="Silver / Golden Jewellery">Silver / Golden Jewellery</option>
-                    <option value="Offer Products">Offer Products</option>
-                    <option value="Umbrella / Fans">Umbrella / Fans</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-[12.5px] font-medium text-[#4A354D]">Stock Inventory</label>
-                  <input required type="number" value={formStock} onChange={(e) => setFormStock(e.target.value)} className="h-10 w-full rounded-xl border border-[#EEDDF0] px-3.5 text-[13.5px] outline-none" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-[12.5px] font-medium text-[#4A354D]">Price (₹)</label>
-                  <input required type="number" value={formPrice} onChange={(e) => setFormPrice(e.target.value)} className="h-10 w-full rounded-xl border border-[#EEDDF0] px-3.5 text-[13.5px] outline-none" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[12.5px] font-medium text-[#4A354D]">MRP (₹)</label>
-                  <input required type="number" value={formMrp} onChange={(e) => setFormMrp(e.target.value)} className="h-10 w-full rounded-xl border border-[#EEDDF0] px-3.5 text-[13.5px] outline-none" />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-[12.5px] font-medium text-[#4A354D]">Image URL</label>
-                <input type="text" value={formImage} onChange={(e) => setFormImage(e.target.value)} placeholder="Leave blank for placeholder" className="h-10 w-full rounded-xl border border-[#EEDDF0] px-3.5 text-[13.5px] outline-none" />
-              </div>
-              <div>
-                <label className="mb-1 block text-[12.5px] font-medium text-[#4A354D]">Costume Description</label>
-                <textarea rows={3} value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="w-full rounded-xl border border-[#EEDDF0] p-3 text-[13.5px] outline-none focus:border-[#E1BFE6]" />
-              </div>
-              <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setModalOpen(false)} className="flex-1 rounded-full border border-gray-200 py-3 text-[14px] font-medium text-gray-500 hover:bg-gray-50">Cancel</button>
-                <button type="submit" className="flex-1 rounded-full bg-[#8B1D8F] py-3 text-[14px] font-medium text-white hover:bg-[#7A187C]">Save changes</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
 
     </div>
   );
