@@ -242,20 +242,20 @@ export default function ProductSlug() {
   const reviewsList = product.reviews || [];
 
   return (
-    <div className="mx-auto max-w-[1240px] px-4 py-8 md:py-12">
+    <div className="mx-auto max-w-[1240px] overflow-x-hidden px-4 py-6 md:py-12">
       {/* Breadcrumbs */}
-      <nav className="mb-8 flex items-center text-[13px] text-[#8B7A8F]">
-        <Link href="/" className="hover:text-[#8B1D8F]">Home</Link>
-        <ChevronRight className="mx-2 h-4 w-4" />
-        <span className="cursor-pointer hover:text-[#8B1D8F]">{product.category}</span>
-        <ChevronRight className="mx-2 h-4 w-4" />
-        <span className="font-medium text-[#2E1F31]">{product.title}</span>
+      <nav className="mb-6 flex flex-wrap items-center text-[12px] sm:text-[13px] text-[#8B7A8F] gap-y-1">
+        <Link href="/" className="hover:text-[#8B1D8F] shrink-0">Home</Link>
+        <ChevronRight className="mx-1 sm:mx-2 h-3.5 w-3.5 shrink-0" />
+        <span className="cursor-pointer hover:text-[#8B1D8F] shrink-0">{product.category}</span>
+        <ChevronRight className="mx-1 sm:mx-2 h-3.5 w-3.5 shrink-0" />
+        <span className="font-medium text-[#2E1F31] truncate max-w-[160px] sm:max-w-none">{product.title}</span>
       </nav>
 
-      <div className="grid gap-8 md:grid-cols-2 lg:gap-12 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid gap-6 md:gap-8 md:grid-cols-2 lg:gap-12 lg:grid-cols-[1.2fr_1fr]">
         {/* Images */}
         <div className="flex flex-col gap-4">
-          <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[24px] bg-[#FCF7FD]">
+          <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[16px] sm:rounded-[24px] bg-[#FCF7FD]">
             <ImageMagnifier src={images[activeImage]} alt={product.title} />
             <button
               onClick={() => toggleWishlist(product.id)}
@@ -266,7 +266,7 @@ export default function ProductSlug() {
           </div>
 
           {images.length > 1 && (
-            <div className="grid grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-4 gap-2 sm:gap-4">
               {images.map((img: string, idx: number) => (
                 <button
                   key={idx}
@@ -289,7 +289,7 @@ export default function ProductSlug() {
             {product.tag && <span className="rounded-full bg-[#1A0F1C] px-3 py-1 text-[12px] font-medium text-white">{product.tag}</span>}
           </div>
 
-          <h1 className="text-[28px] font-semibold leading-tight text-[#1A0F1C] md:text-[36px]">{product.title}</h1>
+          <h1 className="text-[22px] sm:text-[28px] font-semibold leading-tight text-[#1A0F1C] md:text-[36px]">{product.title}</h1>
 
           <div className="mt-3 flex items-center gap-2">
             <div className="flex items-center gap-0.5">
@@ -300,16 +300,16 @@ export default function ProductSlug() {
             <span className="text-[14px] text-[#8B7A8F]">{product.rating || 4.5} ({reviewsList.length} reviews)</span>
           </div>
 
-          <div className="mt-6 flex items-baseline gap-3 border-b border-[#F0E6F2] pb-6">
-            <span className="text-[32px] font-bold text-[#1A0F1C]">₹{product.price}</span>
-            <span className="text-[18px] text-[#9A8A9D] line-through">₹{product.mrp}</span>
-            <span className="rounded bg-[#E8F5E9] px-2 py-1 text-[13px] font-bold text-[#0F8A4B]">
+          <div className="mt-4 sm:mt-6 flex flex-wrap items-baseline gap-2 sm:gap-3 border-b border-[#F0E6F2] pb-5 sm:pb-6">
+            <span className="text-[26px] sm:text-[32px] font-bold text-[#1A0F1C]">₹{product.price}</span>
+            <span className="text-[15px] sm:text-[18px] text-[#9A8A9D] line-through">₹{product.mrp}</span>
+            <span className="rounded bg-[#E8F5E9] px-2 py-0.5 sm:py-1 text-[11px] sm:text-[13px] font-bold text-[#0F8A4B]">
               {Math.round(((product.mrp - product.price) / product.mrp) * 100)}% OFF
             </span>
           </div>
 
-          <div className="mt-6">
-            <p className="text-[15px] leading-relaxed text-[#5E4F63] whitespace-pre-wrap">{product.description}</p>
+          <div className="mt-4 sm:mt-6">
+            <p className="text-[13.5px] sm:text-[15px] leading-relaxed text-[#5E4F63] whitespace-pre-wrap">{product.description}</p>
             {product.sku && (
               <div className="mt-3 text-[14px] text-[#6B5A6F]">
                 <span className="font-semibold text-[#1A0F1C]">SKU:</span> {product.sku}
@@ -360,10 +360,10 @@ export default function ProductSlug() {
             </div>
           )}
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className="mt-6 sm:mt-8 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
             <button
               onClick={() => addToCart(product)}
-              className="flex items-center justify-center gap-2 rounded-full bg-[#1A0F1C] py-4 text-[15px] font-medium text-white transition hover:bg-black"
+              className="flex items-center justify-center gap-2 rounded-full bg-[#1A0F1C] py-3.5 sm:py-4 text-[14px] sm:text-[15px] font-medium text-white transition hover:bg-black active:scale-[0.98]"
             >
               <ShoppingBag className="h-5 w-5" /> Add to Cart
             </button>
@@ -372,14 +372,14 @@ export default function ProductSlug() {
                 addToCart(product);
                 router.push("/cart");
               }}
-              className="flex items-center justify-center gap-2 rounded-full bg-[#8B1D8F] py-4 text-[15px] font-medium text-white transition hover:bg-[#7A187C]"
+              className="flex items-center justify-center gap-2 rounded-full bg-[#8B1D8F] py-3.5 sm:py-4 text-[14px] sm:text-[15px] font-medium text-white transition hover:bg-[#7A187C] active:scale-[0.98]"
             >
               Buy Now
             </button>
           </div>
 
           {/* Bulk Order Inquiry Section */}
-          <div className="mt-8 rounded-2xl border border-dashed border-[#E1BFE6] bg-[#FCF7FD]/50 p-5">
+          <div className="mt-6 sm:mt-8 rounded-2xl border border-dashed border-[#E1BFE6] bg-[#FCF7FD]/50 p-4 sm:p-5">
             <h3 className="text-[15px] font-semibold text-[#1A0F1C] flex items-center gap-2">
               <ShoppingBag className="h-4.5 w-4.5 text-[#8B1D8F]" /> Wholesale Bulk Inquiry
             </h3>
@@ -391,15 +391,15 @@ export default function ProductSlug() {
               </button>
             ) : (
               <form onSubmit={handleBulkInquirySubmit} className="mt-4 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <input required type="text" placeholder="Your Name" value={bulkName} onChange={(e) => setBulkName(e.target.value)} className="h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none" />
-                  <input required type="email" placeholder="Your Email" value={bulkEmail} onChange={(e) => setBulkEmail(e.target.value)} className="h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input required type="text" placeholder="Your Name" value={bulkName} onChange={(e) => setBulkName(e.target.value)} className="h-10 sm:h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[13px] sm:text-[12.5px] outline-none" />
+                  <input required type="email" placeholder="Your Email" value={bulkEmail} onChange={(e) => setBulkEmail(e.target.value)} className="h-10 sm:h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[13px] sm:text-[12.5px] outline-none" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <input required type="tel" placeholder="Phone Number" value={bulkPhone} onChange={(e) => setBulkPhone(e.target.value)} className="h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input required type="tel" placeholder="Phone Number" value={bulkPhone} onChange={(e) => setBulkPhone(e.target.value)} className="h-10 sm:h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[13px] sm:text-[12.5px] outline-none" />
                   <div className="flex gap-2 items-center">
-                    <input required type="number" min={10} placeholder="Qty" value={bulkQty} onChange={(e) => setBulkQty(e.target.value)} className="h-9 w-14 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12.5px] outline-none text-center" />
-                    <input required type="text" placeholder="Event Date" value={bulkDate} onChange={(e) => setBulkDate(e.target.value)} className="h-9 flex-1 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12.5px] outline-none" />
+                    <input required type="number" min={10} placeholder="Qty" value={bulkQty} onChange={(e) => setBulkQty(e.target.value)} className="h-10 sm:h-9 w-16 sm:w-14 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[13px] sm:text-[12.5px] outline-none text-center" />
+                    <input required type="text" placeholder="Event Date" value={bulkDate} onChange={(e) => setBulkDate(e.target.value)} className="h-10 sm:h-9 flex-1 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[13px] sm:text-[12.5px] outline-none" />
                   </div>
                 </div>
                 <textarea required rows={2} placeholder="Custom sizes, custom requirements, event details..." value={bulkMsg} onChange={(e) => setBulkMsg(e.target.value)} className="w-full rounded-lg border border-[#EEDDF0] bg-white p-2.5 text-[12.5px] outline-none" />
@@ -421,7 +421,7 @@ export default function ProductSlug() {
           </div>
 
           {/* Trust badges */}
-          <div className="mt-10 grid grid-cols-1 gap-4 rounded-2xl border border-[#F0E6F2] bg-[#FCF7FD] p-5 sm:grid-cols-4">
+          <div className="mt-8 sm:mt-10 grid grid-cols-2 gap-4 rounded-2xl border border-[#F0E6F2] bg-[#FCF7FD] p-4 sm:p-5 sm:grid-cols-4">
             <div className="flex flex-col items-center gap-2 text-center">
               <Truck className="h-6 w-6 text-[#8B1D8F]" />
               <span className="text-[13px] font-medium text-[#2E1F31]">Fast Delivery</span>
@@ -441,16 +441,18 @@ export default function ProductSlug() {
           </div>
 
           {/* Product Details Section */}
-          <div className="mt-10 border-t border-[#F0E6F2] pt-8">
-            <h3 className="mb-5 text-[18px] font-semibold text-[#1A0F1C]">Product Details</h3>
+          <div className="mt-8 sm:mt-10 border-t border-[#F0E6F2] pt-6 sm:pt-8">
+            <h3 className="mb-4 sm:mb-5 text-[16px] sm:text-[18px] font-semibold text-[#1A0F1C]">Product Details</h3>
 
-            <dl className="grid gap-y-6 gap-x-4 text-[14px] sm:grid-cols-2">
+            <dl className="grid gap-y-5 sm:gap-y-6 gap-x-4 text-[13px] sm:text-[14px] sm:grid-cols-2">
               {product.sku && (
                 <div className="sm:col-span-2">
                   <dt className="mb-2 font-medium text-[#8B7A8F]">SKU / Barcode</dt>
                   <dd className="font-medium text-[#2E1F31]">
-                    <div className="inline-block overflow-hidden rounded-xl border border-[#F0E6F2] bg-white p-3 shadow-sm">
-                      <Barcode value={product.sku} width={1.5} height={40} fontSize={14} background="transparent" />
+                    <div className="inline-block overflow-hidden rounded-xl border border-[#F0E6F2] bg-white p-2 sm:p-3 shadow-sm max-w-full">
+                      <div className="overflow-x-auto">
+                        <Barcode value={product.sku} width={1.2} height={35} fontSize={12} background="transparent" />
+                      </div>
                     </div>
                   </dd>
                 </div>
@@ -469,13 +471,26 @@ export default function ProductSlug() {
               )}
               {product.whatsIncluded && product.whatsIncluded.length > 0 && (
                 <div className="sm:col-span-2">
-                  <dt className="mb-2 font-medium text-[#8B7A8F]">What's Included</dt>
+                  <dt className="mb-2 font-medium text-[#8B7A8F]">What&apos;s Included</dt>
                   <dd>
-                    <ul className="space-y-1">
-                      {product.whatsIncluded.map((item: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-2 text-[14px] font-medium text-[#2E1F31]">
-                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#8B1D8F]" />
-                          {item}
+                    <ul className="space-y-1.5">
+                      {(Array.isArray(product.whatsIncluded)
+                        ? product.whatsIncluded.flatMap((item: string) => {
+                            // Handle stringified JSON arrays like '["Cape","Eye Mask"]'
+                            if (typeof item === 'string' && item.startsWith('[')) {
+                              try { return JSON.parse(item); } catch { return [item]; }
+                            }
+                            // Handle comma-separated strings
+                            if (typeof item === 'string' && item.includes(',')) {
+                              return item.split(',').map((s: string) => s.trim()).filter(Boolean);
+                            }
+                            return [item];
+                          })
+                        : []
+                      ).map((item: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2 text-[13px] sm:text-[14px] font-medium text-[#2E1F31]">
+                          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#8B1D8F]" />
+                          {typeof item === 'string' ? item.replace(/^"|"$/g, '').trim() : item}
                         </li>
                       ))}
                     </ul>
@@ -494,10 +509,10 @@ export default function ProductSlug() {
       </div>
 
       {/* Ratings & Reviews Section */}
-      <div className="mt-16 border-t border-[#F0E6F2] pt-12 md:mt-20">
-        <h2 className="text-[22px] font-semibold text-[#1A0F1C] mb-8">Customer Reviews</h2>
+      <div className="mt-10 sm:mt-16 border-t border-[#F0E6F2] pt-8 sm:pt-12 md:mt-20">
+        <h2 className="text-[18px] sm:text-[22px] font-semibold text-[#1A0F1C] mb-6 sm:mb-8">Customer Reviews</h2>
 
-        <div className="grid gap-8 md:grid-cols-[1fr_1.5fr] lg:gap-12">
+        <div className="grid gap-6 sm:gap-8 md:grid-cols-[1fr_1.5fr] lg:gap-12">
           {/* Review Stats & Add Review Form */}
           <div className="space-y-6">
             <div className="rounded-3xl border border-[#F0E6F2] bg-[#FCF7FD]/40 p-6">
@@ -616,11 +631,11 @@ export default function ProductSlug() {
       </div>
 
       {/* Recommended Products */}
-      <div className="mt-16 border-t border-[#F0E6F2] pt-12 md:mt-24 md:pt-16">
-        <div className="mb-6 flex items-baseline justify-between">
-          <h2 className="text-[22px] font-semibold tracking-tight text-[#1A0F1C] md:text-[26px]">You Might Also Like</h2>
+      <div className="mt-10 sm:mt-16 border-t border-[#F0E6F2] pt-8 sm:pt-12 md:mt-24 md:pt-16">
+        <div className="mb-5 sm:mb-6 flex items-baseline justify-between">
+          <h2 className="text-[18px] sm:text-[22px] font-semibold tracking-tight text-[#1A0F1C] md:text-[26px]">You Might Also Like</h2>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:gap-5">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 md:grid-cols-4 lg:gap-5">
           {allProducts
             .filter((p) => p.id !== product.id && p.category === product.category)
             .concat(allProducts.filter((p) => p.id !== product.id && p.category !== product.category))
