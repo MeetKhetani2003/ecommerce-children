@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { GridFSBucket, ObjectId } from "mongodb";
+import { GridFSBucket } from "mongodb";
 
 export function getGridFSBucket() {
   const db = mongoose.connection.db;
@@ -18,7 +18,7 @@ export async function uploadToGridFS(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const uploadStream = bucket.openUploadStream(file.name, {
       contentType: file.type,
-    });
+    } as any);
     
     uploadStream.on("error", (error) => reject(error));
     uploadStream.on("finish", () => resolve(uploadStream.id.toString()));

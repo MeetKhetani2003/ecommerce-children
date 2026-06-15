@@ -3,7 +3,7 @@ import dbConnect from "@/utils/dbConnect";
 import { getGridFSBucket } from "@/utils/gridfs";
 import { ObjectId } from "mongodb";
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     await dbConnect();
@@ -20,7 +20,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const stream = bucket.openDownloadStream(objectId);
     
     const headers = new Headers();
-    headers.set("Content-Type", file.contentType || "image/jpeg");
+    headers.set("Content-Type", (file as any).contentType || "image/jpeg");
     headers.set("Cache-Control", "public, max-age=31536000, immutable");
 
     // Convert standard Node.js stream to Web ReadableStream

@@ -76,7 +76,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            email: session.user.email,
+            email: session.user!.email,
             cart: cartItems,
             wishlist
           })

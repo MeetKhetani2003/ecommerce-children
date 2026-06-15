@@ -48,23 +48,66 @@ async function seedDatabase() {
     // Seed Products
     const productCount = await Product.countDocuments();
     if (productCount === 0) {
-      const formattedProducts = products.map(p => ({
-        id: p.id,
-        title: p.title,
-        category: p.category,
-        price: p.price,
-        mrp: p.mrp,
-        rating: p.rating,
-        image: p.image,
-        tag: p.tag,
-        description: p.description || "Premium costume set, perfect for school events, festivals, and parties.",
-        stock: 50, // default stock count
-        material: p.material || "Soft, comfortable kid-safe fabrics",
-        sizes: p.sizes || ["3-4 Yrs", "5-6 Yrs", "7-8 Yrs"],
-        whatsIncluded: p.whatsIncluded || ["Main Costume Accessories"],
-        careInstructions: p.careInstructions || "Dry clean or gentle hand wash."
-      }));
+      const formattedProducts = products.map(p => {
+        const sizesList = p.sizes || ["Size 24", "Size 26", "Size 28", "Size 30", "Size 32"];
+        const sizeObjects = sizesList.map(s => ({ size: s, stock: 15 }));
+        const totalStock = sizeObjects.reduce((sum, item) => sum + item.stock, 0);
+        return {
+          id: p.id,
+          title: p.title,
+          category: p.category,
+          price: p.price,
+          mrp: p.mrp,
+          rating: p.rating,
+          image: p.image,
+          tag: p.tag,
+          description: p.description || "Premium costume set, perfect for school events, festivals, and parties.",
+          stock: totalStock,
+          material: p.material || "Soft, comfortable kid-safe fabrics",
+          sizes: sizeObjects,
+          whatsIncluded: p.whatsIncluded || ["Main Costume Accessories"],
+          careInstructions: p.careInstructions || "Dry clean or gentle hand wash.",
+          images: p.images || [p.image]
+        };
+      });
       await Product.insertMany(formattedProducts);
+    } else {
+      // Migrate/update existing products to populate images and structured sizes if needed
+      const existingProductsList = await Product.find({});
+      for (const prod of existingProductsList) {
+        let needsUpdate = false;
+        let updateFields: any = {};
+
+        // Migrate images if missing
+        if (!prod.images || prod.images.length === 0) {
+          const mockP = products.find(p => p.id === prod.id);
+          updateFields.images = (mockP && mockP.images && mockP.images.length > 0) ? mockP.images : [prod.image];
+          needsUpdate = true;
+        }
+
+        // Migrate sizes if strings
+        const hasStringSizes = prod.sizes && prod.sizes.some((s: any) => typeof s === "string");
+        if (hasStringSizes || !prod.sizes || prod.sizes.length === 0) {
+          const sizesList = (prod.sizes && prod.sizes.length > 0) 
+            ? prod.sizes.map((s: any) => typeof s === "string" ? s : s.size) 
+            : ["Size 24", "Size 26", "Size 28", "Size 30", "Size 32"];
+          
+          const count = sizesList.length;
+          const stockPerSize = count > 0 ? Math.max(1, Math.floor((prod.stock || 50) / count)) : 10;
+          
+          updateFields.sizes = sizesList.map((s: any) => ({
+            size: s,
+            stock: stockPerSize
+          }));
+          updateFields.stock = count * stockPerSize;
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          await Product.updateOne({ _id: prod._id }, { $set: updateFields });
+          console.log(`Migrated product ${prod.id} (${prod.title}) with updated schema fields.`);
+        }
+      }
     }
 
     // Seed Coupons

@@ -1,10 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Edit, Trash2 } from "lucide-react";
+import { ChevronLeft, Edit, Trash2, Plus, X, ImageIcon } from "lucide-react";
+import Barcode from "react-barcode";
+import CreatableSelect from "react-select/creatable";
+
+const DEFAULT_MATERIALS = [
+  { value: "100% Cotton", label: "100% Cotton" },
+  { value: "Polyester", label: "Polyester" },
+  { value: "Silk", label: "Silk" },
+  { value: "Velvet", label: "Velvet" },
+  { value: "Felt", label: "Felt" },
+  { value: "Satin", label: "Satin" },
+];
+
+interface SizeEntry {
+  size: string;
+  stock: number;
+}
 
 export default function EditProductPage() {
   const { data: session, status } = useSession();
@@ -13,26 +29,78 @@ export default function EditProductPage() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [formFeatured, setFormFeatured] = useState(false);
   
   const [sku, setSku] = useState("");
   const [formTitle, setFormTitle] = useState("");
   const [formCategory, setFormCategory] = useState("Animal Costume");
   const [formPrice, setFormPrice] = useState("");
   const [formMrp, setFormMrp] = useState("");
-  const [formStock, setFormStock] = useState("50");
+  const [formNetPrice, setFormNetPrice] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formTag, setFormTag] = useState("");
   const [formMaterial, setFormMaterial] = useState("");
-  const [formSizes, setFormSizes] = useState("");
   const [formWhatsIncluded, setFormWhatsIncluded] = useState("");
   const [formCareInstructions, setFormCareInstructions] = useState("");
   
+  // Size-stock pairs
+  const [sizeEntries, setSizeEntries] = useState<SizeEntry[]>([{ size: "", stock: 0 }]);
+
   const [existingImage, setExistingImage] = useState("");
   const [mainImageFile, setMainImageFile] = useState<File | null>(null);
-  const [detailedImagesFiles, setDetailedImagesFiles] = useState<File[]>([]);
+  const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
+
+  // Existing detailed images from DB
+  const [existingDetailedImages, setExistingDetailedImages] = useState<string[]>([]);
+  // New files chosen by admin
+  const [newDetailedFiles, setNewDetailedFiles] = useState<File[]>([]);
+  const [newDetailedPreviews, setNewDetailedPreviews] = useState<string[]>([]);
+
+  const mainInputRef = useRef<HTMLInputElement>(null);
+  const detailInputRef = useRef<HTMLInputElement>(null);
   const [reviews, setReviews] = useState<any[]>([]);
 
   const isAdmin = (session?.user as any)?.role === "admin";
+
+  const [materials, setMaterials] = useState(DEFAULT_MATERIALS);
+  
+  useEffect(() => {
+    const saved = localStorage.getItem("customMaterials");
+    if (saved) {
+      try {
+        setMaterials([...DEFAULT_MATERIALS, ...JSON.parse(saved)]);
+      } catch (e) {}
+    }
+  }, []);
+
+  const selectedMaterials = formMaterial ? formMaterial.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+  const handleCreateMaterial = (inputValue: string) => {
+    const newOption = { value: inputValue, label: inputValue };
+    setMaterials((prev) => [...prev, newOption]);
+    
+    // Auto-add it to selection
+    if (!selectedMaterials.includes(inputValue)) {
+      setFormMaterial([...selectedMaterials, inputValue].join(', '));
+    }
+    
+    const saved = localStorage.getItem("customMaterials");
+    const parsed = saved ? JSON.parse(saved) : [];
+    localStorage.setItem("customMaterials", JSON.stringify([...parsed, newOption]));
+  };
+
+  const handleAddMaterial = (newValue: any) => {
+    if (!newValue) return;
+    const val = newValue.value;
+    if (!selectedMaterials.includes(val)) {
+      setFormMaterial([...selectedMaterials, val].join(', '));
+    }
+  };
+
+  const handleRemoveMaterial = (matToRemove: string) => {
+    const newMats = selectedMaterials.filter(m => m !== matToRemove);
+    setFormMaterial(newMats.join(', '));
+  };
 
   useEffect(() => {
     if (isAdmin && id) {
@@ -51,15 +119,29 @@ export default function EditProductPage() {
         setFormCategory(product.category || "Animal Costume");
         setFormPrice(product.price ? product.price.toString() : "");
         setFormMrp(product.mrp ? product.mrp.toString() : "");
+        setFormNetPrice(product.netPrice ? product.netPrice.toString() : "");
         setExistingImage(product.image || "");
-        setFormStock(product.stock ? product.stock.toString() : "50");
+        setExistingDetailedImages(product.images && product.images.length > 0 ? product.images : []);
         setFormDescription(product.description || "");
         setFormTag(product.tag || "");
         setFormMaterial(product.material || "");
-        setFormSizes(product.sizes ? product.sizes.join(", ") : "");
-        setFormWhatsIncluded(product.whatsIncluded ? product.whatsIncluded.join(", ") : "");
+        setFormWhatsIncluded(product.whatsIncluded ? product.whatsIncluded.join("\n") : "");
         setFormCareInstructions(product.careInstructions || "");
+        setFormFeatured(!!product.featured);
         setReviews(product.reviews || []);
+
+        // Load sizes properly — they may be [{size, stock}] or plain strings
+        if (product.sizes && product.sizes.length > 0) {
+          const loaded: SizeEntry[] = product.sizes.map((s: any) => {
+            if (typeof s === "object" && s !== null) {
+              return { size: s.size || "", stock: Number(s.stock) || 0 };
+            }
+            return { size: String(s), stock: 0 };
+          });
+          setSizeEntries(loaded);
+        } else {
+          setSizeEntries([{ size: "", stock: 0 }]);
+        }
       } else {
         alert("Product not found!");
         router.push("/admin");
@@ -90,6 +172,24 @@ export default function EditProductPage() {
     }
   };
 
+  const addSizeRow = () => {
+    setSizeEntries((prev) => [...prev, { size: "", stock: 0 }]);
+  };
+
+  const removeSizeRow = (idx: number) => {
+    setSizeEntries((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateSizeRow = (idx: number, field: keyof SizeEntry, value: string | number) => {
+    setSizeEntries((prev) =>
+      prev.map((entry, i) =>
+        i === idx ? { ...entry, [field]: field === "stock" ? Number(value) : value } : entry
+      )
+    );
+  };
+
+  const totalStock = sizeEntries.reduce((sum, e) => sum + (Number(e.stock) || 0), 0);
+
   if (status === "loading" || loading) {
     return <div className="p-8 text-center text-[#8B7A8F]">Loading...</div>;
   }
@@ -116,7 +216,7 @@ export default function EditProductPage() {
       setSubmitting(false);
       return;
     }
-    for (const file of detailedImagesFiles) {
+    for (const file of newDetailedFiles) {
       if (file.size > MAX_SIZE) {
         alert(`Image ${file.name} exceeds 500KB limit.`);
         setSubmitting(false);
@@ -124,23 +224,33 @@ export default function EditProductPage() {
       }
     }
 
+    const validSizes = sizeEntries.filter((e) => e.size.trim());
+    if (validSizes.length === 0) {
+      alert("Please add at least one size with stock quantity.");
+      setSubmitting(false);
+      return;
+    }
+
     const formData = new FormData();
     formData.append("title", formTitle);
     formData.append("category", formCategory);
     formData.append("price", formPrice);
     formData.append("mrp", formMrp);
-    formData.append("stock", formStock);
+    formData.append("netPrice", formNetPrice);
     formData.append("description", formDescription);
     formData.append("tag", formTag);
     formData.append("material", formMaterial);
-    formData.append("sizes", formSizes);
+    formData.append("sizes", JSON.stringify(validSizes));
     formData.append("whatsIncluded", formWhatsIncluded);
     formData.append("careInstructions", formCareInstructions);
+    formData.append("featured", formFeatured ? "true" : "false");
+    // Send which existing detailed images to keep
+    formData.append("keepImages", JSON.stringify(existingDetailedImages));
     
     if (mainImageFile) {
       formData.append("image", mainImageFile);
     }
-    detailedImagesFiles.forEach(f => {
+    newDetailedFiles.forEach((f) => {
       formData.append("images", f);
     });
 
@@ -185,6 +295,11 @@ export default function EditProductPage() {
           <div>
             <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">SKU (Auto-Generated & Read Only)</label>
             <input readOnly type="text" value={sku} className="h-12 w-full rounded-xl border border-[#EEDDF0] bg-gray-50 px-4 text-[14px] text-gray-500 outline-none" />
+            {sku && sku !== "N/A" && (
+              <div className="mt-3 inline-block rounded-xl border border-[#EEDDF0] bg-white p-3">
+                <Barcode value={sku} width={1.5} height={40} fontSize={14} background="transparent" />
+              </div>
+            )}
           </div>
 
           <div>
@@ -222,46 +337,161 @@ export default function EditProductPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Stock Inventory</label>
-              <input required type="number" value={formStock} onChange={(e) => setFormStock(e.target.value)} className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
-            </div>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Price (₹)</label>
-              <input required type="number" value={formPrice} onChange={(e) => setFormPrice(e.target.value)} className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">MRP (₹)</label>
-              <input required type="number" value={formMrp} onChange={(e) => setFormMrp(e.target.value)} className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
-            </div>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Tag / Badge</label>
-              <input type="text" value={formTag} onChange={(e) => setFormTag(e.target.value)} placeholder="e.g. Bestseller, New" className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
+              <select value={formTag} onChange={(e) => setFormTag(e.target.value)} className="h-12 w-full rounded-xl border border-[#EEDDF0] px-3 text-[14px] outline-none bg-white focus:border-[#E1BFE6]">
+                <option value="">No Badge</option>
+                <option value="Bestseller">🏆 Bestseller</option>
+                <option value="New Arrival">✨ New Arrival</option>
+                <option value="Hot">🔥 Hot</option>
+                <option value="Trending">📈 Trending</option>
+                <option value="Limited Stock">⚡ Limited Stock</option>
+                <option value="Sale">🏷️ Sale</option>
+                <option value="Exclusive">💎 Exclusive</option>
+                <option value="Top Rated">⭐ Top Rated</option>
+                <option value="Festival Special">🎉 Festival Special</option>
+                <option value="School Favourite">🎓 School Favourite</option>
+              </select>
             </div>
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Material</label>
-              <input type="text" value={formMaterial} onChange={(e) => setFormMaterial(e.target.value)} placeholder="e.g. 100% Cotton" className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
+          </div>
+
+          <div>
+            <div className="grid gap-6 sm:grid-cols-3">
+              <div>
+                <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Net Cost Price (₹)</label>
+                <input type="number" value={formNetPrice} onChange={(e) => setFormNetPrice(e.target.value)} placeholder="e.g. 500" className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Selling Price (₹)</label>
+                <input required type="number" value={formPrice} onChange={(e) => setFormPrice(e.target.value)} className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">MRP (₹)</label>
+                <input required type="number" value={formMrp} onChange={(e) => setFormMrp(e.target.value)} className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
+              </div>
             </div>
+            
+            {/* Profit Display */}
+            {formPrice && formNetPrice && (
+              <div className="mt-2 text-[13px] font-medium">
+                <span className="text-[#6B5A6F]">Estimated Profit per unit: </span>
+                <span className={Number(formPrice) - Number(formNetPrice) >= 0 ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
+                  ₹{(Number(formPrice) - Number(formNetPrice)).toFixed(2)}
+                </span>
+              </div>
+            )}
+          </div>
+
+
+
+          {/* Size & Stock Management */}
+          <div className="rounded-2xl border border-[#EEDDF0] bg-[#FCF7FD]/40 p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <label className="block text-[14px] font-semibold text-[#1A0F1C]">Sizes & Stock Inventory</label>
+                <p className="text-[12px] text-[#8B7A8F] mt-0.5">
+                  Manage each size with its available stock. Total stock: <span className="font-bold text-[#8B1D8F]">{totalStock}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={addSizeRow}
+                className="flex items-center gap-1.5 rounded-xl bg-[#8B1D8F] px-3.5 py-2 text-[13px] font-medium text-white transition hover:bg-[#7A187C]"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Size
+              </button>
+            </div>
+
+            {/* Header row */}
+            <div className="mb-2 grid grid-cols-[1fr_120px_40px] gap-3 px-1">
+              <span className="text-[12px] font-semibold uppercase tracking-wide text-[#8B7A8F]">Size / Age Group</span>
+              <span className="text-[12px] font-semibold uppercase tracking-wide text-[#8B7A8F] text-center">Stock (Qty)</span>
+              <span></span>
+            </div>
+
+            <div className="space-y-2.5">
+              {sizeEntries.map((entry, idx) => (
+                <div key={idx} className="grid grid-cols-[1fr_120px_40px] items-center gap-3">
+                  <input
+                    type="text"
+                    value={entry.size}
+                    onChange={(e) => updateSizeRow(idx, "size", e.target.value)}
+                    placeholder="e.g. 3-4 Yrs, Size 26"
+                    className="h-11 rounded-xl border border-[#EEDDF0] bg-white px-4 text-[13.5px] outline-none focus:border-[#8B1D8F]"
+                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={0}
+                      value={entry.stock}
+                      onChange={(e) => updateSizeRow(idx, "stock", e.target.value)}
+                      className={`h-11 w-full rounded-xl border px-4 text-[13.5px] text-center font-semibold outline-none focus:border-[#8B1D8F] ${
+                        entry.stock === 0
+                          ? "border-red-200 bg-red-50 text-red-600"
+                          : "border-[#EEDDF0] bg-white text-[#1A0F1C]"
+                      }`}
+                    />
+                    {entry.stock === 0 && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-red-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-600">
+                        Out of Stock
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeSizeRow(idx)}
+                    disabled={sizeEntries.length === 1}
+                    className="grid h-11 w-11 place-items-center rounded-xl border border-[#EEDDF0] text-[#8B7A8F] transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {sizeEntries.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2 border-t border-[#F0E6F2] pt-4">
+                {sizeEntries.filter((e) => e.size.trim()).map((entry, idx) => (
+                  <span
+                    key={idx}
+                    className={`rounded-full px-3 py-1 text-[12px] font-medium ${
+                      entry.stock === 0
+                        ? "bg-red-50 text-red-500 line-through"
+                        : "bg-[#F3E7F5] text-[#7A187C]"
+                    }`}
+                  >
+                    {entry.size} ({entry.stock > 0 ? `${entry.stock} pcs` : "Out"})
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Sizes (comma separated)</label>
-            <input type="text" value={formSizes} onChange={(e) => setFormSizes(e.target.value)} placeholder="3-4 Yrs, 5-6 Yrs" className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
+            <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">
+              What's Included
+              <span className="ml-1.5 text-[11px] font-normal text-[#8B7A8F]">— one item per line</span>
+            </label>
+            <textarea
+              rows={4}
+              value={formWhatsIncluded}
+              onChange={(e) => setFormWhatsIncluded(e.target.value)}
+              placeholder={`1 Cape\n1 Mask\n1 Belt\n1 Headband`}
+              className="w-full rounded-xl border border-[#EEDDF0] p-4 text-[14px] leading-relaxed outline-none focus:border-[#E1BFE6] resize-none"
+            />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">What's Included (comma separated)</label>
-            <input type="text" value={formWhatsIncluded} onChange={(e) => setFormWhatsIncluded(e.target.value)} placeholder="Cape, Mask, Belt" className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Care Instructions</label>
-            <input type="text" value={formCareInstructions} onChange={(e) => setFormCareInstructions(e.target.value)} className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
+            <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">
+              Care Instructions
+              <span className="ml-1.5 text-[11px] font-normal text-[#8B7A8F]">— preserves your formatting</span>
+            </label>
+            <textarea
+              rows={4}
+              value={formCareInstructions}
+              onChange={(e) => setFormCareInstructions(e.target.value)}
+              placeholder={`Hand wash only\nDo not bleach\nIron on low heat\nDry in shade`}
+              className="w-full rounded-xl border border-[#EEDDF0] p-4 text-[14px] leading-relaxed outline-none focus:border-[#E1BFE6] resize-none"
+            />
           </div>
 
           <div>
@@ -269,16 +499,192 @@ export default function EditProductPage() {
             <textarea rows={4} value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="w-full rounded-xl border border-[#EEDDF0] p-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 rounded-2xl border border-dashed border-[#E1BFE6] bg-[#FCF7FD]/50 p-6">
+          <div>
+            <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Material</label>
+            <CreatableSelect
+              isClearable
+              controlShouldRenderValue={false}
+              options={materials.filter(m => !selectedMaterials.includes(m.value))}
+              value={null}
+              onChange={handleAddMaterial}
+              onCreateOption={handleCreateMaterial}
+              placeholder="Select or type to add material..."
+              styles={{
+                control: (base, state) => ({
+                  ...base,
+                  minHeight: '48px',
+                  borderRadius: '12px',
+                  borderColor: state.isFocused ? '#E1BFE6' : '#EEDDF0',
+                  boxShadow: state.isFocused ? '0 0 0 1px #E1BFE6' : 'none',
+                  fontSize: '14px',
+                  '&:hover': {
+                    borderColor: '#E1BFE6'
+                  }
+                }),
+                option: (base, state) => ({
+                  ...base,
+                  fontSize: '14px',
+                  backgroundColor: state.isSelected ? '#8B1D8F' : state.isFocused ? '#F3E7F5' : 'white',
+                  color: state.isSelected ? 'white' : '#1A0F1C',
+                  cursor: 'pointer',
+                  '&:active': {
+                    backgroundColor: '#8B1D8F',
+                    color: 'white'
+                  }
+                })
+              }}
+            />
+            {selectedMaterials.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedMaterials.map((mat) => (
+                  <span key={mat} className="flex items-center gap-1.5 rounded-full bg-[#F3E7F5] px-3 py-1.5 text-[12px] font-medium text-[#7A187C]">
+                    {mat}
+                    <button type="button" onClick={() => handleRemoveMaterial(mat)} className="text-[#8B1D8F] hover:text-red-500 transition-colors">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Image Upload Section */}
+          <div className="rounded-2xl border border-dashed border-[#E1BFE6] bg-[#FCF7FD]/50 p-6 space-y-6">
+            <p className="text-[13px] font-semibold text-[#4A354D] flex items-center gap-2"><ImageIcon className="h-4 w-4 text-[#8B1D8F]" /> Product Images (Max 500KB each)</p>
+
+            {/* Main Image */}
             <div>
-              <label className="mb-2 block text-[13px] font-medium text-[#4A354D]">Main Image (Max 500KB)</label>
-              {existingImage && <div className="mb-3"><img src={existingImage} alt="Current" className="h-20 w-auto rounded-lg object-cover border border-[#F0E6F2]" /></div>}
-              <input type="file" accept="image/*" onChange={(e) => setMainImageFile(e.target.files?.[0] || null)} className="w-full text-[13px] file:mr-4 file:rounded-full file:border-0 file:bg-[#F3E7F5] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#8B1D8F] hover:file:bg-[#E1BFE6]" />
+              <label className="mb-2 block text-[13px] font-medium text-[#6B5A6F]">Main Image</label>
+              <input
+                ref={mainInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setMainImageFile(file);
+                  if (mainImagePreview) URL.revokeObjectURL(mainImagePreview);
+                  setMainImagePreview(file ? URL.createObjectURL(file) : null);
+                }}
+              />
+              {mainImagePreview ? (
+                <div className="relative inline-block">
+                  <img src={mainImagePreview} alt="New main" className="h-36 w-36 rounded-xl object-cover border-2 border-[#8B1D8F] shadow-md" />
+                  <div className="mt-1.5 text-[11px] text-[#6B5A6F] truncate max-w-[140px]">{mainImageFile?.name} ({((mainImageFile?.size || 0)/1024).toFixed(0)} KB)</div>
+                  <button type="button" onClick={() => { if(mainImagePreview) URL.revokeObjectURL(mainImagePreview); setMainImagePreview(null); setMainImageFile(null); if(mainInputRef.current) mainInputRef.current.value=""; }} className="absolute -top-2 -right-2 grid h-6 w-6 place-items-center rounded-full bg-red-500 text-white shadow hover:bg-red-600">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : existingImage ? (
+                <div className="relative inline-block">
+                  <img src={existingImage} alt="Current main" className="h-36 w-36 rounded-xl object-cover border-2 border-[#8B1D8F]/40 shadow-md" />
+                  <span className="mt-1.5 block text-[11px] text-[#8B7A8F]">Current image</span>
+                  <button type="button" onClick={() => mainInputRef.current?.click()} className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-1 bg-black/50 py-1 text-[11px] font-medium text-white rounded-b-xl hover:bg-black/70">
+                    <ImageIcon className="h-3 w-3" /> Replace
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => mainInputRef.current?.click()} className="flex h-36 w-36 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#E1BFE6] bg-white text-[#8B7A8F] transition hover:border-[#8B1D8F] hover:text-[#8B1D8F]">
+                  <ImageIcon className="h-8 w-8" />
+                  <span className="text-[12px] font-medium">Click to upload</span>
+                </button>
+              )}
             </div>
+
+            {/* Detailed / Gallery Images */}
             <div>
-              <label className="mb-2 block text-[13px] font-medium text-[#4A354D]">Detailed Images (Max 500KB each)</label>
-              <input type="file" multiple accept="image/*" onChange={(e) => setDetailedImagesFiles(Array.from(e.target.files || []))} className="w-full text-[13px] file:mr-4 file:rounded-full file:border-0 file:bg-[#F3E7F5] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#8B1D8F] hover:file:bg-[#E1BFE6]" />
+              <label className="mb-2 block text-[13px] font-medium text-[#6B5A6F]">
+                Detailed / Gallery Images
+                {(existingDetailedImages.length + newDetailedPreviews.length) > 0 && (
+                  <span className="ml-2 rounded-full bg-[#F3E7F5] px-2 py-0.5 text-[11px] font-semibold text-[#8B1D8F]">
+                    {existingDetailedImages.length + newDetailedPreviews.length} total
+                  </span>
+                )}
+              </label>
+              <input
+                ref={detailInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  newDetailedPreviews.forEach(url => URL.revokeObjectURL(url));
+                  setNewDetailedFiles(files);
+                  setNewDetailedPreviews(files.map(f => URL.createObjectURL(f)));
+                }}
+              />
+              <div className="flex flex-wrap gap-3">
+                {/* Existing DB images */}
+                {existingDetailedImages.map((src, idx) => (
+                  <div key={`existing-${idx}`} className="relative">
+                    <img src={src} alt={`Existing ${idx+1}`} className="h-24 w-24 rounded-xl object-cover border-2 border-[#E1BFE6] shadow-sm" />
+                    <span className="mt-1 block text-center text-[9px] font-semibold uppercase tracking-wide text-[#8B7A8F]">Saved</span>
+                    <button
+                      type="button"
+                      onClick={() => setExistingDetailedImages(prev => prev.filter((_, i) => i !== idx))}
+                      className="absolute -top-2 -right-2 grid h-5 w-5 place-items-center rounded-full bg-red-500 text-white shadow hover:bg-red-600"
+                      title="Remove this image"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* New upload previews */}
+                {newDetailedPreviews.map((src, idx) => (
+                  <div key={`new-${idx}`} className="relative">
+                    <img src={src} alt={`New ${idx+1}`} className="h-24 w-24 rounded-xl object-cover border-2 border-[#8B1D8F]/60 shadow-sm" />
+                    <span className="mt-1 block text-center text-[9px] font-semibold uppercase tracking-wide text-[#8B1D8F]">New</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        URL.revokeObjectURL(src);
+                        setNewDetailedFiles(prev => prev.filter((_, i) => i !== idx));
+                        setNewDetailedPreviews(prev => prev.filter((_, i) => i !== idx));
+                        if (detailInputRef.current) detailInputRef.current.value = "";
+                      }}
+                      className="absolute -top-2 -right-2 grid h-5 w-5 place-items-center rounded-full bg-red-500 text-white shadow hover:bg-red-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Add more button */}
+                <button
+                  type="button"
+                  onClick={() => detailInputRef.current?.click()}
+                  className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-[#E1BFE6] bg-white text-[#8B7A8F] transition hover:border-[#8B1D8F] hover:text-[#8B1D8F]"
+                >
+                  <Plus className="h-6 w-6" />
+                  <span className="text-[11px] font-medium">Add More</span>
+                </button>
+              </div>
             </div>
+          </div>
+
+          {/* Featured Toggle */}
+          <div className="flex items-start gap-4 rounded-2xl border border-[#EEDDF0] bg-[#FCF7FD]/60 p-5">
+            <div className="relative mt-0.5">
+              <input
+                type="checkbox"
+                id="featuredCheckEdit"
+                checked={formFeatured}
+                onChange={(e) => setFormFeatured(e.target.checked)}
+                className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border-2 border-[#EEDDF0] bg-white checked:border-[#8B1D8F] checked:bg-[#8B1D8F] transition"
+              />
+              <svg className="pointer-events-none absolute inset-0 m-auto h-3 w-3 text-white opacity-0 peer-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <label htmlFor="featuredCheckEdit" className="cursor-pointer flex-1">
+              <span className="flex items-center gap-2 text-[14px] font-semibold text-[#1A0F1C]">
+                ⭐ Featured Product
+                {formFeatured && <span className="rounded-full bg-[#8B1D8F] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Active</span>}
+              </span>
+              <p className="mt-0.5 text-[12px] text-[#8B7A8F]">When checked, this costume will appear in the <strong className="text-[#8B1D8F]">"Featured This Week"</strong> section on the home page.</p>
+            </label>
           </div>
 
           <div className="pt-6 border-t border-[#F0E6F2]">

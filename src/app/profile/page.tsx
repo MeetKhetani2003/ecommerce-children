@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
-import { User, MapPin, Package, Heart, LogOut, Shield, Compass, CheckCircle, Truck, ShoppingBag, Trash2 } from "lucide-react";
+import { User, MapPin, Package, Heart, LogOut, Shield, Compass, CheckCircle, Truck, ShoppingBag, Trash2, X } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 
 export default function Profile() {
@@ -18,6 +18,180 @@ export default function Profile() {
   const [addresses, setAddresses] = useState<string[]>([]);
   const [defaultAddress, setDefaultAddress] = useState<string>("");
   const [newAddress, setNewAddress] = useState("");
+
+  // Return & Exchange states
+  const [isExchangeModalOpen, setIsExchangeModalOpen] = useState(false);
+  const [selectedOrderForExchange, setSelectedOrderForExchange] = useState<any>(null);
+  const [newExchangeAddress, setNewExchangeAddress] = useState("");
+  const [exchangeItems, setExchangeItems] = useState<any[]>([]);
+  const [submittingExchange, setSubmittingExchange] = useState(false);
+  const [allProductsForExchange, setAllProductsForExchange] = useState<any[]>([]);
+  const [exchangePaymentMethod, setExchangePaymentMethod] = useState<"online" | "cod">("online");
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const fetchProductsForExchange = async () => {
+    if (allProductsForExchange.length > 0) return;
+    try {
+      const res = await fetch("/api/products");
+      const data = await res.json();
+      if (data.success) {
+        setAllProductsForExchange(data.products || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch products for exchange:", err);
+    }
+  };
+
+  const handleExchangeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedOrderForExchange) return;
+    setSubmittingExchange(true);
+    try {
+      const res = await fetch("/api/orders/exchange", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: selectedOrderForExchange._id,
+          newAddress: newExchangeAddress,
+          newSizes: exchangeItems.map(item => ({
+            productId: item.productId,
+            oldSize: item.oldSize,
+            newSize: item.newSize
+          })),
+          paymentMethod: exchangePaymentMethod
+        })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert("Failed to request exchange: " + data.message);
+        setSubmittingExchange(false);
+        return;
+      }
+
+      // If COD, process immediately
+      if (data.isCod) {
+        alert("Exchange request submitted successfully! A flat fee of ₹120 will be charged on delivery.");
+        setIsExchangeModalOpen(false);
+        fetchOrders();
+        return;
+      }
+
+      // Online Payment Flow (Razorpay)
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        alert("Razorpay SDK failed to load. Check your internet connection.");
+        setSubmittingExchange(false);
+        return;
+      }
+
+      // Check if key is placeholder
+      if (data.key === "rzp_test_placeholder") {
+        const choice = window.confirm(
+          "Razorpay Test Mode Bypass:\n\nClick OK to simulate a SUCCESSFUL payment for the ₹120 exchange fee.\nClick Cancel to abort."
+        );
+        if (choice) {
+          // Simulate Payment Verification
+          try {
+            const verifyRes = await fetch("/api/orders/exchange/verify-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_payment_id: "mock_pay_" + Math.random().toString(36).substring(2, 11),
+                razorpay_order_id: data.razorpayOrderId,
+                razorpay_signature: "mock_signature",
+                orderId: selectedOrderForExchange._id,
+                newAddress: newExchangeAddress,
+                newSizes: exchangeItems.map(item => ({
+                  productId: item.productId,
+                  oldSize: item.oldSize,
+                  newSize: item.newSize
+                }))
+              }),
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              alert("Payment Success! [SIMULATED] Costume exchange request registered successfully.");
+              setIsExchangeModalOpen(false);
+              fetchOrders();
+            } else {
+              alert("Verification failed: " + verifyData.message);
+            }
+          } catch (verifyErr) {
+            console.error(verifyErr);
+            alert("Error verifying simulated payment.");
+          }
+        }
+        setSubmittingExchange(false);
+        return;
+      }
+
+      // Real Razorpay popup
+      const options = {
+        key: data.key,
+        amount: data.amount,
+        currency: "INR",
+        name: "Saheli Shrungar Costumes",
+        description: "Exchange Processing Fee Payment",
+        order_id: data.razorpayOrderId,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch("/api/orders/exchange/verify-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                orderId: selectedOrderForExchange._id,
+                newAddress: newExchangeAddress,
+                newSizes: exchangeItems.map(item => ({
+                  productId: item.productId,
+                  oldSize: item.oldSize,
+                  newSize: item.newSize
+                }))
+              }),
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              alert("Payment Success! Costume exchange request registered successfully.");
+              setIsExchangeModalOpen(false);
+              fetchOrders();
+            } else {
+              alert("Verification failed: " + verifyData.message);
+            }
+          } catch (verifyErr) {
+            console.error(verifyErr);
+            alert("Error verifying payment.");
+          }
+        },
+        prefill: {
+          name: session?.user?.name || "",
+          email: session?.user?.email || "",
+        },
+        theme: {
+          color: "#8B1D8F",
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred during submission.");
+    } finally {
+      setSubmittingExchange(false);
+    }
+  };
 
   const isAdmin = (session?.user as any)?.role === "admin";
 
@@ -128,7 +302,7 @@ export default function Profile() {
           </div>
           <h2 className="text-[24px] font-semibold text-[#1A0F1C] tracking-tight">Welcome to Saheli</h2>
           <p className="mt-2 text-[14.5px] text-[#6B5A6F] leading-relaxed">Sign in to sync your cart, view order history, track deliveries, and manage addresses.</p>
-          
+
           <button
             onClick={() => signIn("google")}
             className="mt-8 flex w-full items-center justify-center gap-3 rounded-full border border-[#EEDDF0] bg-white py-3.5 text-[15px] font-semibold text-[#3A2A3D] transition hover:bg-[#FCF7FD] hover:border-[#E1BFE6]"
@@ -161,14 +335,14 @@ export default function Profile() {
               <span className="flex-shrink mx-4 text-xs font-semibold text-[#8B7A8F] uppercase">Local Dev Bypass</span>
               <div className="flex-grow border-t border-gray-200"></div>
             </div>
-            
+
             <button
               onClick={() => signIn("bypass-login", { email: "tester@example.com", name: "Tester User", role: "user" })}
               className="flex w-full items-center justify-center gap-2 rounded-full bg-slate-100 hover:bg-slate-200 py-3 text-[14px] font-semibold text-slate-800 transition"
             >
               Sign In as Tester
             </button>
-            
+
             <button
               onClick={() => signIn("bypass-login", { email: "admin@example.com", name: "Admin User", role: "admin" })}
               className="flex w-full items-center justify-center gap-2 rounded-full bg-purple-100 hover:bg-purple-200 py-3 text-[14px] font-semibold text-purple-800 transition"
@@ -184,7 +358,7 @@ export default function Profile() {
   return (
     <div className="mx-auto max-w-[1240px] px-4 py-8 md:py-12">
       <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
-        
+
         {/* Sidebar */}
         <div className="flex flex-col gap-2">
           <div className="mb-4 flex items-center gap-4 rounded-2xl border border-[#F0E6F2] p-5 bg-white shadow-sm">
@@ -252,7 +426,7 @@ export default function Profile() {
 
         {/* Content Area */}
         <div className="rounded-3xl border border-[#F0E6F2] bg-white p-6 md:p-8 shadow-sm min-h-[450px]">
-          
+
           {/* A. PERSONAL INFORMATION */}
           {activeSection === "info" && (
             <div>
@@ -326,11 +500,11 @@ export default function Profile() {
                         <div className="border-t border-[#F8F0F9] pt-4 mt-2">
                           <div className="text-[12.5px] font-semibold text-[#4A354D] mb-4 flex items-center gap-1.5"><Truck className="h-4 w-4" /> Live Tracking Status</div>
                           <div className="relative flex items-center justify-between">
-                            
+
                             {/* Tracking line */}
                             <div className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 bg-[#F0E6F2]" />
                             <div className="absolute left-0 top-1/2 h-1 -translate-y-1/2 bg-[#8B1D8F] transition-all" style={{
-                              width: order.shippingStatus === "Processing" ? "15%" : order.shippingStatus === "Shipped" ? "50%" : "100%"
+                              width: (order.shippingStatus === "Processing" || order.shippingStatus === "Exchange Processing") ? "15%" : order.shippingStatus === "Shipped" ? "50%" : "100%"
                             }} />
 
                             {[
@@ -349,7 +523,7 @@ export default function Profile() {
                               );
                             })}
                           </div>
-                          
+
                           {order.trackingNumber && (
                             <div className="mt-5 text-[12px] text-gray-500 bg-[#FCF7FD] p-2.5 rounded-xl border border-[#F0E6F2]">
                               <strong>Awb tracking number:</strong> <span className="font-mono text-[#8B1D8F]">{order.trackingNumber}</span> (Mumbai/Delhi Express Speed Post)
@@ -357,10 +531,43 @@ export default function Profile() {
                           )}
                         </div>
                       )}
-                      
-                      <div className="border-t border-[#F8F0F9] pt-4 mt-2 flex justify-between text-[13.5px] font-bold text-[#1A0F1C]">
-                        <span>Grand Total:</span>
-                        <span>₹{order.total}</span>
+
+                      <div className="border-t border-[#F8F0F9] pt-4 mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-[13.5px] font-bold text-[#1A0F1C]">
+                        <div>
+                          <span>Grand Total:</span>
+                          <span className="ml-1.5 text-[15px] font-extrabold text-[#8B1D8F]">₹{order.total}</span>
+                          {order.exchangeRequested && (
+                            <span className="ml-2 text-[11px] font-normal text-gray-500">
+                              (Includes ₹{order.exchangeFee} Exchange Delivery Fee)
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Exchange button */}
+                        {((Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60 * 24) <= 7) && order.shippingStatus !== "Cancelled" && !order.exchangeRequested && (
+                          <button
+                            onClick={() => {
+                              setSelectedOrderForExchange(order);
+                              setNewExchangeAddress(order.shippingDetails.address);
+                              const initialExchangeSizes = order.items.map((item: any) => ({
+                                productId: item.productId, title: item.title,
+                                oldSize: item.size, newSize: item.size,
+                                quantity: item.quantity, image: item.image,
+                              }));
+                              setExchangeItems(initialExchangeSizes);
+                              fetchProductsForExchange();
+                              setIsExchangeModalOpen(true);
+                            }}
+                            className="rounded-full border border-[#8B1D8F] bg-white px-4 py-1.5 text-[12.5px] font-semibold text-[#8B1D8F] hover:bg-[#8B1D8F] hover:text-white transition-all active:scale-[0.97] cursor-pointer"
+                          >
+                            Exchange Size / Address (7 Days Return)
+                          </button>
+                        )}
+                        {order.exchangeRequested && (
+                          <span className="rounded-full bg-orange-50 border border-orange-200 px-3.5 py-1 text-[11.5px] font-bold text-orange-700">
+                            Exchange Processing
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -369,100 +576,240 @@ export default function Profile() {
             </div>
           )}
 
-              {/* C. WISHLIST */}
-              {activeSection === "wishlist" && (
-                <div>
-                  <h2 className="text-[20px] font-semibold text-[#1A0F1C]">My Wishlist</h2>
-                  <p className="mt-1 text-[14px] text-[#6B5A6F]">Items you've bookmarked for later.</p>
-                  
-                  <div className="mt-8">
-                    {wishlist.length === 0 ? (
-                      <p className="text-[14px] text-center text-[#8B7A8F] py-8">Your wishlist is empty.</p>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                        {wishlist.map((id) => (
-                          <Link href={`/products`} key={id} className="block rounded-2xl border border-[#F0E6F2] p-3 text-center hover:shadow-md transition">
-                            <div className="h-32 rounded-lg bg-gray-50 overflow-hidden mb-2">
-                              <div className="grid h-full place-items-center text-[12px] text-[#8B7A8F]">Costume ID: {id}</div>
-                            </div>
-                            <span className="text-[13px] font-medium text-[#1A0F1C] hover:text-[#8B1D8F]">View Costumes Catalog</span>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+          {/* C. WISHLIST */}
+          {activeSection === "wishlist" && (
+            <div>
+              <h2 className="text-[20px] font-semibold text-[#1A0F1C]">My Wishlist</h2>
+              <p className="mt-1 text-[14px] text-[#6B5A6F]">Items you've bookmarked for later.</p>
 
-              {/* D. SAVED ADDRESSES */}
-              {activeSection === "addresses" && (
-                <div>
-                  <h2 className="text-[20px] font-semibold text-[#1A0F1C]">Saved Addresses</h2>
-                  <p className="mt-1 text-[14px] text-[#6B5A6F]">Manage delivery locations for speed checkout.</p>
-                  
-                  <div className="mt-6 space-y-3">
-                    {addresses.length === 0 ? (
-                      <p className="text-[13.5px] text-[#8B7A8F]">No saved addresses. Add one below.</p>
-                    ) : (
-                      addresses.map((addr, idx) => (
-                        <div key={idx} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border p-4.5 text-[13.5px] transition-all bg-[#FFFCFE]/45 ${addr === defaultAddress ? "border-[#8B1D8F] shadow-sm shadow-[#8B1D8F]/5" : "border-[#F0E6F2] hover:border-[#E1BFE6]"}`}>
-                          <div className="flex items-start gap-3 min-w-0">
-                            <MapPin className={`h-5 w-5 shrink-0 mt-0.5 ${addr === defaultAddress ? "text-[#8B1D8F]" : "text-[#A38AA6]"}`} />
-                            <div className="min-w-0">
-                              <p className="text-[#1A0F1C] font-medium leading-relaxed break-words">{addr}</p>
-                              {addr === defaultAddress && (
-                                <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#F3E7F5] px-2.5 py-0.5 text-[10px] font-bold text-[#8B1D8F] border border-[#E9D5ED]">
-                                  ★ Default Address
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2.5 sm:self-center self-end shrink-0">
-                            {addr !== defaultAddress && (
-                              <button
-                                onClick={() => handleSetDefaultAddress(addr)}
-                                className="rounded-full border border-[#EEDDF0] px-3.5 py-1.5 text-[12px] font-semibold text-[#6B5A6F] hover:bg-[#FCF7FD] hover:text-[#8B1D8F] hover:border-[#E1BFE6] transition active:scale-[0.97] cursor-pointer outline-none"
-                              >
-                                Set as Default
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleDeleteAddress(addr)}
-                              className="grid h-8 w-8 place-items-center rounded-full text-[#A38AA6] hover:bg-red-50 hover:text-red-500 border border-[#F0E6F2] hover:border-red-200 transition active:scale-[0.95] cursor-pointer outline-none"
-                              title="Delete Address"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
+              <div className="mt-8">
+                {wishlist.length === 0 ? (
+                  <p className="text-[14px] text-center text-[#8B7A8F] py-8">Your wishlist is empty.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    {wishlist.map((id) => (
+                      <Link href={`/products`} key={id} className="block rounded-2xl border border-[#F0E6F2] p-3 text-center hover:shadow-md transition">
+                        <div className="h-32 rounded-lg bg-gray-50 overflow-hidden mb-2">
+                          <div className="grid h-full place-items-center text-[12px] text-[#8B7A8F]">Costume ID: {id}</div>
                         </div>
-                      ))
-                    )}
+                        <span className="text-[13px] font-medium text-[#1A0F1C] hover:text-[#8B1D8F]">View Costumes Catalog</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
-                    <div className="mt-8 border-t border-[#F0E6F2] pt-6">
-                      <h3 className="text-[14.5px] font-semibold text-[#1A0F1C] mb-3">Add New Address</h3>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={newAddress}
-                          onChange={(e) => setNewAddress(e.target.value)}
-                          placeholder="Enter complete shipping address"
-                          className="h-11 flex-1 rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
-                        />
+          {/* D. SAVED ADDRESSES */}
+          {activeSection === "addresses" && (
+            <div>
+              <h2 className="text-[20px] font-semibold text-[#1A0F1C]">Saved Addresses</h2>
+              <p className="mt-1 text-[14px] text-[#6B5A6F]">Manage delivery locations for speed checkout.</p>
+
+              <div className="mt-6 space-y-3">
+                {addresses.length === 0 ? (
+                  <p className="text-[13.5px] text-[#8B7A8F]">No saved addresses. Add one below.</p>
+                ) : (
+                  addresses.map((addr, idx) => (
+                    <div key={idx} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border p-4.5 text-[13.5px] transition-all bg-[#FFFCFE]/45 ${addr === defaultAddress ? "border-[#8B1D8F] shadow-sm shadow-[#8B1D8F]/5" : "border-[#F0E6F2] hover:border-[#E1BFE6]"}`}>
+                      <div className="flex items-start gap-3 min-w-0">
+                        <MapPin className={`h-5 w-5 shrink-0 mt-0.5 ${addr === defaultAddress ? "text-[#8B1D8F]" : "text-[#A38AA6]"}`} />
+                        <div className="min-w-0">
+                          <p className="text-[#1A0F1C] font-medium leading-relaxed break-words">{addr}</p>
+                          {addr === defaultAddress && (
+                            <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#F3E7F5] px-2.5 py-0.5 text-[10px] font-bold text-[#8B1D8F] border border-[#E9D5ED]">
+                              ★ Default Address
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 sm:self-center self-end shrink-0">
+                        {addr !== defaultAddress && (
+                          <button
+                            onClick={() => handleSetDefaultAddress(addr)}
+                            className="rounded-full border border-[#EEDDF0] px-3.5 py-1.5 text-[12px] font-semibold text-[#6B5A6F] hover:bg-[#FCF7FD] hover:text-[#8B1D8F] hover:border-[#E1BFE6] transition active:scale-[0.97] cursor-pointer outline-none"
+                          >
+                            Set as Default
+                          </button>
+                        )}
                         <button
-                          onClick={handleAddAddress}
-                          className="rounded-xl bg-[#1A0F1C] px-5 text-[13.5px] font-medium text-white hover:bg-black transition active:scale-[0.98] cursor-pointer"
+                          onClick={() => handleDeleteAddress(addr)}
+                          className="grid h-8 w-8 place-items-center rounded-full text-[#A38AA6] hover:bg-red-50 hover:text-red-500 border border-[#F0E6F2] hover:border-red-200 transition active:scale-[0.95] cursor-pointer outline-none"
+                          title="Delete Address"
                         >
-                          Save
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
+                  ))
+                )}
+
+                <div className="mt-8 border-t border-[#F0E6F2] pt-6">
+                  <h3 className="text-[14.5px] font-semibold text-[#1A0F1C] mb-3">Add New Address</h3>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newAddress}
+                      onChange={(e) => setNewAddress(e.target.value)}
+                      placeholder="Enter complete shipping address"
+                      className="h-11 flex-1 rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
+                    />
+                    <button
+                      onClick={handleAddAddress}
+                      className="rounded-xl bg-[#1A0F1C] px-5 text-[13.5px] font-medium text-white hover:bg-black transition active:scale-[0.98] cursor-pointer"
+                    >
+                      Save
+                    </button>
                   </div>
                 </div>
-              )}
-
+              </div>
             </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* Exchange / Return Modal */}
+      {isExchangeModalOpen && selectedOrderForExchange && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-[500px] overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#F0E6F2] p-5">
+              <h3 className="text-[16px] font-semibold text-[#1A0F1C] flex items-center gap-2">
+                <Package className="h-4.5 w-4.5 text-[#8B1D8F]" /> Exchange Costume / Address
+              </h3>
+              <button
+                onClick={() => setIsExchangeModalOpen(false)}
+                className="grid h-8 w-8 place-items-center rounded-full hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExchangeSubmit} className="p-5 space-y-4">
+              <div className="text-[12.5px] text-[#6B5A6F]">
+                You can change the sizes of your items or edit the delivery address.
+                A flat redelivery and processing fee of <span className="font-bold text-[#8B1D8F]">₹120</span> applies to all exchanges.
+              </div>
+
+              {/* Items Section */}
+              <div className="space-y-3">
+                <label className="block text-[13px] font-semibold text-[#4A354D]">Exchange Sizes</label>
+                <div className="space-y-3 max-h-[180px] overflow-y-auto pr-1">
+                  {exchangeItems.map((item, idx) => {
+                    const product = allProductsForExchange.find(p => p.id === item.productId);
+                    const sizeOptions = product?.sizes || [];
+                    return (
+                      <div key={idx} className="flex gap-3 items-center border border-[#F0E6F2] p-2.5 rounded-xl bg-[#FCF7FD]/30">
+                        {item.image && <img src={item.image} className="h-12 w-10 rounded object-cover border border-gray-100 shrink-0" />}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-[13px] font-medium text-[#1A0F1C] truncate">{item.title}</h4>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <span className="text-[11px] text-[#8B7A8F]">Size:</span>
+                            <select
+                              value={item.newSize}
+                              onChange={(e) => {
+                                const updated = exchangeItems.map((x, i) => i === idx ? { ...x, newSize: e.target.value } : x);
+                                setExchangeItems(updated);
+                              }}
+                              className="h-7 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12px] outline-none font-semibold text-[#8B1D8F]"
+                            >
+                              <option value={item.oldSize}>{item.oldSize} (Current)</option>
+                              {sizeOptions.filter((s: any) => s.size !== item.oldSize).map((s: any) => (
+                                <option key={s.size} value={s.size} disabled={s.stock === 0}>
+                                  {s.size} {s.stock === 0 ? "(Out of stock)" : `(${s.stock} available)`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Address Section */}
+              <div>
+                <label className="mb-1 block text-[13px] font-semibold text-[#4A354D]">New Delivery Address</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={newExchangeAddress}
+                  onChange={(e) => setNewExchangeAddress(e.target.value)}
+                  className="w-full rounded-xl border border-[#EEDDF0] p-3 text-[13px] focus:outline-[#8B1D8F] bg-white text-[#1A0F1C]"
+                  placeholder="Enter the new shipping address for this exchange..."
+                />
+              </div>
+
+              {/* Payment Method Selector */}
+              <div className="space-y-2">
+                <label className="block text-[13px] font-semibold text-[#4A354D]">Payment Method for Exchange Fee</label>
+                <div className="grid grid-cols-1 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setExchangePaymentMethod("online")}
+                    className={`flex flex-col items-center justify-center p-3 rounded-2xl w-full border text-center transition-all ${exchangePaymentMethod === "online"
+                      ? "border-[#8B1D8F] bg-[#FCF7FD] text-[#8B1D8F] shadow-sm shadow-[#8B1D8F]/5"
+                      : "border-[#F0E6F2] hover:border-[#E1BFE6] bg-white text-[#4A354D]"
+                      }`}
+                  >
+                    <span className="text-[13px] font-bold">Pay Online</span>
+                    <span className="text-[10.5px] text-gray-500 mt-0.5">Razorpay / UPI / Cards</span>
+                  </button>
+
+                  {/* <button
+                        type="button"
+                        onClick={() => setExchangePaymentMethod("cod")}
+                        className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
+                          exchangePaymentMethod === "cod"
+                            ? "border-[#8B1D8F] bg-[#FCF7FD] text-[#8B1D8F] shadow-sm shadow-[#8B1D8F]/5"
+                            : "border-[#F0E6F2] hover:border-[#E1BFE6] bg-white text-[#4A354D]"
+                        }`}
+                      >
+                        <span className="text-[13px] font-bold">Cash on Delivery</span>
+                        <span className="text-[10.5px] text-gray-500 mt-0.5">Pay ₹120 on delivery</span>
+                      </button> */}
+                </div>
+              </div>
+
+              {/* Fees Summary */}
+              <div className="rounded-xl bg-[#FCF7FD] p-3 border border-[#F0E6F2] text-[13px] space-y-1">
+                <div className="flex justify-between text-[#6B5A6F]">
+                  <span>Original Order Total:</span>
+                  <span>₹{selectedOrderForExchange.total}</span>
+                </div>
+                <div className="flex justify-between text-[#6B5A6F]">
+                  <span>Exchange Delivery Charge:</span>
+                  <span>₹120</span>
+                </div>
+                <div className="flex justify-between font-bold text-[#1A0F1C] border-t border-[#EEDDF0] pt-1.5">
+                  <span>New Grand Total:</span>
+                  <span>₹{selectedOrderForExchange.total + 120}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={submittingExchange}
+                  className="flex-1 rounded-full bg-[#8B1D8F] py-3 text-[14px] font-bold text-white transition hover:bg-[#7A187C] disabled:opacity-50"
+                >
+                  {submittingExchange ? "Submitting Request..." : "Confirm Exchange"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsExchangeModalOpen(false)}
+                  className="rounded-full border border-gray-200 px-5 text-[14px] text-gray-500 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
+      )}
+    </div>
   );
 }

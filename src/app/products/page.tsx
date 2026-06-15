@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 import { Filter, Star, Heart, ShoppingBag, ChevronDown, Search } from "lucide-react";
-import { products } from "@/data/mockData";
 import { useShop } from "@/context/ShopContext";
 
 const categoryGroups = [
@@ -75,6 +74,25 @@ function ProductsContent() {
   
   const [activeAges, setActiveAges] = useState<string[]>([]);
   const [activePrices, setActivePrices] = useState<string[]>([]);
+  const [productsList, setProductsList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        if (data.success) {
+          setProductsList(data.products);
+        }
+      } catch (err) {
+        console.error("Error fetching products:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProducts();
+  }, []);
   
   const handleMobileFilterAction = () => {
     if (window.innerWidth < 768) {
@@ -86,7 +104,7 @@ function ProductsContent() {
   const { wishlist, toggleWishlist, addToCart } = useShop();
 
   const filteredProducts = useMemo(() => {
-    let result = products;
+    let result = productsList;
     if (activeCategory !== "All") {
       result = result.filter(p => p.category.toLowerCase().includes(activeCategory.toLowerCase()));
     }
@@ -113,7 +131,7 @@ function ProductsContent() {
       result = [...result].sort((a, b) => b.rating - a.rating);
     }
     return result;
-  }, [activeCategory, sortBy, activeAges, activePrices]);
+  }, [productsList, activeCategory, sortBy, activeAges, activePrices]);
 
   return (
     <div className="mx-auto max-w-[1240px] px-4 py-8 md:py-12">
@@ -254,7 +272,12 @@ function ProductsContent() {
 
         {/* Product Grid */}
         <div className="flex-1">
-          {filteredProducts.length === 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center rounded-[24px] border border-[#F0E6F2] bg-white py-20 text-center text-[#8B7A8F]">
+              <div className="mb-4 animate-spin rounded-full h-8 w-8 border-2 border-t-[#8B1D8F] border-r-transparent border-b-[#8B1D8F] border-l-transparent" />
+              Loading costumes...
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-[24px] border border-[#F0E6F2] bg-white py-20 text-center">
               <div className="mb-4 grid h-16 w-16 place-items-center rounded-full bg-[#FCF7FD] text-[#A38AA6]">
                 <Search className="h-8 w-8" />

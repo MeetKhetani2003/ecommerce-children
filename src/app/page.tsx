@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Star, Truck, ShieldCheck, RotateCcw, Sparkles, IndianRupee, Play, ArrowRight, Check, Heart, ShoppingBag } from "lucide-react";
-import { heroSlides, products, categories, testimonials } from "@/data/mockData";
+import { heroSlides, categories, testimonials } from "@/data/mockData";
 import { useShop } from "@/context/ShopContext";
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
@@ -22,6 +22,26 @@ export default function Home() {
   const { wishlist, toggleWishlist, addToCart } = useShop();
   const carouselRef = useRef<HTMLDivElement>(null);
   const testimonialCarouselRef = useRef<HTMLDivElement>(null);
+
+  const [productsList, setProductsList] = useState<any[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        if (data.success) {
+          setProductsList(data.products);
+        }
+      } catch (err) {
+        console.error("Error fetching products:", err);
+      } finally {
+        setLoadingProducts(false);
+      }
+    }
+    fetchProducts();
+  }, []);
 
   const scrollTestimonialCarousel = (dir: "left" | "right") => {
     if (!testimonialCarouselRef.current) return;
@@ -164,43 +184,54 @@ export default function Home() {
         </div>
 
         <div ref={carouselRef} className="flex snap-x snap-mandatory gap-3.5 overflow-x-auto scroll-smooth pb-2 [-ms-overflow-style:none] [scrollbar-width:none] md:gap-4 [&::-webkit-scrollbar]:hidden">
-          {products.map((p) => (
-            <motion.div key={p.id} whileHover={{ y: -4 }} className="group relative w-[210px] shrink-0 snap-start md:w-[242px]">
-              <div className="overflow-hidden rounded-[20px] border border-[#F0E6F2] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
-                <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
-                  <Link href={`/product/${p.id}`}>
-                    <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-                  </Link>
-                  <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
-                    <span className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur">{p.category}</span>
-                    {p.tag && <span className="rounded-full bg-[#1A0F1C] px-2 py-1 text-[10.5px] font-medium leading-none text-white">{p.tag}</span>}
-                  </div>
-                  <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(p.id); }} className="absolute right-2.5 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-[#6B5A6F] shadow-sm backdrop-blur transition-all hover:text-[#E91E7A]">
-                    <Heart className={cn("h-4 w-4 transition", wishlist.includes(p.id) && "fill-[#E91E7A] text-[#E91E7A]")} />
-                  </button>
-                </div>
-                <div className="p-3.5">
-                  <Link href={`/product/${p.id}`} className="line-clamp-1 text-[14px] font-medium text-[#2E1F31] hover:text-[#8B1D8F]">{p.title}</Link>
-                  <div className="mt-1.5 flex items-center gap-1.5">
-                    <div className="flex items-center gap-0.5">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star key={i} className={cn("h-3 w-3", i < Math.floor(p.rating) ? "fill-[#F5A524] text-[#F5A524]" : "text-[#E8DDE9]")} />
-                      ))}
+          {loadingProducts ? (
+            <div className="flex w-full items-center justify-center py-20 text-[14px] text-[#8B7A8F]">
+              <div className="mr-2 animate-spin rounded-full h-5 w-5 border-2 border-t-[#8B1D8F] border-r-transparent border-b-[#8B1D8F] border-l-transparent" />
+              Loading featured costumes...
+            </div>
+          ) : productsList.filter((p: any) => p.featured).length === 0 ? (
+            <div className="flex w-full items-center justify-center py-20 text-[14px] text-[#8B7A8F]">
+              No featured costumes available right now. Check back later!
+            </div>
+          ) : (
+            productsList.filter((p: any) => p.featured).map((p) => (
+              <motion.div key={p.id} whileHover={{ y: -4 }} className="group relative w-[210px] shrink-0 snap-start md:w-[242px]">
+                <div className="overflow-hidden rounded-[20px] border border-[#F0E6F2] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
+                  <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
+                    <Link href={`/product/${p.id}`}>
+                      <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                    </Link>
+                    <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
+                      <span className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur">{p.category}</span>
+                      {p.tag && <span className="rounded-full bg-[#1A0F1C] px-2 py-1 text-[10.5px] font-medium leading-none text-white">{p.tag}</span>}
                     </div>
-                    <span className="text-[11px] text-[#8B7A8F]">{p.rating}</span>
+                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(p.id); }} className="absolute right-2.5 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-[#6B5A6F] shadow-sm backdrop-blur transition-all hover:text-[#E91E7A]">
+                      <Heart className={cn("h-4 w-4 transition", wishlist.includes(p.id) && "fill-[#E91E7A] text-[#E91E7A]")} />
+                    </button>
                   </div>
-                  <div className="mt-2 flex items-baseline gap-1.5">
-                    <span className="text-[16px] font-semibold text-[#1A0F1C]">₹{p.price}</span>
-                    <span className="text-[12px] text-[#9A8A9D] line-through">₹{p.mrp}</span>
-                    <span className="ml-auto text-[11px] font-medium text-[#0F8A4B]">{Math.round(((p.mrp - p.price) / p.mrp) * 100)}% off</span>
+                  <div className="p-3.5">
+                    <Link href={`/product/${p.id}`} className="line-clamp-1 text-[14px] font-medium text-[#2E1F31] hover:text-[#8B1D8F]">{p.title}</Link>
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star key={i} className={cn("h-3 w-3", i < Math.floor(p.rating) ? "fill-[#F5A524] text-[#F5A524]" : "text-[#E8DDE9]")} />
+                        ))}
+                      </div>
+                      <span className="text-[11px] text-[#8B7A8F]">{p.rating}</span>
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-1.5">
+                      <span className="text-[16px] font-semibold text-[#1A0F1C]">₹{p.price}</span>
+                      <span className="text-[12px] text-[#9A8A9D] line-through">₹{p.mrp}</span>
+                      <span className="ml-auto text-[11px] font-medium text-[#0F8A4B]">{Math.round(((p.mrp - p.price) / p.mrp) * 100)}% off</span>
+                    </div>
+                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(p); }} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#F3E7F5] bg-[#FCF7FD] py-2 text-[13px] font-medium text-[#8B1D8F] transition hover:bg-[#8B1D8F] hover:text-white">
+                      <ShoppingBag className="h-3.5 w-3.5" /> Add to cart
+                    </button>
                   </div>
-                  <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(p); }} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#F3E7F5] bg-[#FCF7FD] py-2 text-[13px] font-medium text-[#8B1D8F] transition hover:bg-[#8B1D8F] hover:text-white">
-                    <ShoppingBag className="h-3.5 w-3.5" /> Add to cart
-                  </button>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))
+          )}
         </div>
       </motion.section>
 
@@ -227,11 +258,17 @@ export default function Home() {
             </div>
             <div className="relative">
               <div className="grid grid-cols-3 gap-3">
-                {products.slice(0, 3).map((p) => (
-                  <div key={p.id} className="aspect-[3/4] overflow-hidden rounded-2xl border border-[#F0E6F2] bg-white shadow-sm">
-                    <img src={p.image} alt="" className="h-full w-full object-cover" />
-                  </div>
-                ))}
+                {loadingProducts ? (
+                  Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} className="aspect-[3/4] overflow-hidden rounded-2xl border border-[#F0E6F2] bg-gray-100 animate-pulse shadow-sm" />
+                  ))
+                ) : (
+                  productsList.slice(0, 3).map((p) => (
+                    <div key={p.id} className="aspect-[3/4] overflow-hidden rounded-2xl border border-[#F0E6F2] bg-white shadow-sm">
+                      <img src={p.image} alt="" className="h-full w-full object-cover" />
+                    </div>
+                  ))
+                )}
               </div>
               <div className="pointer-events-none absolute -inset-6 -z-10 bg-[radial-gradient(ellipse_at_center,_rgba(139,29,143,0.15),_transparent_60%)] blur-2xl" />
             </div>

@@ -10,6 +10,7 @@ const OrderSchema = new Schema({
       price: { type: Number, required: true },
       quantity: { type: Number, required: true },
       image: { type: String },
+      size: { type: String },
     },
   ],
   shippingDetails: {
@@ -24,11 +25,25 @@ const OrderSchema = new Schema({
   paymentId: { type: String },
   razorpayOrderId: { type: String },
   paymentStatus: { type: String, enum: ["pending", "paid", "failed"], default: "pending" },
-  paymentMethod: { type: String, enum: ["online", "cod"], default: "online" },
-  shippingStatus: { type: String, enum: ["Processing", "Shipped", "Delivered", "Cancelled"], default: "Processing" },
+  paymentMethod: { type: String, enum: ["online", "cod", "offline"], default: "online" },
+  shippingStatus: { type: String, enum: ["Processing", "Shipped", "Delivered", "Cancelled", "Exchange Processing"], default: "Processing" },
   trackingNumber: { type: String },
   invoiceSent: { type: Boolean, default: false },
+  exchangeRequested: { type: Boolean, default: false },
+  exchangeFee: { type: Number, default: 0 },
+  exchangeDetails: {
+    originalSizes: [{ productId: Number, size: String }],
+    newSizes: [{ productId: Number, size: String }],
+    previousAddress: String,
+    newAddress: String,
+    requestedAt: { type: Date },
+  },
   createdAt: { type: Date, default: Date.now },
 });
 
-export const Order = models.Order || model("Order", OrderSchema);
+if (models.Order) {
+  delete (models as any).Order;
+}
+
+export const Order = model("Order", OrderSchema);
+

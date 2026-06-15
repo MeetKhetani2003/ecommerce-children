@@ -10,6 +10,39 @@ const handler = NextAuth({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     }),
+
+    // ─── ENV-based Admin Login ───────────────────────────────────────────────
+    CredentialsProvider({
+      id: "admin-login",
+      name: "Admin Login",
+      credentials: {
+        username: { label: "Username", type: "text" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials) return null;
+
+        const adminUsername = process.env.ADMIN_USERNAME;
+        const adminPassword = process.env.ADMIN_PASSWORD;
+
+        if (
+          credentials.username === adminUsername &&
+          credentials.password === adminPassword
+        ) {
+          // Return a synthetic admin user — no DB involved
+          return {
+            id: "env-admin",
+            name: "Admin",
+            email: "admin@saheli.internal",
+            isEnvAdmin: true,
+          } as any;
+        }
+
+        return null; // Wrong credentials
+      },
+    }),
+
+    // ─── Dev bypass (local testing) ──────────────────────────────────────────
     CredentialsProvider({
       id: "bypass-login",
       name: "Bypass Login",
@@ -40,8 +73,11 @@ const handler = NextAuth({
       }
     })
   ],
+
   callbacks: {
     async signIn({ user }) {
+      // Env-admin: skip DB entirely
+      if ((user as any).isEnvAdmin) return true;
       if (!user.email) return false;
       try {
         await dbConnect();
@@ -62,7 +98,25 @@ const handler = NextAuth({
         return false;
       }
     },
-    async session({ session }) {
+
+    async jwt({ token, user }) {
+      // Persist isEnvAdmin flag into the JWT on first sign-in
+      if (user && (user as any).isEnvAdmin) {
+        token.isEnvAdmin = true;
+        token.role = "admin";
+      }
+      return token;
+    },
+
+    async session({ session, token }) {
+      // Env admin: inject flag directly from JWT, skip DB lookup
+      if (token.isEnvAdmin) {
+        (session.user as any).isEnvAdmin = true;
+        (session.user as any).role = "admin";
+        (session.user as any).id = "env-admin";
+        return session;
+      }
+
       if (session.user?.email) {
         try {
           await dbConnect();
@@ -80,6 +134,15 @@ const handler = NextAuth({
       return session;
     },
   },
+
+  pages: {
+    signIn: "/admin/login",
+  },
+
+  session: {
+    strategy: "jwt",
+  },
+
   secret: process.env.NEXTAUTH_SECRET,
 });
 

@@ -7,12 +7,17 @@ const ProductSchema = new Schema({
   price: { type: Number, required: true },
   mrp: { type: Number, required: true },
   rating: { type: Number, default: 4.5 },
+  netPrice: { type: Number },
   image: { type: String, required: true },
   tag: { type: String },
   description: { type: String },
   stock: { type: Number, default: 50 },
+  featured: { type: Boolean, default: false },
   material: { type: String },
-  sizes: [{ type: String }],
+  sizes: [{
+    size: { type: String, required: true },
+    stock: { type: Number, default: 0 }
+  }],
   whatsIncluded: [{ type: String }],
   careInstructions: { type: String },
   images: [{ type: String }],

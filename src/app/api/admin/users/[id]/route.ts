@@ -3,7 +3,7 @@ import dbConnect from "@/utils/dbConnect";
 import { User } from "@/models/User";
 import { Order } from "@/models/Order";
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
 

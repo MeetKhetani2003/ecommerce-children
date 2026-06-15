@@ -7,6 +7,8 @@ import { useSession } from "next-auth/react";
 
 import { Star, ShieldCheck, Truck, RotateCcw, Heart, ShoppingBag, ChevronRight, X, Trash2 } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
+import Barcode from "react-barcode";
+import { BsCash } from "react-icons/bs";
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -22,7 +24,7 @@ const ImageMagnifier = ({ src, alt }: { src: string, alt: string }) => {
   };
 
   return (
-    <div 
+    <div
       className="relative h-full w-full cursor-crosshair overflow-hidden"
       onMouseEnter={() => setShowMagnifier(true)}
       onMouseLeave={() => setShowMagnifier(false)}
@@ -30,7 +32,7 @@ const ImageMagnifier = ({ src, alt }: { src: string, alt: string }) => {
     >
       <img src={src} alt={alt} className="h-full w-full object-cover transition-opacity duration-300" />
       {showMagnifier && (
-        <div 
+        <div
           className="pointer-events-none absolute inset-0 z-20 bg-white"
           style={{
             backgroundImage: `url(${src})`,
@@ -53,7 +55,7 @@ export default function ProductSlug() {
   const [product, setProduct] = useState<any>(null);
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [activeImage, setActiveImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
@@ -232,7 +234,11 @@ export default function ProductSlug() {
   }
 
   const isWishlisted = wishlist.includes(product.id);
-  const images = product.images && product.images.length > 0 ? product.images : [product.image];
+  // Always show main image first, then all detailed images (deduplicated)
+  const detailedImages: string[] = product.images && product.images.length > 0 ? product.images : [];
+  const images = product.image
+    ? [product.image, ...detailedImages.filter((img: string) => img !== product.image)]
+    : detailedImages.length > 0 ? detailedImages : [];
   const reviewsList = product.reviews || [];
 
   return (
@@ -251,23 +257,22 @@ export default function ProductSlug() {
         <div className="flex flex-col gap-4">
           <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[24px] bg-[#FCF7FD]">
             <ImageMagnifier src={images[activeImage]} alt={product.title} />
-            <button 
-              onClick={() => toggleWishlist(product.id)} 
+            <button
+              onClick={() => toggleWishlist(product.id)}
               className="absolute right-4 top-4 z-30 grid h-10 w-10 place-items-center rounded-full bg-white/90 text-[#6B5A6F] shadow-sm backdrop-blur transition-all hover:text-[#E91E7A]"
             >
               <Heart className={`h-5 w-5 transition ${isWishlisted ? "fill-[#E91E7A] text-[#E91E7A]" : ""}`} />
             </button>
           </div>
-          
+
           {images.length > 1 && (
             <div className="grid grid-cols-4 gap-3 sm:gap-4">
               {images.map((img: string, idx: number) => (
-                <button 
-                  key={idx} 
+                <button
+                  key={idx}
                   onClick={() => setActiveImage(idx)}
-                  className={`relative aspect-[4/5] overflow-hidden rounded-xl border-2 transition-all ${
-                    activeImage === idx ? "border-[#8B1D8F]" : "border-transparent hover:border-[#E8DDE9]"
-                  }`}
+                  className={`relative aspect-[4/5] overflow-hidden rounded-xl border-2 transition-all ${activeImage === idx ? "border-[#8B1D8F]" : "border-transparent hover:border-[#E8DDE9]"
+                    }`}
                 >
                   <img src={img} alt={`${product.title} thumbnail ${idx + 1}`} className="h-full w-full object-cover" />
                   {activeImage !== idx && <div className="absolute inset-0 bg-white/20"></div>}
@@ -283,9 +288,9 @@ export default function ProductSlug() {
             <span className="rounded-full bg-[#F3E7F5] px-3 py-1 text-[12px] font-medium text-[#7A187C]">{product.category}</span>
             {product.tag && <span className="rounded-full bg-[#1A0F1C] px-3 py-1 text-[12px] font-medium text-white">{product.tag}</span>}
           </div>
-          
+
           <h1 className="text-[28px] font-semibold leading-tight text-[#1A0F1C] md:text-[36px]">{product.title}</h1>
-          
+
           <div className="mt-3 flex items-center gap-2">
             <div className="flex items-center gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -304,7 +309,12 @@ export default function ProductSlug() {
           </div>
 
           <div className="mt-6">
-            <p className="text-[15px] leading-relaxed text-[#5E4F63]">{product.description}</p>
+            <p className="text-[15px] leading-relaxed text-[#5E4F63] whitespace-pre-wrap">{product.description}</p>
+            {product.sku && (
+              <div className="mt-3 text-[14px] text-[#6B5A6F]">
+                <span className="font-semibold text-[#1A0F1C]">SKU:</span> {product.sku}
+              </div>
+            )}
           </div>
 
           {/* Sizes */}
@@ -315,31 +325,49 @@ export default function ProductSlug() {
                 <button onClick={() => setSizeGuideOpen(true)} className="text-[13px] font-medium text-[#8B1D8F] hover:underline focus:outline-none">Size Guide</button>
               </div>
               <div className="flex flex-wrap gap-3">
-                {product.sizes.map((size: string) => (
-                  <button 
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`rounded-full border px-5 py-2.5 text-[14px] transition-all focus:outline-none ${
-                      selectedSize === size 
-                        ? "border-[#8B1D8F] bg-[#F3E7F5] text-[#7A187C] font-medium" 
-                        : "border-[#E8DDE9] text-[#5E4F63] hover:border-[#8B1D8F] hover:text-[#8B1D8F]"
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+                {product.sizes.map((sizeObj: any, idx: number) => {
+                  const sizeLabel = typeof sizeObj === "object" && sizeObj !== null ? sizeObj.size : sizeObj;
+                  const sizeStock = typeof sizeObj === "object" && sizeObj !== null ? Number(sizeObj.stock) : 1;
+                  const isOutOfStock = sizeStock === 0;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => !isOutOfStock && setSelectedSize(sizeLabel)}
+                      disabled={isOutOfStock}
+                      title={isOutOfStock ? "Out of Stock" : `${sizeStock} in stock`}
+                      className={`relative rounded-full border px-5 py-2.5 text-[14px] transition-all focus:outline-none ${isOutOfStock
+                        ? "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400 line-through opacity-60"
+                        : selectedSize === sizeLabel
+                          ? "border-[#8B1D8F] bg-[#F3E7F5] text-[#7A187C] font-medium"
+                          : "border-[#E8DDE9] text-[#5E4F63] hover:border-[#8B1D8F] hover:text-[#8B1D8F]"
+                        }`}
+                    >
+                      {sizeLabel}
+                      {isOutOfStock && (
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-red-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-500">
+                          Out
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+              {selectedSize && (
+                <p className="mt-2 text-[12px] text-[#8B7A8F]">
+                  Selected: <span className="font-semibold text-[#8B1D8F]">{selectedSize}</span>
+                </p>
+              )}
             </div>
           )}
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <button 
+            <button
               onClick={() => addToCart(product)}
               className="flex items-center justify-center gap-2 rounded-full bg-[#1A0F1C] py-4 text-[15px] font-medium text-white transition hover:bg-black"
             >
               <ShoppingBag className="h-5 w-5" /> Add to Cart
             </button>
-            <button 
+            <button
               onClick={() => {
                 addToCart(product);
                 router.push("/cart");
@@ -356,7 +384,7 @@ export default function ProductSlug() {
               <ShoppingBag className="h-4.5 w-4.5 text-[#8B1D8F]" /> Wholesale Bulk Inquiry
             </h3>
             <p className="text-[12.5px] text-[#6B5A6F] mt-1">Get custom discounted quotes for school events or dance groups (minimum 10+ units).</p>
-            
+
             {!bulkFormOpen ? (
               <button onClick={() => setBulkFormOpen(true)} className="mt-4 rounded-xl border border-[#8B1D8F] bg-white px-4 py-2 text-[12.5px] font-semibold text-[#8B1D8F] hover:bg-[#F3E7F5] transition">
                 Inquire Bulk Pricing
@@ -364,22 +392,22 @@ export default function ProductSlug() {
             ) : (
               <form onSubmit={handleBulkInquirySubmit} className="mt-4 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <input required type="text" placeholder="Your Name" value={bulkName} onChange={(e)=>setBulkName(e.target.value)} className="h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none" />
-                  <input required type="email" placeholder="Your Email" value={bulkEmail} onChange={(e)=>setBulkEmail(e.target.value)} className="h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none" />
+                  <input required type="text" placeholder="Your Name" value={bulkName} onChange={(e) => setBulkName(e.target.value)} className="h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none" />
+                  <input required type="email" placeholder="Your Email" value={bulkEmail} onChange={(e) => setBulkEmail(e.target.value)} className="h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <input required type="tel" placeholder="Phone Number" value={bulkPhone} onChange={(e)=>setBulkPhone(e.target.value)} className="h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none" />
+                  <input required type="tel" placeholder="Phone Number" value={bulkPhone} onChange={(e) => setBulkPhone(e.target.value)} className="h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none" />
                   <div className="flex gap-2 items-center">
-                    <input required type="number" min={10} placeholder="Qty" value={bulkQty} onChange={(e)=>setBulkQty(e.target.value)} className="h-9 w-14 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12.5px] outline-none text-center" />
-                    <input required type="text" placeholder="Event Date" value={bulkDate} onChange={(e)=>setBulkDate(e.target.value)} className="h-9 flex-1 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12.5px] outline-none" />
+                    <input required type="number" min={10} placeholder="Qty" value={bulkQty} onChange={(e) => setBulkQty(e.target.value)} className="h-9 w-14 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12.5px] outline-none text-center" />
+                    <input required type="text" placeholder="Event Date" value={bulkDate} onChange={(e) => setBulkDate(e.target.value)} className="h-9 flex-1 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12.5px] outline-none" />
                   </div>
                 </div>
-                <textarea required rows={2} placeholder="Custom sizes, custom requirements, event details..." value={bulkMsg} onChange={(e)=>setBulkMsg(e.target.value)} className="w-full rounded-lg border border-[#EEDDF0] bg-white p-2.5 text-[12.5px] outline-none" />
-                
+                <textarea required rows={2} placeholder="Custom sizes, custom requirements, event details..." value={bulkMsg} onChange={(e) => setBulkMsg(e.target.value)} className="w-full rounded-lg border border-[#EEDDF0] bg-white p-2.5 text-[12.5px] outline-none" />
+
                 {bulkInquiryStatus && (
                   <div className="text-[12px] font-semibold text-green-700 bg-green-50 px-2 py-1 rounded border border-green-200">{bulkInquiryStatus}</div>
                 )}
-                
+
                 <div className="flex gap-2">
                   <button type="submit" disabled={bulkSubmitting} className="rounded-lg bg-[#8B1D8F] px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-[#7A187C] disabled:opacity-50">
                     {bulkSubmitting ? "Sending..." : "Submit Inquiry"}
@@ -393,10 +421,14 @@ export default function ProductSlug() {
           </div>
 
           {/* Trust badges */}
-          <div className="mt-10 grid grid-cols-1 gap-4 rounded-2xl border border-[#F0E6F2] bg-[#FCF7FD] p-5 sm:grid-cols-3">
+          <div className="mt-10 grid grid-cols-1 gap-4 rounded-2xl border border-[#F0E6F2] bg-[#FCF7FD] p-5 sm:grid-cols-4">
             <div className="flex flex-col items-center gap-2 text-center">
               <Truck className="h-6 w-6 text-[#8B1D8F]" />
               <span className="text-[13px] font-medium text-[#2E1F31]">Fast Delivery</span>
+            </div>
+            <div className="flex flex-col items-center gap-2 text-center">
+              <BsCash className="h-6 w-6 text-[#8B1D8F]" />
+              <span className="text-[13px] font-medium text-[#2E1F31]">Cash On Delivery</span>
             </div>
             <div className="flex flex-col items-center gap-2 text-center">
               <RotateCcw className="h-6 w-6 text-[#8B1D8F]" />
@@ -411,24 +443,49 @@ export default function ProductSlug() {
           {/* Product Details Section */}
           <div className="mt-10 border-t border-[#F0E6F2] pt-8">
             <h3 className="mb-5 text-[18px] font-semibold text-[#1A0F1C]">Product Details</h3>
-            
+
             <dl className="grid gap-y-6 gap-x-4 text-[14px] sm:grid-cols-2">
+              {product.sku && (
+                <div className="sm:col-span-2">
+                  <dt className="mb-2 font-medium text-[#8B7A8F]">SKU / Barcode</dt>
+                  <dd className="font-medium text-[#2E1F31]">
+                    <div className="inline-block overflow-hidden rounded-xl border border-[#F0E6F2] bg-white p-3 shadow-sm">
+                      <Barcode value={product.sku} width={1.5} height={40} fontSize={14} background="transparent" />
+                    </div>
+                  </dd>
+                </div>
+              )}
               {product.material && (
                 <div>
                   <dt className="mb-1 font-medium text-[#8B7A8F]">Material</dt>
-                  <dd className="font-medium text-[#2E1F31]">{product.material}</dd>
+                  <dd className="flex flex-wrap gap-1.5 mt-1">
+                    {product.material.split(',').map((s: string) => s.trim()).filter(Boolean).map((mat: string, idx: number) => (
+                      <span key={idx} className="rounded-full bg-[#F3E7F5] px-3 py-1 text-[12px] font-semibold text-[#7A187C] border border-[#E1BFE6]/40">
+                        {mat}
+                      </span>
+                    ))}
+                  </dd>
                 </div>
               )}
               {product.whatsIncluded && product.whatsIncluded.length > 0 && (
-                <div>
-                  <dt className="mb-1 font-medium text-[#8B7A8F]">What's Included</dt>
-                  <dd className="font-medium text-[#2E1F31]">{product.whatsIncluded.join(", ")}</dd>
+                <div className="sm:col-span-2">
+                  <dt className="mb-2 font-medium text-[#8B7A8F]">What's Included</dt>
+                  <dd>
+                    <ul className="space-y-1">
+                      {product.whatsIncluded.map((item: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2 text-[14px] font-medium text-[#2E1F31]">
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#8B1D8F]" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </dd>
                 </div>
               )}
               {product.careInstructions && (
                 <div className="sm:col-span-2">
                   <dt className="mb-1 font-medium text-[#8B7A8F]">Care Instructions</dt>
-                  <dd className="leading-relaxed text-[#2E1F31]">{product.careInstructions}</dd>
+                  <dd className="leading-relaxed text-[#2E1F31] whitespace-pre-wrap">{product.careInstructions}</dd>
                 </div>
               )}
             </dl>
@@ -439,7 +496,7 @@ export default function ProductSlug() {
       {/* Ratings & Reviews Section */}
       <div className="mt-16 border-t border-[#F0E6F2] pt-12 md:mt-20">
         <h2 className="text-[22px] font-semibold text-[#1A0F1C] mb-8">Customer Reviews</h2>
-        
+
         <div className="grid gap-8 md:grid-cols-[1fr_1.5fr] lg:gap-12">
           {/* Review Stats & Add Review Form */}
           <div className="space-y-6">
@@ -460,7 +517,7 @@ export default function ProductSlug() {
             {/* Write a Review Form */}
             <div className="rounded-3xl border border-[#F0E6F2] bg-white p-6 shadow-sm">
               <h3 className="text-[16px] font-semibold text-[#1A0F1C] mb-4">Write a Costume Review</h3>
-              
+
               {session?.user ? (
                 <form onSubmit={handleAddReview} className="space-y-4">
                   {reviewError && (
@@ -579,12 +636,12 @@ export default function ProductSlug() {
                       <span className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur">{p.category}</span>
                       {p.tag && <span className="rounded-full bg-[#1A0F1C] px-2 py-1 text-[10.5px] font-medium leading-none text-white">{p.tag}</span>}
                     </div>
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         toggleWishlist(p.id);
-                      }} 
+                      }}
                       className="absolute right-2.5 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-[#6B5A6F] shadow-sm backdrop-blur transition-all hover:text-[#E91E7A]"
                     >
                       <Heart className={cn("h-4 w-4 transition", wishlist.includes(p.id) && "fill-[#E91E7A] text-[#E91E7A]")} />
@@ -605,8 +662,8 @@ export default function ProductSlug() {
                       <span className="text-[12px] text-[#9A8A9D] line-through">₹{p.mrp}</span>
                       <span className="ml-auto text-[11px] font-medium text-[#0F8A4B]">{Math.round(((p.mrp - p.price) / p.mrp) * 100)}% off</span>
                     </div>
-                    <button 
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(p); }} 
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(p); }}
                       className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#F3E7F5] bg-[#FCF7FD] py-2 text-[13px] font-medium text-[#8B1D8F] transition hover:bg-[#8B1D8F] hover:text-white"
                     >
                       <ShoppingBag className="h-3.5 w-3.5" /> Add to cart
@@ -632,7 +689,7 @@ export default function ProductSlug() {
             </div>
             <div className="p-5">
               <p className="text-[12.5px] text-[#6B5A6F] mb-4">Please measure your child's height and chest to select the perfect event costume size.</p>
-              
+
               <table className="w-full border-collapse text-[13px] text-[#4A354D]">
                 <thead>
                   <tr className="bg-[#FCF7FD] text-[#8B7A8F] font-semibold border-b border-[#EEDDF0]">

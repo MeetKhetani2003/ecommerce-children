@@ -30,7 +30,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     if (!product.reviews) {
-      product.reviews = [];
+      product.reviews = [] as any;
     }
 
     // Add review to subdocument array
@@ -79,12 +79,12 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     }
 
     if (!product.reviews) {
-      product.reviews = [];
+      product.reviews = [] as any;
     }
 
     // Filter out the review
     const initialLength = product.reviews.length;
-    product.reviews = product.reviews.filter((r: any) => r._id.toString() !== reviewId);
+    product.reviews = product.reviews.filter((r: any) => r._id.toString() !== reviewId) as any;
 
     if (product.reviews.length === initialLength) {
       return NextResponse.json({ success: false, message: "Review not found" }, { status: 404 });

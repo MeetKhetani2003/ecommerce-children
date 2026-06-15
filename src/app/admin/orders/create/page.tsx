@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Trash2, ShoppingBag, CreditCard, Tag } from "lucide-react";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 
 export default function CreateOfflineOrderPage() {
   const { data: session } = useSession();
@@ -205,7 +205,7 @@ export default function CreateOfflineOrderPage() {
       )}
 
       <form onSubmit={handleSubmitOrder} className="grid gap-8 md:grid-cols-[1.2fr_1fr]">
-        
+
         {/* Left Side: Customer Info & Add Items */}
         <div className="space-y-6">
           {/* Customer Card */}
@@ -264,7 +264,7 @@ export default function CreateOfflineOrderPage() {
           {/* Add Costumes Selector */}
           <div className="rounded-3xl border border-[#F0E6F2] bg-white p-6 shadow-sm">
             <h2 className="text-[17px] font-semibold text-[#1A0F1C] mb-4">Add Costume Items</h2>
-            
+
             {loadingProducts ? (
               <div className="text-[13px] text-gray-400">Loading shop inventory...</div>
             ) : (

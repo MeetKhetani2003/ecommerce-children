@@ -27,6 +27,12 @@ export async function POST(req: Request) {
       for (const item of reservation.items) {
         const product = await Product.findOne({ id: item.productId });
         if (product) {
+          if (product.sizes && product.sizes.length > 0 && item.size) {
+            const sizeObj = product.sizes.find((s: any) => s.size === item.size);
+            if (sizeObj) {
+              sizeObj.stock += item.quantity;
+            }
+          }
           product.stock += item.quantity;
           await product.save();
         }

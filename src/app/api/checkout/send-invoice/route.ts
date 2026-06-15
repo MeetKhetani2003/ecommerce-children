@@ -23,6 +23,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, message: "Invoice email has already been sent." });
     }
 
+    if (!order.shippingDetails) {
+      return NextResponse.json({ success: false, message: "Order shipping details are missing." }, { status: 400 });
+    }
+
     // Send invoice email
     await sendInvoiceEmail({
       orderId: order._id.toString(),

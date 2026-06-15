@@ -18,6 +18,10 @@ export async function GET(req: Request) {
       return new Response("Order not found", { status: 404 });
     }
 
+    if (!order.shippingDetails) {
+      return new Response("Order shipping details are missing", { status: 400 });
+    }
+
     const pdfBuffer = await generateInvoicePDF({
       orderId: order._id.toString(),
       customerName: order.shippingDetails.name,

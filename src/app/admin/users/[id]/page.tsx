@@ -1,18 +1,17 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { 
-  ArrowLeft, Users, Mail, Calendar, Shield, MapPin, 
-  ShoppingCart, Heart, Package, CheckCircle2, Clock, Trash2, Edit 
+  ArrowLeft, Mail, Calendar, Shield, MapPin, 
+  ShoppingCart, Heart, Package
 } from "lucide-react";
 
 export default function UserDetailPage() {
   const { data: session } = useSession();
   const params = useParams();
-  const router = useRouter();
   const userId = params.id as string;
 
   const [userData, setUserData] = useState<any>(null);

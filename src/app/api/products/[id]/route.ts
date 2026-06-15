@@ -16,7 +16,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     
     let updateData: any = {};
     
-    const fields = ['title', 'category', 'price', 'mrp', 'stock', 'description', 'tag', 'material', 'careInstructions'];
+    const fields = ['title', 'category', 'price', 'mrp', 'netPrice', 'stock', 'description', 'tag', 'material', 'careInstructions'];
     fields.forEach(f => {
       const val = formData.get(f);
       if (val !== null) updateData[f] = val;
@@ -24,16 +24,27 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     if (updateData.price) updateData.price = parseFloat(updateData.price);
     if (updateData.mrp) updateData.mrp = parseFloat(updateData.mrp);
+    if (updateData.netPrice) updateData.netPrice = parseFloat(updateData.netPrice);
     if (updateData.stock) updateData.stock = parseInt(updateData.stock);
 
     const sizesStr = formData.get("sizes");
     if (sizesStr !== null) {
-      updateData.sizes = (sizesStr as string).split(",").map(s => s.trim()).filter(Boolean);
+      try {
+        updateData.sizes = JSON.parse(sizesStr as string);
+      } catch (e) {
+        updateData.sizes = (sizesStr as string).split(",").map(s => ({ size: s.trim(), stock: 10 })).filter(x => x.size);
+      }
+      updateData.stock = updateData.sizes.reduce((sum: number, s: any) => sum + (Number(s.stock) || 0), 0);
     }
 
     const whatsIncludedStr = formData.get("whatsIncluded");
     if (whatsIncludedStr !== null) {
-      updateData.whatsIncluded = (whatsIncludedStr as string).split(",").map(s => s.trim()).filter(Boolean);
+      updateData.whatsIncluded = (whatsIncludedStr as string).split("\n").map(s => s.trim()).filter(Boolean);
+    }
+
+    const featuredStr = formData.get("featured");
+    if (featuredStr !== null) {
+      updateData.featured = featuredStr === "true";
     }
 
     const imageFile = formData.get("image") as File | null;
@@ -45,21 +56,29 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       updateData.image = `/api/image/${fileId}`;
     }
 
+    // keepImages: existing DB URLs the admin chose to keep
+    const keepImagesStr = formData.get("keepImages");
+    let keepImages: string[] = [];
+    if (keepImagesStr) {
+      try { keepImages = JSON.parse(keepImagesStr as string); } catch {}
+    }
+
+    // Upload any new detailed image files
     const imagesFiles = formData.getAll("images") as File[];
-    if (imagesFiles && imagesFiles.length > 0 && imagesFiles[0].size > 0) {
-      let detailedImageUrls: string[] = [];
-      for (const file of imagesFiles) {
-        if (file && file.size > 0) {
-          if (file.size > MAX_SIZE) {
-            return NextResponse.json({ success: false, message: `Image ${file.name} exceeds 500KB limit` }, { status: 400 });
-          }
-          const fileId = await uploadToGridFS(file);
-          detailedImageUrls.push(`/api/image/${fileId}`);
+    let newImageUrls: string[] = [];
+    for (const file of imagesFiles) {
+      if (file && file.size > 0) {
+        if (file.size > MAX_SIZE) {
+          return NextResponse.json({ success: false, message: `Image ${file.name} exceeds 500KB limit` }, { status: 400 });
         }
+        const fileId = await uploadToGridFS(file);
+        newImageUrls.push(`/api/image/${fileId}`);
       }
-      if (detailedImageUrls.length > 0) {
-        updateData.images = detailedImageUrls;
-      }
+    }
+
+    // Final images = kept existing + newly uploaded
+    if (keepImagesStr !== null || newImageUrls.length > 0) {
+      updateData.images = [...keepImages, ...newImageUrls];
     }
 
     let product;

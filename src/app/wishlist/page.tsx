@@ -1,18 +1,45 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from 'next/link';
 
 import { Heart, Star, ShoppingBag } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
-import { products } from "@/data/mockData";
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
 
 export default function Wishlist() {
   const { wishlist, toggleWishlist, addToCart } = useShop();
-  
-  const wishlistedProducts = products.filter(p => wishlist.includes(p.id));
+  const [productsList, setProductsList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        if (data.success) {
+          setProductsList(data.products);
+        }
+      } catch (err) {
+        console.error("Error fetching products:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProducts();
+  }, []);
+  
+  const wishlistedProducts = productsList.filter(p => wishlist.includes(p.id));
+
+  if (loading) {
+    return (
+      <div className="mx-auto flex max-w-[1240px] flex-col items-center justify-center px-4 py-20 text-center md:py-32 text-[#8B7A8F]">
+        <div className="mb-4 animate-spin rounded-full h-8 w-8 border-2 border-t-[#8B1D8F] border-r-transparent border-b-[#8B1D8F] border-l-transparent" />
+        Loading wishlist...
+      </div>
+    );
+  }
   if (wishlistedProducts.length === 0) {
     return (
       <div className="mx-auto flex max-w-[1240px] flex-col items-center justify-center px-4 py-20 text-center md:py-32">

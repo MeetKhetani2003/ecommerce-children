@@ -1,65 +1,76 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import React, { useEffect, useState, Suspense } from "react";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { 
   Package, ShoppingBag, Users, HelpCircle, Plus, Edit, Trash2, 
-  X, RefreshCw, LayoutDashboard, DollarSign, Heart, ShoppingCart
+  RefreshCw, LayoutDashboard, DollarSign, Heart, ShoppingCart, Star, ArrowLeftRight, LogOut, ShieldCheck
 } from "lucide-react";
 
-export default function AdminDashboard() {
-  const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "users" | "inquiries">("overview");
+function AdminDashboard() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "exchanges" | "users" | "inquiries">("overview");
+
+  const isEnvAdmin = (session?.user as any)?.isEnvAdmin === true;
 
   // State lists
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
+  const [exchanges, setExchanges] = useState<any[]>([]);
 
   // Loading & Action states
   const [loading, setLoading] = useState(true);
-  const [expandedUser, setExpandedUser] = useState<string | null>(null);
-
-  const isAdmin = (session?.user as any)?.role === "admin";
 
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    // Redirect to admin login if not authenticated as env admin
+    if (status === "unauthenticated" || (status === "authenticated" && !isEnvAdmin)) {
+      router.replace("/admin/login");
+    }
+  }, [status, isEnvAdmin, router]);
+
+  useEffect(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam && ["overview", "products", "orders", "users", "inquiries"].includes(tabParam)) {
+    if (tabParam && ["overview", "products", "orders", "exchanges", "users", "inquiries"].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
   }, [searchParams]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isEnvAdmin) {
       fetchData();
     }
-  }, [session, activeTab]);
+  }, [session, activeTab, isEnvAdmin]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       if (activeTab === "overview") {
-        const [prodRes, orderRes, userRes, inqRes] = await Promise.all([
+        const [prodRes, orderRes, userRes, inqRes, exchRes] = await Promise.all([
           fetch("/api/products"),
           fetch("/api/admin/orders"),
           fetch("/api/admin/users"),
-          fetch("/api/inquiries")
+          fetch("/api/inquiries"),
+          fetch("/api/admin/orders?exchangeOnly=true")
         ]);
-        const [prodData, orderData, userData, inqData] = await Promise.all([
+        const [prodData, orderData, userData, inqData, exchData] = await Promise.all([
           prodRes.json(),
           orderRes.json(),
           userRes.json(),
-          inqRes.json()
+          inqRes.json(),
+          exchRes.json()
         ]);
         if (prodData.success) setProducts(prodData.products);
         if (orderData.success) setOrders(orderData.orders);
         if (userData.success) setUsers(userData.users);
         if (inqData.success) setInquiries(inqData.inquiries);
+        if (exchData.success) setExchanges(exchData.orders.filter((o: any) => o.exchangeRequested));
       } else if (activeTab === "products") {
         const res = await fetch("/api/products");
         const data = await res.json();
@@ -68,6 +79,10 @@ export default function AdminDashboard() {
         const res = await fetch("/api/admin/orders");
         const data = await res.json();
         if (data.success) setOrders(data.orders);
+      } else if (activeTab === "exchanges") {
+        const res = await fetch("/api/admin/orders?exchangeOnly=true");
+        const data = await res.json();
+        if (data.success) setExchanges(data.orders.filter((o: any) => o.exchangeRequested));
       } else if (activeTab === "users") {
         const res = await fetch("/api/admin/users");
         const data = await res.json();
@@ -84,25 +99,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDevBypass = async () => {
-    if (!session?.user?.email) return;
-    try {
-      const targetRole = isAdmin ? "user" : "admin";
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: session.user.email, role: targetRole }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(`Your role has been set to ${targetRole}. Please refresh to reload dashboard.`);
-        window.location.reload();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   // Product CRUD
 
   const handleDeleteProduct = async (id: number) => {
@@ -116,6 +112,27 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleToggleFeatured = async (id: string, currentFeatured: boolean) => {
+    try {
+      const formData = new FormData();
+      formData.append("featured", currentFeatured ? "false" : "true");
+      
+      const res = await fetch(`/api/products/${id}`, {
+        method: "PUT",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Optimistically update the UI to feel instant
+        setProducts(products.map(p => p.id === id ? { ...p, featured: !currentFeatured } : p));
+      } else {
+        alert("Error updating featured status: " + data.message);
+      }
+    } catch (error) {
+      console.error("Error toggling featured:", error);
     }
   };
 
@@ -173,46 +190,45 @@ export default function AdminDashboard() {
     }
   };
 
-  if (!session) {
+  // Show loading while auth status resolves
+  if (status === "loading") {
     return (
-      <div className="mx-auto max-w-[500px] px-4 py-20 text-center">
-        <h2 className="text-[22px] font-semibold text-[#1A0F1C]">Access Denied</h2>
-        <p className="mt-2 text-[14px] text-[#6B5A6F]">Please sign in from the Profile page first to access the administrator console.</p>
-        <Link href="/profile" className="mt-6 inline-block rounded-full bg-[#8B1D8F] px-6 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#7A187C]">
-          Go to Profile
-        </Link>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="mx-auto max-w-[500px] px-4 py-20 text-center">
-        <h2 className="text-[22px] font-semibold text-red-600">Admin Privileges Required</h2>
-        <p className="mt-2 text-[14px] text-[#6B5A6F]">Your account ({session.user?.email}) does not have admin permissions.</p>
-        <div className="mt-8 rounded-2xl border border-dashed border-[#EEDDF0] bg-[#FCF7FD] p-5">
-          <p className="text-[12.5px] text-[#8B7A8F]">Testing local changes? Click the developer shortcut below to grant admin privileges to your account.</p>
-          <button onClick={handleDevBypass} className="mt-4 rounded-full bg-[#1A0F1C] px-5 py-2 text-[13px] font-medium text-white transition hover:bg-black">
-            Grant Admin Role
-          </button>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1A0F1C] to-[#2D1030]">
+        <div className="text-center">
+          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[#8B1D8F]/20 text-[#8B1D8F]">
+            <ShieldCheck className="h-7 w-7 animate-pulse" />
+          </div>
+          <p className="text-[14px] text-white/50">Verifying admin session...</p>
         </div>
       </div>
     );
   }
+
+  // Not authenticated → redirect handled by useEffect, show nothing
+  if (!isEnvAdmin) return null;
 
   return (
     <div className="mx-auto max-w-[1240px] px-4 py-8 md:py-12">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between mb-8">
         <div>
-          <h1 className="text-[28px] font-semibold tracking-tight text-[#1A0F1C]">Admin Console</h1>
-          <p className="text-[14px] text-[#6B5A6F]">Manage products stock, review order histories, users and customer inquiries.</p>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#8B1D8F] to-[#C2185B] text-white">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <h1 className="text-[28px] font-semibold tracking-tight text-[#1A0F1C]">Admin Console</h1>
+          </div>
+          <p className="text-[14px] text-[#6B5A6F] pl-12">Manage products stock, review order histories, users and customer inquiries.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={handleDevBypass} className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-[12.5px] font-medium text-red-700 transition hover:bg-red-100">
-            Revoke Admin Role (Dev)
-          </button>
-          <button onClick={fetchData} className="grid h-10 w-10 place-items-center rounded-full border border-[#EEDDF0] bg-white text-[#6B5A6F] transition hover:bg-[#FCF7FD]">
+          <button onClick={fetchData} className="grid h-10 w-10 place-items-center rounded-full border border-[#EEDDF0] bg-white text-[#6B5A6F] transition hover:bg-[#FCF7FD]" title="Refresh">
             <RefreshCw className="h-4.5 w-4.5" />
+          </button>
+          <button
+            onClick={() => signOut({ callbackUrl: "/admin/login" })}
+            className="flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-[12.5px] font-medium text-red-700 transition hover:bg-red-100"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Sign Out
           </button>
         </div>
       </div>
@@ -225,9 +241,10 @@ export default function AdminDashboard() {
             { id: "overview", label: "Overview Dashboard", icon: LayoutDashboard },
             { id: "products", label: "Products CRUD", icon: Package },
             { id: "orders", label: "Orders Tracking", icon: ShoppingBag },
+            { id: "exchanges", label: "Exchange Requests", icon: ArrowLeftRight, badge: exchanges.length },
             { id: "users", label: "User Accounts", icon: Users },
             { id: "inquiries", label: "Support Inquiries", icon: HelpCircle },
-          ].map((tab) => {
+          ].map((tab: any) => {
             const Icon = tab.icon;
             const isTabActive = activeTab === tab.id;
             return (
@@ -237,7 +254,12 @@ export default function AdminDashboard() {
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-[14.5px] font-medium transition ${isTabActive ? "bg-[#8B1D8F] text-white" : "text-[#4A354D] hover:bg-[#FCF7FD]"}`}
               >
                 <Icon className="h-4.5 w-4.5" />
-                <span>{tab.label}</span>
+                <span className="flex-1 text-left">{tab.label}</span>
+                {tab.badge > 0 && (
+                  <span className={`grid h-5 min-w-[20px] place-items-center rounded-full px-1.5 text-[10.5px] font-bold ${
+                    isTabActive ? "bg-white text-[#8B1D8F]" : "bg-orange-100 text-orange-700"
+                  }`}>{tab.badge}</span>
+                )}
               </button>
             );
           })}
@@ -322,6 +344,21 @@ export default function AdminDashboard() {
                         <div className="text-[22px] font-bold text-[#1A0F1C] mt-0.5">{users.reduce((sum, u) => sum + (u.cart?.reduce((acc: number, item: any) => acc + (item.quantity || 0), 0) || 0), 0)}</div>
                       </div>
                     </div>
+
+                    {/* Exchange Requests Card */}
+                    <div
+                      className="rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 to-amber-50/40 p-5 flex items-center gap-4 cursor-pointer hover:border-orange-300 transition"
+                      onClick={() => setActiveTab("exchanges")}
+                    >
+                      <div className="rounded-xl bg-orange-500 p-3 text-white">
+                        <ArrowLeftRight className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <div className="text-[12px] font-medium text-orange-800">Exchange Requests</div>
+                        <div className="text-[22px] font-bold text-[#1A0F1C] mt-0.5">{exchanges.length}</div>
+                        {exchanges.length > 0 && <div className="text-[10.5px] text-orange-600 font-medium mt-0.5">Needs attention</div>}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Recent Activity Grid */}
@@ -370,6 +407,34 @@ export default function AdminDashboard() {
                         {inquiries.length === 0 && <p className="text-[13px] text-gray-400 italic text-center py-4">No recent support messages.</p>}
                       </div>
                     </div>
+
+                    {/* Exchange Requests Summary */}
+                    <div className="rounded-2xl border border-orange-100 bg-orange-50/20 p-5 col-span-full md:col-span-1">
+                      <div className="flex items-center justify-between mb-4 pb-2 border-b border-orange-100">
+                        <h3 className="text-[15px] font-bold text-[#1A0F1C] flex items-center gap-2">
+                          <ArrowLeftRight className="h-4 w-4 text-orange-500" />
+                          Pending Exchanges
+                        </h3>
+                        <button onClick={() => setActiveTab("exchanges")} className="text-[12px] font-semibold text-orange-600 hover:underline">Manage All</button>
+                      </div>
+                      <div className="space-y-3">
+                        {exchanges.slice(0, 4).map((order) => (
+                          <div key={order._id} className="flex items-start justify-between text-[13px] border-b border-orange-50 pb-2 last:border-0 last:pb-0 gap-3">
+                            <div className="min-w-0">
+                              <div className="font-semibold text-[#1A0F1C] truncate">{order.shippingDetails?.name}</div>
+                              <div className="text-[11px] text-[#8B7A8F]">
+                                {new Date(order.exchangeDetails?.requestedAt || order.createdAt).toLocaleDateString("en-IN")} •
+                                {order.exchangeDetails?.paymentMethod === "cod" ? " COD Fee" : " Online Paid"}
+                              </div>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10.5px] font-bold text-orange-700">
+                              ₹{order.exchangeFee || 120} fee
+                            </span>
+                          </div>
+                        ))}
+                        {exchanges.length === 0 && <p className="text-[13px] text-gray-400 italic text-center py-4">No pending exchange requests.</p>}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -410,6 +475,17 @@ export default function AdminDashboard() {
                             </td>
                             <td className="py-3.5 text-center">
                               <div className="flex items-center justify-center gap-1.5">
+                                <button 
+                                  onClick={() => handleToggleFeatured(p.id, !!p.featured)} 
+                                  title={p.featured ? "Remove from Featured" : "Mark as Featured"}
+                                  className={`grid h-8 w-8 place-items-center rounded-lg border transition ${
+                                    p.featured 
+                                      ? "border-[#E1BFE6] bg-[#FCF7FD] text-[#8B1D8F] hover:bg-white" 
+                                      : "border-gray-200 text-gray-400 hover:bg-gray-50 hover:text-[#8B1D8F]"
+                                  }`}
+                                >
+                                  <Star className={`h-3.5 w-3.5 ${p.featured ? "fill-[#8B1D8F]" : ""}`} />
+                                </button>
                                 <Link href={`/admin/products/${p.id}/edit`} className="grid h-8 w-8 place-items-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-gray-50 hover:text-[#8B1D8F]">
                                   <Edit className="h-3.5 w-3.5" />
                                 </Link>
@@ -473,6 +549,7 @@ export default function AdminDashboard() {
                                 <option value="Shipped">Shipped</option>
                                 <option value="Delivered">Delivered</option>
                                 <option value="Cancelled">Cancelled</option>
+                                <option value="Exchange Processing">Exchange Processing</option>
                               </select>
                             </div>
                           </div>
@@ -506,6 +583,151 @@ export default function AdminDashboard() {
                       ))
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* 2b. EXCHANGE REQUESTS TAB */}
+              {activeTab === "exchanges" && (
+                <div>
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-[18px] font-semibold text-[#1A0F1C] flex items-center gap-2">
+                        <ArrowLeftRight className="h-5 w-5 text-orange-500" />
+                        Exchange Requests
+                      </h2>
+                      <p className="text-[13px] text-[#6B5A6F] mt-0.5">Customers requesting costume size exchanges or address changes within the 7-day window.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-orange-100 text-orange-700 border border-orange-200 px-3.5 py-1 text-[12px] font-bold">
+                        {exchanges.length} Pending
+                      </span>
+                    </div>
+                  </div>
+
+                  {exchanges.length === 0 ? (
+                    <div className="py-16 text-center">
+                      <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-orange-50 text-orange-400">
+                        <ArrowLeftRight className="h-7 w-7" />
+                      </div>
+                      <div className="text-[16px] font-semibold text-[#1A0F1C]">No exchange requests</div>
+                      <p className="text-[13.5px] text-[#6B5A6F] mt-1">When customers submit exchange requests, they will appear here.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-5">
+                      {exchanges.map((order) => (
+                        <div key={order._id} className="rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50/40 to-amber-50/20 p-5 hover:border-orange-200 transition">
+                          
+                          {/* Header */}
+                          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-orange-100 pb-4 mb-4">
+                            <div>
+                              <div className="text-[13px] text-[#8B7A8F]">Order ID: <span className="font-mono text-[#8B1D8F] font-semibold">{order._id}</span></div>
+                              <div className="text-[12px] text-[#8B7A8F] mt-0.5">
+                                Placed: {new Date(order.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })} •
+                                Exchange Requested: {order.exchangeDetails?.requestedAt ? new Date(order.exchangeDetails.requestedAt).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "N/A"}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="rounded-full bg-orange-100 border border-orange-200 px-3 py-1 text-[11px] font-bold text-orange-700 uppercase tracking-wide">
+                                Exchange Processing
+                              </span>
+                              <span className={`rounded-full px-3 py-1 text-[11px] font-semibold border ${
+                                order.exchangeDetails?.paymentMethod === "cod"
+                                  ? "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                  : "bg-green-50 border-green-200 text-green-700"
+                              }`}>
+                                {order.exchangeDetails?.paymentMethod === "cod" ? "💵 Fee on Delivery (₹120)" : "✅ Online Paid (₹120)"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-4 md:grid-cols-3">
+
+                            {/* Items & Size Changes */}
+                            <div className="md:col-span-1">
+                              <div className="text-[12px] font-bold text-[#4A354D] uppercase tracking-wide mb-2">Size Changes</div>
+                              <div className="space-y-2">
+                                {order.items?.map((item: any, i: number) => {
+                                  const origSize = order.exchangeDetails?.originalSizes?.find((s: any) => s.productId === item.productId)?.size;
+                                  const newSize = order.exchangeDetails?.newSizes?.find((s: any) => s.productId === item.productId)?.size;
+                                  return (
+                                    <div key={i} className="flex items-center gap-2 text-[13px] bg-white rounded-xl p-2.5 border border-orange-100">
+                                      <img src={item.image} className="h-10 w-8 rounded object-cover border border-gray-100 shrink-0" />
+                                      <div className="min-w-0 flex-1">
+                                        <div className="font-medium text-[#1A0F1C] truncate text-[12px]">{item.title}</div>
+                                        {origSize && newSize && origSize !== newSize ? (
+                                          <div className="flex items-center gap-1.5 mt-0.5">
+                                            <span className="text-[10.5px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded-md border border-red-100 line-through">{origSize}</span>
+                                            <span className="text-[10px] text-gray-400">→</span>
+                                            <span className="text-[10.5px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded-md border border-green-100 font-bold">{newSize}</span>
+                                          </div>
+                                        ) : (
+                                          <div className="text-[10.5px] text-gray-400 mt-0.5">Size unchanged — {item.size}</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Address & Customer */}
+                            <div className="md:col-span-1">
+                              <div className="text-[12px] font-bold text-[#4A354D] uppercase tracking-wide mb-2">Delivery Details</div>
+                              <div className="bg-white rounded-xl p-3 border border-orange-100 text-[13px] space-y-1.5">
+                                <div><span className="font-semibold text-[#1A0F1C]">Customer:</span> <span className="text-[#4A354D]">{order.shippingDetails?.name}</span></div>
+                                <div><span className="font-semibold text-[#1A0F1C]">Phone:</span> <span className="text-[#4A354D]">{order.shippingDetails?.phone}</span></div>
+                                {order.exchangeDetails?.previousAddress && (
+                                  <div>
+                                    <div className="font-semibold text-[#1A0F1C] mb-0.5">Old Address:</div>
+                                    <div className="text-[12px] text-gray-500 line-through">{order.exchangeDetails.previousAddress}</div>
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="font-semibold text-[#1A0F1C] mb-0.5">New Address:</div>
+                                  <div className="text-[12px] text-[#4A354D]">{order.shippingDetails?.address}</div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Totals & Actions */}
+                            <div className="md:col-span-1">
+                              <div className="text-[12px] font-bold text-[#4A354D] uppercase tracking-wide mb-2">Order Totals</div>
+                              <div className="bg-white rounded-xl p-3 border border-orange-100 text-[13px] space-y-1.5 mb-3">
+                                <div className="flex justify-between text-[#6B5A6F]">
+                                  <span>Subtotal:</span>
+                                  <span>₹{order.total - (order.exchangeFee || 120)}</span>
+                                </div>
+                                <div className="flex justify-between text-orange-700 font-semibold">
+                                  <span>Exchange Fee:</span>
+                                  <span>+ ₹{order.exchangeFee || 120}</span>
+                                </div>
+                                <div className="flex justify-between font-bold text-[#1A0F1C] border-t border-orange-100 pt-1.5">
+                                  <span>Grand Total:</span>
+                                  <span>₹{order.total}</span>
+                                </div>
+                              </div>
+
+                              {/* Admin Action Dropdown */}
+                              <div className="space-y-2">
+                                <label className="text-[11px] font-semibold text-[#8B7A8F] uppercase tracking-wide">Update Status</label>
+                                <select
+                                  value={order.shippingStatus}
+                                  onChange={(e) => handleOrderStatusUpdate(order._id, e.target.value)}
+                                  className="w-full rounded-xl border border-orange-200 bg-white px-3 py-2 text-[13px] font-medium text-[#4A354D] outline-none cursor-pointer hover:border-orange-300 transition"
+                                >
+                                  <option value="Exchange Processing">🔄 Exchange Processing</option>
+                                  <option value="Processing">📦 Processing (Repack)</option>
+                                  <option value="Shipped">🚚 Shipped (New Size)</option>
+                                  <option value="Delivered">✅ Exchange Completed</option>
+                                </select>
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -611,5 +833,22 @@ export default function AdminDashboard() {
 
 
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1A0F1C] to-[#2D1030]">
+        <div className="text-center">
+          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[#8B1D8F]/20 text-[#8B1D8F]">
+            <ShieldCheck className="h-7 w-7 animate-pulse" />
+          </div>
+          <p className="text-[14px] text-white/50">Loading admin console...</p>
+        </div>
+      </div>
+    }>
+      <AdminDashboard />
+    </Suspense>
   );
 }

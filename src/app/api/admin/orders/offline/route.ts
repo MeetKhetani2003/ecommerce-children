@@ -23,11 +23,25 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: `Product ID ${item.productId} not found` }, { status: 404 });
       }
 
-      if (product.stock < item.quantity) {
-        return NextResponse.json({
-          success: false,
-          message: `Insufficient stock for ${product.title}. Only ${product.stock} left.`
-        }, { status: 400 });
+      // Check size-specific stock if size is provided
+      if (product.sizes && product.sizes.length > 0 && item.size) {
+        const sizeObj = product.sizes.find((s: any) => s.size === item.size);
+        if (!sizeObj) {
+          return NextResponse.json({ success: false, message: `Size ${item.size} is not available for ${product.title}.` }, { status: 400 });
+        }
+        if (sizeObj.stock < item.quantity) {
+          return NextResponse.json({
+            success: false,
+            message: `Insufficient stock for ${product.title} (${sizeObj.size}). Only ${sizeObj.stock} left.`
+          }, { status: 400 });
+        }
+      } else {
+        if (product.stock < item.quantity) {
+          return NextResponse.json({
+            success: false,
+            message: `Insufficient stock for ${product.title}. Only ${product.stock} left.`
+          }, { status: 400 });
+        }
       }
 
       subtotal += product.price * item.quantity;
@@ -37,12 +51,19 @@ export async function POST(req: Request) {
         title: product.title,
         price: product.price,
         quantity: item.quantity,
-        image: product.image
+        image: product.image,
+        selectedSize: item.size || ""
       });
     }
 
     // 2. Deduct Stock
     for (const item of itemsToOrder) {
+      if (item.productDocument.sizes && item.productDocument.sizes.length > 0 && item.selectedSize) {
+        const sizeObj = item.productDocument.sizes.find((s: any) => s.size === item.selectedSize);
+        if (sizeObj) {
+          sizeObj.stock -= item.quantity;
+        }
+      }
       item.productDocument.stock -= item.quantity;
       await item.productDocument.save();
     }
@@ -59,7 +80,8 @@ export async function POST(req: Request) {
         title: item.title,
         price: item.price,
         quantity: item.quantity,
-        image: item.image
+        image: item.image,
+        size: item.selectedSize || null
       })),
       shippingDetails: {
         name: customerDetails.name,

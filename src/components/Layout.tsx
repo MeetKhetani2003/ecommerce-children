@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from 'next/link';
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -64,6 +64,70 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { wishlist, cartCount, showCart, setShowCart } = useShop();
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const [hasFetchedProducts, setHasFetchedProducts] = useState(false);
+
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  const fetchSearchProducts = async () => {
+    if (hasFetchedProducts) return;
+    setLoadingSearch(true);
+    try {
+      const res = await fetch("/api/products");
+      const data = await res.json();
+      if (data.success) {
+        setAllProducts(data.products || []);
+        setHasFetchedProducts(true);
+      }
+    } catch (err) {
+      console.error("Error fetching products for search:", err);
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    if (!hasFetchedProducts) {
+      fetchSearchProducts();
+    }
+  };
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const lower = searchQuery.toLowerCase().trim();
+    const filtered = allProducts.filter((p) => {
+      return (
+        (p.title && p.title.toLowerCase().includes(lower)) ||
+        (p.category && p.category.toLowerCase().includes(lower)) ||
+        (p.description && p.description.toLowerCase().includes(lower)) ||
+        (p.tag && p.tag.toLowerCase().includes(lower)) ||
+        (p.sku && p.sku.toLowerCase().includes(lower))
+      );
+    });
+    setSearchResults(filtered);
+  }, [searchQuery, allProducts]);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -145,9 +209,79 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
           <div className="ml-auto flex items-center gap-1.5">
             {/* Search */}
-            <div className="relative hidden md:block">
-              <input placeholder="Search costumes..." className="h-10 w-[220px] rounded-full border border-[#EEDDF0] bg-[#FCF7FD] pl-9 pr-4 text-[13.5px] outline-none transition-all placeholder:text-[#A38AA6] focus:w-[260px] focus:border-[#E1BFE6] focus:bg-white focus:ring-4 focus:ring-[#F3E7F5]" />
+            <div className="relative hidden md:block" ref={searchRef}>
+              <input
+                placeholder="Search costumes..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+                onFocus={() => {
+                  setIsSearchFocused(true);
+                  fetchSearchProducts();
+                }}
+                className="h-10 w-[220px] rounded-full border border-[#EEDDF0] bg-[#FCF7FD] pl-9 pr-4 text-[13.5px] outline-none transition-all placeholder:text-[#A38AA6] focus:w-[280px] focus:border-[#E1BFE6] focus:bg-white focus:ring-4 focus:ring-[#F3E7F5]"
+              />
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A38AA6]" />
+
+              {/* Suggestions Dropdown */}
+              <AnimatePresence>
+                {isSearchFocused && searchQuery && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute right-0 top-full mt-2 w-[340px] rounded-2xl border border-[#F0E6F2] bg-white p-3 shadow-2xl z-[100]"
+                  >
+                    {loadingSearch ? (
+                      <div className="flex items-center justify-center p-6 text-[13px] text-[#8B7A8F] gap-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#8B1D8F] border-t-transparent" />
+                        <span>Searching...</span>
+                      </div>
+                    ) : searchResults.length === 0 ? (
+                      <div className="p-4 text-center text-[13px] text-[#8B7A8F]">
+                        No costumes found for <span className="font-semibold text-[#8B1D8F]">"{searchQuery}"</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-[#8B1D8F]">
+                          Products Found ({searchResults.length})
+                        </div>
+                        <div className="max-h-[300px] overflow-y-auto pr-1 space-y-1">
+                          {searchResults.map((p) => (
+                            <Link
+                              key={p.id}
+                              href={`/product/${p.id}`}
+                              onClick={() => {
+                                setSearchQuery("");
+                                setIsSearchFocused(false);
+                              }}
+                              className="flex items-center gap-3 rounded-xl p-2 transition duration-200 hover:bg-[#FCF7FD]"
+                            >
+                              <img
+                                src={p.image}
+                                alt={p.title}
+                                className="h-12 w-10 rounded-lg object-cover border border-[#F0E6F2]"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-[13.5px] font-semibold text-[#1A0F1C] truncate hover:text-[#8B1D8F] transition-colors">
+                                  {p.title}
+                                </h4>
+                                <div className="flex items-center justify-between mt-0.5">
+                                  <span className="text-[11.5px] text-[#8B7A8F] truncate">
+                                    {p.category}
+                                  </span>
+                                  <span className="text-[13.5px] font-bold text-[#8B1D8F]">
+                                    ₹{p.price}
+                                  </span>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <button className="relative grid h-10 w-10 place-items-center rounded-full text-[#4A354D] transition hover:bg-[#F8F0F9] hover:text-[#8B1D8F] md:hidden">
@@ -201,9 +335,62 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </div>
               <div className="p-4">
                 <div className="relative mb-4">
-                  <input placeholder="Search costumes..." className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-[#FCF7FD] pl-10 pr-4 text-[14px] outline-none focus:border-[#E1BFE6] focus:ring-4 focus:ring-[#F3E7F5]" />
+                  <input
+                    placeholder="Search costumes..."
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onFocus={() => {
+                      setIsSearchFocused(true);
+                      fetchSearchProducts();
+                    }}
+                    className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-[#FCF7FD] pl-10 pr-4 text-[14px] outline-none focus:border-[#E1BFE6] focus:ring-4 focus:ring-[#F3E7F5]"
+                  />
                   <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A38AA6]" />
                 </div>
+
+                {/* Mobile Search Results */}
+                {searchQuery && (
+                  <div className="mb-4 max-h-[280px] overflow-y-auto rounded-xl border border-[#F0E6F2] bg-white p-2 shadow-inner">
+                    {loadingSearch ? (
+                      <div className="flex items-center justify-center p-3 text-[13px] text-[#8B7A8F] gap-2">
+                        <div className="h-3 w-3 animate-spin rounded-full border border-[#8B1D8F] border-t-transparent" />
+                        <span>Searching...</span>
+                      </div>
+                    ) : searchResults.length === 0 ? (
+                      <div className="p-3 text-center text-[13px] text-[#8B7A8F]">
+                        No costumes found
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {searchResults.map((p) => (
+                          <Link
+                            key={p.id}
+                            href={`/product/${p.id}`}
+                            onClick={() => {
+                              setSearchQuery("");
+                              setMobileMenu(false);
+                            }}
+                            className="flex items-center gap-3 rounded-lg p-2 transition hover:bg-[#FCF7FD]"
+                          >
+                            <img
+                              src={p.image}
+                              alt={p.title}
+                              className="h-10 w-8 rounded object-cover"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-[13px] font-semibold text-[#1A0F1C] truncate">
+                                {p.title}
+                              </h4>
+                              <p className="text-[11px] text-[#8B7A8F] truncate">
+                                {p.category} • ₹{p.price}
+                              </p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="space-y-1">
                   <Link href="/" onClick={() => setMobileMenu(false)} className="block rounded-xl px-3 py-3 text-[14px] font-medium text-[#2E1F31] hover:bg-[#FCF7FD]">
                     Home

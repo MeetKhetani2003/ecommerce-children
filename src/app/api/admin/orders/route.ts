@@ -8,6 +8,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const email = searchParams.get("email");
     const orderId = searchParams.get("orderId");
+    const exchangeOnly = searchParams.get("exchangeOnly") === "true";
 
     await dbConnect();
 
@@ -19,9 +20,12 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: true, order });
     }
     
-    let query = {};
+    let query: any = {};
     if (email) {
       query = { email };
+    }
+    if (exchangeOnly) {
+      query.exchangeRequested = true;
     }
 
     const orders = await Order.find(query).sort({ createdAt: -1 });
@@ -52,6 +56,12 @@ export async function POST(req: Request) {
         for (const item of order.items) {
           const product = await Product.findOne({ id: item.productId });
           if (product) {
+            if (product.sizes && product.sizes.length > 0 && item.size) {
+              const sizeObj = product.sizes.find((s: any) => s.size === item.size);
+              if (sizeObj) {
+                sizeObj.stock += item.quantity;
+              }
+            }
             product.stock += item.quantity;
             await product.save();
           }

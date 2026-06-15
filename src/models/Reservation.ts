@@ -6,6 +6,7 @@ const ReservationSchema = new Schema({
     {
       productId: { type: Number, required: true },
       quantity: { type: Number, required: true },
+      size: { type: String },
     },
   ],
   expiresAt: { type: Date, required: true },
