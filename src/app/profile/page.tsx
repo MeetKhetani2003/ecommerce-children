@@ -3,19 +3,22 @@
 import { useEffect, useState } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
-import { User, MapPin, Package, Heart, LogOut, Shield, Compass, CheckCircle, Truck, ShoppingBag, Trash2, X } from "lucide-react";
+import { User, MapPin, Package, Heart, LogOut, Shield, Compass, CheckCircle, Truck, ShoppingBag, Trash2, X, Star } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 import toast from "react-hot-toast";
 
+const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
+
 export default function Profile() {
   const { data: session, update } = useSession();
-  const { wishlist } = useShop();
+  const { wishlist, toggleWishlist, cartItems, addToCart, updateQuantity, removeFromCart } = useShop();
 
-  const [activeSection, setActiveSection] = useState<"info" | "orders" | "wishlist" | "addresses">("info");
+  const [activeSection, setActiveSection] = useState<"info" | "orders" | "wishlist" | "addresses" | "cart">("info");
   const [orders, setOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [phone, setPhone] = useState("");
   const [savingPhone, setSavingPhone] = useState(false);
+  const [selectedSizes, setSelectedSizes] = useState<{ [key: number]: string }>({});
 
   // Address fields
   const [addresses, setAddresses] = useState<string[]>([]);
@@ -207,6 +210,10 @@ export default function Profile() {
     }
   }, [session, activeSection]);
 
+  useEffect(() => {
+    fetchProductsForExchange();
+  }, []);
+
   const saveAddressesToDb = async (newAddressesList: string[], newDefault: string) => {
     if (!session?.user?.email) return;
     try {
@@ -240,7 +247,13 @@ export default function Profile() {
       const data = await res.json();
       if (data.success) {
         toast.success("Phone number saved successfully");
-        await update();
+        
+        // If there was a welcome coupon generated, maybe show another toast?
+        if (data.couponCode) {
+          toast.success("Welcome! A 10% discount coupon has been sent to your email! 🎉", { duration: 5000 });
+        }
+
+        await update({ phone });
       } else {
         toast.error("Failed to save phone number");
       }
@@ -357,27 +370,7 @@ export default function Profile() {
             Continue with Google
           </button>
 
-          <div className="mt-6 flex flex-col gap-2">
-            <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-gray-200"></div>
-              <span className="flex-shrink mx-4 text-xs font-semibold text-[#8B7A8F] uppercase">Local Dev Bypass</span>
-              <div className="flex-grow border-t border-gray-200"></div>
-            </div>
 
-            <button
-              onClick={() => signIn("bypass-login", { email: "tester@example.com", name: "Tester User", role: "user" })}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-slate-100 hover:bg-slate-200 py-3 text-[14px] font-semibold text-slate-800 transition"
-            >
-              Sign In as Tester
-            </button>
-
-            <button
-              onClick={() => signIn("bypass-login", { email: "admin@example.com", name: "Admin User", role: "admin" })}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-purple-100 hover:bg-purple-200 py-3 text-[14px] font-semibold text-purple-800 transition"
-            >
-              Sign In as Admin
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -406,6 +399,7 @@ export default function Profile() {
           {[
             { id: "info", icon: User, label: "Personal Information" },
             { id: "orders", icon: Package, label: "My Orders", badge: orders.length > 0 ? orders.length : undefined },
+            { id: "cart", icon: ShoppingBag, label: "My Cart", badge: cartItems.length > 0 ? cartItems.length : undefined },
             { id: "wishlist", icon: Heart, label: "Wishlist", badge: wishlist.length > 0 ? wishlist.length : undefined },
             { id: "addresses", icon: MapPin, label: "Saved Addresses" },
           ].map((item) => {
@@ -426,25 +420,9 @@ export default function Profile() {
             );
           })}
 
-          {/* Admin Panel button if role is admin */}
-          {isAdmin && (
-            <Link
-              href="/admin"
-              className="flex items-center gap-3 rounded-xl px-4 py-3 text-[14.5px] font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 transition"
-            >
-              <Shield className="h-4.5 w-4.5" />
-              <span>Admin Console</span>
-            </Link>
-          )}
 
-          {/* Dev Bypass Toggler */}
-          <button
-            onClick={handleDevBypass}
-            className="flex items-center gap-3 rounded-xl px-4 py-3 text-[13px] font-semibold text-red-700 bg-red-50 hover:bg-red-100 transition border border-dashed border-red-200 mt-4"
-          >
-            <Compass className="h-4 w-4" />
-            <span>Dev: Toggle Admin Role</span>
-          </button>
+
+
 
           <button onClick={() => signOut()} className="mt-8 flex items-center gap-3 rounded-xl px-4 py-3 text-[14.5px] font-medium text-red-500 transition hover:bg-red-50">
             <LogOut className="h-5 w-5" />
@@ -460,6 +438,22 @@ export default function Profile() {
             <div>
               <h2 className="text-[20px] font-semibold text-[#1A0F1C]">Personal Information</h2>
               <p className="mt-1 text-[14px] text-[#6B5A6F]">Manage your personal details and account settings.</p>
+
+              {!(session.user as any)?.phone && (
+                <div className="mt-6 rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-purple-600 shadow-sm">
+                      🎁
+                    </div>
+                    <div>
+                      <h4 className="text-[14px] font-bold text-purple-900">Complete your profile</h4>
+                      <p className="mt-1 text-[13px] text-purple-800/80 leading-relaxed">
+                        Add your mobile number below to complete your profile and get a <strong className="font-extrabold">10% discount coupon</strong> delivered straight to your inbox!
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-8 grid gap-6 md:grid-cols-2">
                 <div>
@@ -485,10 +479,7 @@ export default function Profile() {
                     </button>
                   </div>
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Account Role</label>
-                  <input type="text" readOnly value={(session.user as any)?.role || "user"} className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-[#FCF7FD] px-4 text-[14px] text-[#8B7A8F] outline-none capitalize" />
-                </div>
+
                 <div>
                   <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Email Address</label>
                   <input type="email" readOnly value={session.user?.email || ""} className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-[#FCF7FD] px-4 text-[14px] text-[#8B7A8F] outline-none" />
@@ -646,15 +637,128 @@ export default function Profile() {
                 {wishlist.length === 0 ? (
                   <p className="text-[14px] text-center text-[#8B7A8F] py-8">Your wishlist is empty.</p>
                 ) : (
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                    {wishlist.map((id) => (
-                      <Link href={`/products`} key={id} className="block rounded-2xl border border-[#F0E6F2] p-3 text-center hover:shadow-md transition">
-                        <div className="h-32 rounded-lg bg-gray-50 overflow-hidden mb-2">
-                          <div className="grid h-full place-items-center text-[12px] text-[#8B7A8F]">Costume ID: {id}</div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
+                    {wishlist.map((id) => {
+                      const p = allProductsForExchange.find(prod => prod.id === id);
+                      if (!p) return null;
+                      return (
+                        <div key={p.id} className="group relative w-full shrink-0">
+                          <div className="overflow-hidden rounded-[20px] border border-[#F0E6F2] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
+                            <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
+                              <Link href={`/product/${p.id}`}>
+                                <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                              </Link>
+                              <div className="absolute left-2.5 top-2.5 flex flex-wrap items-center gap-1.5">
+                                <span className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur">{p.category}</span>
+                                {p.tag && <span className="rounded-full bg-[#1A0F1C] px-2 py-1 text-[10.5px] font-medium leading-none text-white">{p.tag}</span>}
+                              </div>
+                              <button 
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(p.id); }} 
+                                className="absolute right-2.5 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-[#6B5A6F] shadow-sm backdrop-blur transition-all hover:text-[#E91E7A]"
+                              >
+                                <Heart className={cn("h-4 w-4 transition", wishlist.includes(p.id) && "fill-[#E91E7A] text-[#E91E7A]")} />
+                              </button>
+                            </div>
+                            <div className="p-3.5">
+                              <Link href={`/product/${p.id}`} className="line-clamp-1 text-[14px] font-medium text-[#2E1F31] hover:text-[#8B1D8F]">{p.title}</Link>
+                              <div className="mt-1.5 flex items-center gap-1.5">
+                                <div className="flex items-center gap-0.5">
+                                  {Array.from({ length: 5 }).map((_, i) => (
+                                    <Star key={i} className={cn("h-3 w-3", i < Math.floor(p.rating || 0) ? "fill-[#F5A524] text-[#F5A524]" : "text-[#E8DDE9]")} />
+                                  ))}
+                                </div>
+                                <span className="text-[11px] text-[#8B7A8F]">{p.rating}</span>
+                              </div>
+                              <div className="mt-2 flex items-baseline gap-1.5">
+                                <span className="text-[16px] font-semibold text-[#1A0F1C]">₹{p.price}</span>
+                                <span className="text-[12px] text-[#9A8A9D] line-through">₹{p.mrp}</span>
+                                <span className="ml-auto text-[11px] font-medium text-[#0F8A4B]">{Math.round(((p.mrp - p.price) / p.mrp) * 100)}% off</span>
+                              </div>
+                              {p.sizes && p.sizes.length > 0 && (
+                                <div className="mt-3">
+                                  <select
+                                    value={selectedSizes[p.id] || ""}
+                                    onChange={(e) => setSelectedSizes({ ...selectedSizes, [p.id]: e.target.value })}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    className="w-full h-8 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12px] text-[#4A354D] outline-none"
+                                  >
+                                    <option value="" disabled>Select Size</option>
+                                    {p.sizes.map((s: any) => (
+                                      <option key={s.size} value={s.size} disabled={s.stock <= 0}>
+                                        {s.size} {s.stock <= 0 ? '(Out of stock)' : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              )}
+                              <button 
+                                onClick={(e) => { 
+                                  e.preventDefault(); 
+                                  e.stopPropagation(); 
+                                  if (p.sizes && p.sizes.length > 0 && !selectedSizes[p.id]) {
+                                    toast.error("Please select a size first");
+                                    return;
+                                  }
+                                  addToCart(p, p.sizes && p.sizes.length > 0 ? selectedSizes[p.id] : undefined); 
+                                }} 
+                                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#F3E7F5] bg-[#FCF7FD] py-2 text-[13px] font-medium text-[#8B1D8F] transition hover:bg-[#8B1D8F] hover:text-white"
+                              >
+                                <ShoppingBag className="h-3.5 w-3.5" /> Add to cart
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-[13px] font-medium text-[#1A0F1C] hover:text-[#8B1D8F]">View Costumes Catalog</span>
-                      </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* D. CART */}
+          {activeSection === "cart" && (
+            <div>
+              <h2 className="text-[20px] font-semibold text-[#1A0F1C]">My Cart</h2>
+              <p className="mt-1 text-[14px] text-[#6B5A6F]">Review your items before checkout.</p>
+
+              <div className="mt-8">
+                {cartItems.length === 0 ? (
+                  <p className="text-[14px] text-center text-[#8B7A8F] py-8">Your cart is empty.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {cartItems.map((item, idx) => (
+                      <div key={item.cartItemId} className="flex gap-4 rounded-2xl border border-[#F0E6F2] p-4 bg-[#FFFCFE]/40">
+                        <Link href={`/product/${item.id}`} className="block h-24 w-20 shrink-0 overflow-hidden rounded-xl border border-gray-100">
+                          <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
+                        </Link>
+                        <div className="flex flex-1 flex-col justify-between">
+                          <div className="flex justify-between items-start gap-4">
+                            <div>
+                              <Link href={`/product/${item.id}`} className="font-semibold text-[#1A0F1C] hover:text-[#8B1D8F] line-clamp-1">{item.title}</Link>
+                              <div className="mt-1 text-[13px] font-bold text-[#8B1D8F]">₹{item.price}</div>
+                              {item.size && <div className="mt-0.5 text-[12px] text-[#6B5A6F]">Size: {item.size}</div>}
+                            </div>
+                            <button onClick={() => removeFromCart(item.cartItemId)} className="text-[#8B7A8F] hover:text-red-500 transition"><Trash2 className="h-4.5 w-4.5" /></button>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <button onClick={() => updateQuantity(item.cartItemId, -1)} className="grid h-7 w-7 place-items-center rounded-full border border-[#EEDDF0] text-[#1A0F1C] hover:bg-gray-50">-</button>
+                            <span className="text-[13px] font-semibold text-[#1A0F1C]">{item.quantity}</span>
+                            <button onClick={() => updateQuantity(item.cartItemId, 1)} className="grid h-7 w-7 place-items-center rounded-full border border-[#EEDDF0] text-[#1A0F1C] hover:bg-gray-50">+</button>
+                          </div>
+                        </div>
+                      </div>
                     ))}
+                    
+                    <div className="mt-6 border-t border-[#F0E6F2] pt-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-[15px] font-semibold text-[#1A0F1C]">Subtotal:</span>
+                        <span className="text-[18px] font-bold text-[#8B1D8F]">₹{cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)}</span>
+                      </div>
+                      <Link href="/checkout" className="block w-full rounded-full bg-[#8B1D8F] py-3.5 text-center text-[15px] font-bold text-white transition hover:bg-[#7A187C]">
+                        Proceed to Checkout
+                      </Link>
+                    </div>
                   </div>
                 )}
               </div>

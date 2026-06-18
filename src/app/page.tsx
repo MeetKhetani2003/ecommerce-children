@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Star, Truck, ShieldCheck, RotateCcw, Sparkles, IndianRupee, ArrowRight, Check, Heart, ShoppingBag } from "lucide-react";
 import { heroSlides, categories, testimonials } from "@/data/mockData";
 import { useShop } from "@/context/ShopContext";
+import toast from "react-hot-toast";
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -22,6 +23,7 @@ export default function Home() {
   const { wishlist, toggleWishlist, addToCart } = useShop();
   const carouselRef = useRef<HTMLDivElement>(null);
   const testimonialCarouselRef = useRef<HTMLDivElement>(null);
+  const [selectedSizes, setSelectedSizes] = useState<{ [key: number]: string }>({});
 
   const [productsList, setProductsList] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -241,7 +243,35 @@ export default function Home() {
                       <span className="text-[12px] text-[#9A8A9D] line-through">₹{p.mrp}</span>
                       <span className="ml-auto text-[11px] font-medium text-[#0F8A4B]">{Math.round(((p.mrp - p.price) / p.mrp) * 100)}% off</span>
                     </div>
-                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(p); }} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#F3E7F5] bg-[#FCF7FD] py-2 text-[13px] font-medium text-[#8B1D8F] transition hover:bg-[#8B1D8F] hover:text-white">
+                    {p.sizes && p.sizes.length > 0 && (
+                      <div className="mt-3">
+                        <select
+                          value={selectedSizes[p.id] || ""}
+                          onChange={(e) => setSelectedSizes({ ...selectedSizes, [p.id]: e.target.value })}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          className="w-full h-8 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12px] text-[#4A354D] outline-none"
+                        >
+                          <option value="" disabled>Select Size</option>
+                          {p.sizes.map((s: any) => (
+                            <option key={s.size} value={s.size} disabled={s.stock <= 0}>
+                              {s.size} {s.stock <= 0 ? '(Out of stock)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <button 
+                      onClick={(e) => { 
+                        e.preventDefault(); 
+                        e.stopPropagation(); 
+                        if (p.sizes && p.sizes.length > 0 && !selectedSizes[p.id]) {
+                          toast.error("Please select a size first");
+                          return;
+                        }
+                        addToCart(p, p.sizes && p.sizes.length > 0 ? selectedSizes[p.id] : undefined); 
+                      }} 
+                      className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#F3E7F5] bg-[#FCF7FD] py-2 text-[13px] font-medium text-[#8B1D8F] transition hover:bg-[#8B1D8F] hover:text-white"
+                    >
                       <ShoppingBag className="h-3.5 w-3.5" /> Add to cart
                     </button>
                   </div>

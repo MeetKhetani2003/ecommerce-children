@@ -530,3 +530,81 @@ export async function sendBulkInquiryEmails(details: BulkInquiryDetails) {
   console.log("Both admin notification and customer confirmation emails logged.");
   console.log("==================================================================");
 }
+
+export async function sendWelcomeCouponEmail(email: string, name: string, couponCode: string) {
+  const customerHtml = `
+    <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #FFFCFE; padding: 30px 15px; text-align: center;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #F0E6F2; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 20px rgba(139, 29, 143, 0.05); text-align: left;">
+        
+        <!-- Header Banner -->
+        <div style="background: linear-gradient(135deg, #8B1D8F 0%, #C2187B 100%); padding: 30px; text-align: center; color: #ffffff;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">Saheli Shrungar</h1>
+          <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Welcome to the Family!</p>
+        </div>
+
+        <div style="padding: 30px;">
+          <!-- Greeting -->
+          <h2 style="margin-top: 0; font-size: 18px; color: #1A0F1C; font-weight: 600;">Hello ${name},</h2>
+          <p style="font-size: 14px; color: #6B5A6F; line-height: 1.6; margin-bottom: 25px;">
+            Thank you for completing your profile! As promised, here is your exclusive <strong>10% discount coupon</strong> for your next costume rental or purchase.
+          </p>
+
+          <!-- Coupon Block -->
+          <div style="background-color: #FCF7FD; border-radius: 16px; padding: 25px; margin-bottom: 25px; border: 2px dashed #E1BFE6; text-align: center;">
+            <div style="font-size: 13px; color: #8B7A8F; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px;">Your Discount Code</div>
+            <div style="font-size: 28px; font-weight: 800; color: #8B1D8F; font-family: monospace; letter-spacing: 2px;">${couponCode}</div>
+          </div>
+
+          <p style="font-size: 13.5px; color: #4A354D; line-height: 1.6; margin-bottom: 25px;">
+            Apply this code at checkout to enjoy 10% off your entire order. 
+          </p>
+
+          <!-- Footer -->
+          <div style="margin-top: 40px; border-top: 1px solid #F0E6F2; padding-top: 20px; text-align: center; font-size: 12px; color: #8B7A8F; line-height: 1.5;">
+            Thank you for shopping with Saheli Shrungar!<br/>
+            For help or inquiries, contact us at support@sahelishrungar.com
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  let host = process.env.SMTP_HOST;
+  let port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 465;
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+
+  if (!host && process.env.EMAIL_USER) {
+    host = "smtp.gmail.com";
+    port = 465;
+  }
+
+  if (host && user && pass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
+      });
+
+      await transporter.sendMail({
+        from: \`"Saheli Shrungar" <\${user}>\`,
+        to: email,
+        subject: \`Here is your 10% Discount Code! 🎁\`,
+        html: customerHtml,
+      });
+
+      console.log(\`[Email Service] Welcome coupon email sent successfully to \${email}.\`);
+      return;
+    } catch (error) {
+      console.error("[Email Service] Failed to send welcome coupon email via SMTP:", error);
+    }
+  }
+
+  console.log("==================================================================");
+  console.log(\`[MOCK EMAIL FALLBACK] Welcome Coupon Email Sent.\`);
+  console.log(\`Customer: \${name} (\${email})\`);
+  console.log(\`Coupon Code: \${couponCode}\`);
+  console.log("==================================================================");
+}

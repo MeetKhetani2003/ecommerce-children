@@ -367,8 +367,8 @@ export default function Cart() {
           <div className="space-y-4">
             <h2 className="text-[18px] font-semibold text-[#1A0F1C]">Costume List</h2>
             {cartItems.map((item) => (
-              <div key={item.id} className="flex gap-4 rounded-2xl border border-[#F0E6F2] bg-white p-4 transition-all hover:shadow-sm">
-                <Link href={`/products`} className="block h-[100px] w-[80px] shrink-0 overflow-hidden rounded-xl bg-[#FCF7FD]">
+              <div key={item.cartItemId} className="flex gap-4 rounded-2xl border border-[#F0E6F2] bg-white p-4 transition-all hover:shadow-sm">
+                <Link href={`/product/${item.id}`} className="block h-[100px] w-[80px] shrink-0 overflow-hidden rounded-xl bg-[#FCF7FD]">
                   <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
                 </Link>
                 <div className="flex flex-1 flex-col justify-between py-1">
@@ -376,16 +376,17 @@ export default function Cart() {
                     <div>
                       <div className="text-[14.5px] font-semibold text-[#1A0F1C]">{item.title}</div>
                       <div className="mt-0.5 text-[12.5px] text-[#6B5A6F]">Category: {item.category}</div>
+                      {item.size && <div className="mt-0.5 text-[12.5px] text-[#6B5A6F]">Size: {item.size}</div>}
                     </div>
-                    <button onClick={() => removeFromCart(item.id)} className="grid h-8 w-8 place-items-center rounded-full text-[#A38AA6] transition hover:bg-red-50 hover:text-red-500">
+                    <button onClick={() => removeFromCart(item.cartItemId)} className="grid h-8 w-8 place-items-center rounded-full text-[#A38AA6] transition hover:bg-red-50 hover:text-red-500">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 rounded-full border border-[#F0E6F2] bg-[#FCF7FD] px-2 py-1">
-                      <button onClick={() => updateQuantity(item.id, -1)} className="grid h-6 w-6 place-items-center rounded-full bg-white text-[#4A354D] shadow-sm transition hover:text-[#8B1D8F]"><Minus className="h-3 w-3" /></button>
+                      <button onClick={() => updateQuantity(item.cartItemId, -1)} className="grid h-6 w-6 place-items-center rounded-full bg-white text-[#4A354D] shadow-sm transition hover:text-[#8B1D8F]"><Minus className="h-3 w-3" /></button>
                       <span className="w-4 text-center text-[13px] font-medium">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.id, 1)} className="grid h-6 w-6 place-items-center rounded-full bg-white text-[#4A354D] shadow-sm transition hover:text-[#8B1D8F]"><Plus className="h-3 w-3" /></button>
+                      <button onClick={() => updateQuantity(item.cartItemId, 1)} className="grid h-6 w-6 place-items-center rounded-full bg-white text-[#4A354D] shadow-sm transition hover:text-[#8B1D8F]"><Plus className="h-3 w-3" /></button>
                     </div>
                     <div className="text-[15.5px] font-semibold text-[#1A0F1C]">₹{item.price * item.quantity}</div>
                   </div>

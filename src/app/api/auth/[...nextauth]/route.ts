@@ -42,36 +42,6 @@ const handler = NextAuth({
       },
     }),
 
-    // ─── Dev bypass (local testing) ──────────────────────────────────────────
-    CredentialsProvider({
-      id: "bypass-login",
-      name: "Bypass Login",
-      credentials: {
-        email: { label: "Email", type: "text" },
-        name: { label: "Name", type: "text" },
-        role: { label: "Role", type: "text" }
-      },
-      async authorize(credentials) {
-        if (!credentials) return null;
-        await dbConnect();
-        let dbUser = await User.findOne({ email: credentials.email });
-        if (!dbUser) {
-          dbUser = await User.create({
-            name: credentials.name || "Test User",
-            email: credentials.email,
-            image: "",
-            role: credentials.role || "user",
-            addresses: [],
-            defaultAddress: "",
-          });
-        }
-        return {
-          id: dbUser._id.toString(),
-          name: dbUser.name,
-          email: dbUser.email,
-        };
-      }
-    })
   ],
 
   callbacks: {
@@ -99,7 +69,12 @@ const handler = NextAuth({
       }
     },
 
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // Update token if triggered from frontend
+      if (trigger === "update" && session) {
+        token = { ...token, ...session };
+      }
+
       // Persist isEnvAdmin flag into the JWT on first sign-in
       if (user && (user as any).isEnvAdmin) {
         token.isEnvAdmin = true;

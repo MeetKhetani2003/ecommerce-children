@@ -16,16 +16,16 @@ export type Product = {
   description?: string;
 };
 
-export type CartItem = Product & { quantity: number };
+export type CartItem = Product & { quantity: number; size?: string; cartItemId: string };
 
 type ShopContextType = {
   wishlist: number[];
   toggleWishlist: (id: number) => void;
   cartCount: number;
-  addToCart: (product: Product) => void;
+  addToCart: (product: Product, size?: string) => void;
   cartItems: CartItem[];
-  removeFromCart: (id: number) => void;
-  updateQuantity: (id: number, delta: number) => void;
+  removeFromCart: (cartItemId: string) => void;
+  updateQuantity: (cartItemId: string, delta: number) => void;
   clearCart: () => void;
   showCart: boolean;
   setShowCart: (v: boolean) => void;
@@ -98,25 +98,26 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     setWishlist((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]));
   };
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: Product, size?: string) => {
     setCartItems((prev) => {
-      const existing = prev.find((p) => p.id === product.id);
+      const cartItemId = size ? `${product.id}-${size}` : `${product.id}`;
+      const existing = prev.find((p) => p.cartItemId === cartItemId);
       if (existing) {
-        return prev.map((p) => (p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p));
+        return prev.map((p) => (p.cartItemId === cartItemId ? { ...p, quantity: p.quantity + 1 } : p));
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { ...product, quantity: 1, size, cartItemId }];
     });
     setShowCart(true);
     setTimeout(() => setShowCart(false), 2000);
   };
 
-  const removeFromCart = (id: number) => {
-    setCartItems((prev) => prev.filter((p) => p.id !== id));
+  const removeFromCart = (cartItemId: string) => {
+    setCartItems((prev) => prev.filter((p) => p.cartItemId !== cartItemId));
   };
 
-  const updateQuantity = (id: number, delta: number) => {
+  const updateQuantity = (cartItemId: string, delta: number) => {
     setCartItems((prev) => prev.map((p) => {
-      if (p.id === id) {
+      if (p.cartItemId === cartItemId) {
         return { ...p, quantity: Math.max(1, p.quantity + delta) };
       }
       return p;

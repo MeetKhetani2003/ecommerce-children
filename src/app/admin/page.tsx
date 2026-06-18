@@ -887,6 +887,7 @@ function AdminDashboard() {
                         <tr className="border-b border-[#F0E6F2] text-left text-[#8B7A8F] font-medium">
                           <th className="pb-3 pr-4">User</th>
                           <th className="pb-3 pr-4">Email</th>
+                          <th className="pb-3 pr-4">Phone</th>
                           <th className="pb-3 pr-4">Registered</th>
                           <th className="pb-3 pr-4">Role</th>
                           <th className="pb-3 text-center">Actions</th>
@@ -909,6 +910,7 @@ function AdminDashboard() {
                                 </Link>
                               </td>
                               <td className="py-3.5 pr-4 text-[#6B5A6F]">{u.email}</td>
+                              <td className="py-3.5 pr-4 text-[#4A354D] font-medium">{u.phone || <span className="text-gray-400 italic">N/A</span>}</td>
                               <td className="py-3.5 pr-4 text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
                               <td className="py-3.5 pr-4">
                                 <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${u.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-600"}`}>
