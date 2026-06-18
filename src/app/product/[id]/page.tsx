@@ -477,16 +477,16 @@ export default function ProductSlug() {
                     <ul className="space-y-1.5">
                       {(Array.isArray(product.whatsIncluded)
                         ? product.whatsIncluded.flatMap((item: string) => {
-                            // Handle stringified JSON arrays like '["Cape","Eye Mask"]'
-                            if (typeof item === 'string' && item.startsWith('[')) {
-                              try { return JSON.parse(item); } catch { return [item]; }
-                            }
-                            // Handle comma-separated strings
-                            if (typeof item === 'string' && item.includes(',')) {
-                              return item.split(',').map((s: string) => s.trim()).filter(Boolean);
-                            }
-                            return [item];
-                          })
+                          // Handle stringified JSON arrays like '["Cape","Eye Mask"]'
+                          if (typeof item === 'string' && item.startsWith('[')) {
+                            try { return JSON.parse(item); } catch { return [item]; }
+                          }
+                          // Handle comma-separated strings
+                          if (typeof item === 'string' && item.includes(',')) {
+                            return item.split(',').map((s: string) => s.trim()).filter(Boolean);
+                          }
+                          return [item];
+                        })
                         : []
                       ).map((item: string, idx: number) => (
                         <li key={idx} className="flex items-start gap-2 text-[13px] sm:text-[14px] font-medium text-[#2E1F31]">
