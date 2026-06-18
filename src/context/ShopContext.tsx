@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import toast from "react-hot-toast";
 
 export type Product = {
   id: number;
@@ -90,6 +91,10 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   }, [cartItems, wishlist, isLoaded, session]);
 
   const toggleWishlist = (id: number) => {
+    if (!session?.user) {
+      toast.error("Please sign in first to add to your wishlist.");
+      return;
+    }
     setWishlist((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]));
   };
 

@@ -7,6 +7,8 @@ export const metadata = {
   description: "Premium Kids Costumes",
 };
 
+import { Toaster } from "react-hot-toast";
+
 export default function RootLayout({
   children,
 }: {
@@ -16,6 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Providers>
+          <Toaster position="top-center" />
           <Layout>
             {children}
           </Layout>

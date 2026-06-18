@@ -4,6 +4,7 @@ import React, { useEffect, useState, Suspense } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import { 
   Package, ShoppingBag, Users, HelpCircle, Plus, Edit, Trash2, 
   RefreshCw, LayoutDashboard, DollarSign, Heart, ShoppingCart, Star, ArrowLeftRight, LogOut, ShieldCheck
@@ -25,6 +26,7 @@ function AdminDashboard() {
 
   // Loading & Action states
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const searchParams = useSearchParams();
 
@@ -39,6 +41,7 @@ function AdminDashboard() {
     const tabParam = searchParams.get("tab");
     if (tabParam && ["overview", "products", "orders", "exchanges", "users", "inquiries"].includes(tabParam)) {
       setActiveTab(tabParam as any);
+      setSearchQuery("");
     }
   }, [searchParams]);
 
@@ -107,7 +110,7 @@ function AdminDashboard() {
       const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
-        alert("Product deleted successfully!");
+        toast.success("Product deleted successfully!");
         fetchData();
       }
     } catch (error) {
@@ -129,7 +132,7 @@ function AdminDashboard() {
         // Optimistically update the UI to feel instant
         setProducts(products.map(p => p.id === id ? { ...p, featured: !currentFeatured } : p));
       } else {
-        alert("Error updating featured status: " + data.message);
+        toast.error("Error updating featured status: " + data.message);
       }
     } catch (error) {
       console.error("Error toggling featured:", error);
@@ -146,7 +149,7 @@ function AdminDashboard() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Order status updated to ${status}`);
+        toast.success(`Order status updated to ${status}`);
         fetchData();
       }
     } catch (error) {
@@ -163,7 +166,7 @@ function AdminDashboard() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Payment status updated to ${paymentStatus}`);
+        toast.success(`Payment status updated to ${paymentStatus}`);
         fetchData();
       }
     } catch (error) {
@@ -182,13 +185,42 @@ function AdminDashboard() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`User role updated to ${targetRole}`);
+        toast.success(`User role updated to ${targetRole}`);
         fetchData();
       }
     } catch (error) {
       console.error(error);
     }
   };
+
+  // Filtered Lists based on search query
+  const filteredProducts = products.filter(p => 
+    p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    p.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredOrders = orders.filter(o => 
+    o._id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    o.shippingDetails?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    o.shippingDetails?.phone?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredExchanges = exchanges.filter(o => 
+    o._id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    o.shippingDetails?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredUsers = users.filter(u => 
+    u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    u.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredInquiries = inquiries.filter(i => 
+    i.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    i.email?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    i.message?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Show loading while auth status resolves
   if (status === "loading") {
@@ -266,10 +298,22 @@ function AdminDashboard() {
         </aside>
 
         {/* Content Section */}
-        <div className="rounded-3xl border border-[#F0E6F2] bg-white p-6 shadow-sm min-h-[500px]">
+        <div className="rounded-3xl border border-[#F0E6F2] bg-white p-6 shadow-sm min-h-[500px] flex flex-col">
           
+          {activeTab !== "overview" && (
+            <div className="mb-4 flex justify-end">
+               <input
+                 type="text"
+                 placeholder={`Search ${activeTab}...`}
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 className="w-full max-w-sm rounded-full border border-[#EEDDF0] bg-[#FCF7FD] px-4 py-2 text-[13px] outline-none focus:border-[#8B1D8F] focus:bg-white"
+               />
+            </div>
+          )}
+
           {loading ? (
-            <div className="flex h-[400px] items-center justify-center text-[14px] text-[#8B7A8F]">Loading admin information...</div>
+            <div className="flex h-[400px] flex-1 items-center justify-center text-[14px] text-[#8B7A8F]">Loading admin information...</div>
           ) : (
             <>
               {/* 0. OVERVIEW TAB */}
@@ -462,7 +506,7 @@ function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {products.map((p) => (
+                        {filteredProducts.map((p) => (
                           <tr key={p.id} className="border-b border-[#F8F0F9] last:border-0 hover:bg-[#FCF7FD]/30">
                             <td className="py-3.5 pr-4">
                               <img src={p.image} className="h-12 w-10 rounded-lg object-cover bg-gray-50 border border-gray-100" />
@@ -512,10 +556,10 @@ function AdminDashboard() {
                     </Link>
                   </div>
                   <div className="space-y-4">
-                    {orders.length === 0 ? (
-                      <p className="text-[14px] text-center text-[#8B7A8F] py-8">No orders placed yet.</p>
+                    {filteredOrders.length === 0 ? (
+                      <p className="text-[14px] text-center text-[#8B7A8F] py-8">No orders found.</p>
                     ) : (
-                      orders.map((order) => (
+                      filteredOrders.map((order) => (
                         <div key={order._id} className="rounded-2xl border border-[#F0E6F2] p-5 hover:border-[#E1BFE6] transition">
                           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#F8F0F9] pb-4">
                             <div>
@@ -604,7 +648,7 @@ function AdminDashboard() {
                     </div>
                   </div>
 
-                  {exchanges.length === 0 ? (
+                  {filteredExchanges.length === 0 ? (
                     <div className="py-16 text-center">
                       <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-orange-50 text-orange-400">
                         <ArrowLeftRight className="h-7 w-7" />
@@ -614,7 +658,7 @@ function AdminDashboard() {
                     </div>
                   ) : (
                     <div className="space-y-5">
-                      {exchanges.map((order) => (
+                      {filteredExchanges.map((order) => (
                         <div key={order._id} className="rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50/40 to-amber-50/20 p-5 hover:border-orange-200 transition">
                           
                           {/* Header */}
@@ -747,7 +791,7 @@ function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {users.map((u) => (
+                        {filteredUsers.map((u) => (
                           <React.Fragment key={u._id}>
                             <tr className="border-b border-[#F8F0F9] last:border-0 hover:bg-[#FCF7FD]/30">
                               <td className="py-3.5 pr-4">
@@ -802,10 +846,10 @@ function AdminDashboard() {
                 <div>
                   <h2 className="mb-6 text-[18px] font-semibold text-[#1A0F1C]">Customer Support Inquiries</h2>
                   <div className="space-y-4">
-                    {inquiries.length === 0 ? (
-                      <p className="text-[14px] text-center text-[#8B7A8F] py-8">No customer inquiries submitted.</p>
+                    {filteredInquiries.length === 0 ? (
+                      <p className="text-[14px] text-center text-[#8B7A8F] py-8">No customer inquiries found.</p>
                     ) : (
-                      inquiries.map((inq) => (
+                      filteredInquiries.map((inq) => (
                         <div key={inq._id} className="rounded-2xl border border-[#F0E6F2] p-5 bg-[#FCF7FD]/50">
                           <div className="flex items-center justify-between border-b border-[#F8F0F9] pb-3 mb-3">
                             <div>

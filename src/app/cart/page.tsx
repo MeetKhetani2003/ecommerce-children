@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 
 import { useShop } from "@/context/ShopContext";
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Tag, Check, AlertCircle } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function Cart() {
   const { cartItems, updateQuantity, removeFromCart, clearCart } = useShop();
@@ -192,7 +193,7 @@ export default function Cart() {
       // If COD, bypass Razorpay flow entirely
       if (orderData.isCod) {
         clearCart();
-        alert("Costume order placed successfully via Cash on Delivery!");
+        toast.success("Costume order placed successfully via Cash on Delivery!");
         router.push(`/success?orderId=${orderData.orderId}`);
         return;
       }
@@ -224,15 +225,15 @@ export default function Cart() {
             const verifyData = await verifyRes.json();
             if (verifyData.success) {
               clearCart();
-              alert("Payment Success! [SIMULATED] Costume order placed successfully. Check your email for invoice bill.");
+              toast.success("Payment Success! [SIMULATED] Costume order placed successfully. Check your email for invoice bill.");
               router.push(`/success?orderId=${orderData.orderId}`);
             } else {
-              alert("Verification failed: " + verifyData.message);
+              toast.error("Verification failed: " + verifyData.message);
               setProcessing(false);
             }
           } catch (verifyErr) {
             console.error(verifyErr);
-            alert("Error verifying simulated payment.");
+            toast.error("Error verifying simulated payment.");
             setProcessing(false);
           }
         } else {
@@ -243,7 +244,7 @@ export default function Cart() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ orderId: orderData.orderId }),
             });
-            alert("Checkout cancelled [SIMULATED]. Costume stocks returned back to shop inventory.");
+            toast.error("Checkout cancelled [SIMULATED]. Costume stocks returned back to shop inventory.");
           } catch (cancelErr) {
             console.error(cancelErr);
           }
@@ -276,14 +277,14 @@ export default function Cart() {
             const verifyData = await verifyRes.json();
             if (verifyData.success) {
               clearCart();
-              alert("Payment Success! Costume order placed successfully. Check your email for invoice bill.");
+              toast.success("Payment Success! Costume order placed successfully. Check your email for invoice bill.");
               router.push(`/success?orderId=${orderData.orderId}`);
             } else {
-              alert("Verification failed: " + verifyData.message);
+              toast.error("Verification failed: " + verifyData.message);
             }
           } catch (verifyErr) {
             console.error(verifyErr);
-            alert("Error verifying payment.");
+            toast.error("Error verifying payment.");
           }
         },
         modal: {
@@ -295,7 +296,7 @@ export default function Cart() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ orderId: orderData.orderId }),
               });
-              alert("Checkout cancelled. Costume stocks returned back to shop inventory.");
+              toast.error("Checkout cancelled. Costume stocks returned back to shop inventory.");
             } catch (cancelErr) {
               console.error(cancelErr);
             }

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Package, Plus, Trash2, X, ImageIcon } from "lucide-react";
 import CreatableSelect from "react-select/creatable";
+import toast from "react-hot-toast";
 
 const DEFAULT_MATERIALS = [
   { value: "100% Cotton", label: "100% Cotton" },
@@ -139,13 +140,13 @@ export default function CreateProductPage() {
     // Validate file sizes
     const MAX_SIZE = 500 * 1024; // 500KB
     if (mainImageFile && mainImageFile.size > MAX_SIZE) {
-      alert("Main image exceeds 500KB limit.");
+      toast.error("Main image exceeds 500KB limit.");
       setSubmitting(false);
       return;
     }
     for (const file of detailedImagesFiles) {
       if (file.size > MAX_SIZE) {
-        alert(`Image ${file.name} exceeds 500KB limit.`);
+        toast.error(`Image ${file.name} exceeds 500KB limit.`);
         setSubmitting(false);
         return;
       }
@@ -154,7 +155,7 @@ export default function CreateProductPage() {
     // Validate size entries
     const validSizes = sizeEntries.filter((e) => e.size.trim());
     if (validSizes.length === 0) {
-      alert("Please add at least one size with stock quantity.");
+      toast.error("Please add at least one size with stock quantity.");
       setSubmitting(false);
       return;
     }
@@ -187,14 +188,14 @@ export default function CreateProductPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert("Product created successfully! SKU: " + data.product.sku);
+        toast("Product created successfully! SKU: " + data.product.sku);
         router.push("/admin");
       } else {
-        alert("Error: " + data.message);
+        toast.error("Error: " + data.message);
       }
     } catch (error) {
       console.error(error);
-      alert("An error occurred.");
+      toast.error("An error occurred.");
     } finally {
       setSubmitting(false);
     }

@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function CreateOfflineOrderPage() {
   const { data: session } = useSession();
@@ -63,7 +64,7 @@ export default function CreateOfflineOrderPage() {
     if (!prod) return;
 
     if (prod.stock < selectedQuantity) {
-      alert(`Only ${prod.stock} items left in stock for ${prod.title}.`);
+      toast(`Only ${prod.stock} items left in stock for ${prod.title}.`);
       return;
     }
 
@@ -72,7 +73,7 @@ export default function CreateOfflineOrderPage() {
     if (existingIdx !== -1) {
       const newQty = cartItems[existingIdx].quantity + selectedQuantity;
       if (prod.stock < newQty) {
-        alert(`Cannot add more. Total added quantity (${newQty}) exceeds stock (${prod.stock}).`);
+        toast.error(`Cannot add more. Total added quantity (${newQty}) exceeds stock (${prod.stock}).`);
         return;
       }
       const updated = [...cartItems];
@@ -148,7 +149,7 @@ export default function CreateOfflineOrderPage() {
 
       const data = await res.json();
       if (data.success) {
-        alert("Offline order created and stock updated successfully!");
+        toast.success("Offline order created and stock updated successfully!");
         router.push("/admin?tab=orders");
       } else {
         setError(data.message || "Failed to create offline order.");

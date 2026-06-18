@@ -5,6 +5,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import { User, MapPin, Package, Heart, LogOut, Shield, Compass, CheckCircle, Truck, ShoppingBag, Trash2, X } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
+import toast from "react-hot-toast";
 
 export default function Profile() {
   const { data: session, update } = useSession();
@@ -72,14 +73,14 @@ export default function Profile() {
       });
       const data = await res.json();
       if (!data.success) {
-        alert("Failed to request exchange: " + data.message);
+        toast.error("Failed to request exchange: " + data.message);
         setSubmittingExchange(false);
         return;
       }
 
       // If COD, process immediately
       if (data.isCod) {
-        alert("Exchange request submitted successfully! A flat fee of ₹120 will be charged on delivery.");
+        toast.success("Exchange request submitted successfully! A flat fee of ₹120 will be charged on delivery.");
         setIsExchangeModalOpen(false);
         fetchOrders();
         return;
@@ -88,7 +89,7 @@ export default function Profile() {
       // Online Payment Flow (Razorpay)
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        alert("Razorpay SDK failed to load. Check your internet connection.");
+        toast.error("Razorpay SDK failed to load. Check your internet connection.");
         setSubmittingExchange(false);
         return;
       }
@@ -119,15 +120,15 @@ export default function Profile() {
             });
             const verifyData = await verifyRes.json();
             if (verifyData.success) {
-              alert("Payment Success! [SIMULATED] Costume exchange request registered successfully.");
+              toast.success("Payment Success! [SIMULATED] Costume exchange request registered successfully.");
               setIsExchangeModalOpen(false);
               fetchOrders();
             } else {
-              alert("Verification failed: " + verifyData.message);
+              toast.error("Verification failed: " + verifyData.message);
             }
           } catch (verifyErr) {
             console.error(verifyErr);
-            alert("Error verifying simulated payment.");
+            toast.error("Error verifying simulated payment.");
           }
         }
         setSubmittingExchange(false);
@@ -162,15 +163,15 @@ export default function Profile() {
             });
             const verifyData = await verifyRes.json();
             if (verifyData.success) {
-              alert("Payment Success! Costume exchange request registered successfully.");
+              toast.success("Payment Success! Costume exchange request registered successfully.");
               setIsExchangeModalOpen(false);
               fetchOrders();
             } else {
-              alert("Verification failed: " + verifyData.message);
+              toast.error("Verification failed: " + verifyData.message);
             }
           } catch (verifyErr) {
             console.error(verifyErr);
-            alert("Error verifying payment.");
+            toast.error("Error verifying payment.");
           }
         },
         prefill: {
@@ -187,7 +188,7 @@ export default function Profile() {
 
     } catch (err) {
       console.error(err);
-      alert("An error occurred during submission.");
+      toast.error("An error occurred during submission.");
     } finally {
       setSubmittingExchange(false);
     }
@@ -284,7 +285,7 @@ export default function Profile() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Your role has been set to ${targetRole}. Please refresh.`);
+        toast.success(`Your role has been set to ${targetRole}. Please refresh.`);
         window.location.reload();
       }
     } catch (err) {

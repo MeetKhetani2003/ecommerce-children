@@ -9,6 +9,7 @@ import { Star, ShieldCheck, Truck, RotateCcw, Heart, ShoppingBag, ChevronRight, 
 import { useShop } from "@/context/ShopContext";
 import Barcode from "react-barcode";
 import { BsCash } from "react-icons/bs";
+import toast from "react-hot-toast";
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -161,7 +162,7 @@ export default function ProductSlug() {
   const handleAddReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session?.user) {
-      alert("Please sign in first to write a review.");
+      toast.error("Please sign in first to write a review.");
       return;
     }
     if (!reviewComment.trim()) {
@@ -187,7 +188,7 @@ export default function ProductSlug() {
         setProduct(data.product);
         setReviewComment("");
         setReviewRating(5);
-        alert("Review submitted successfully!");
+        toast.success("Review submitted successfully!");
       } else {
         setReviewError(data.message || "Failed to submit review.");
       }
@@ -207,9 +208,9 @@ export default function ProductSlug() {
       const data = await res.json();
       if (data.success) {
         setProduct(data.product);
-        alert("Review deleted successfully!");
+        toast.success("Review deleted successfully!");
       } else {
-        alert(data.message || "Failed to delete review.");
+        toast(data.message || "Failed to delete review.");
       }
     } catch (err) {
       console.error(err);

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import toast from "react-hot-toast";
 import { 
   ArrowLeft, Mail, Calendar, Shield, MapPin, 
   ShoppingCart, Heart, Package
@@ -71,7 +72,7 @@ export default function UserDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`User role updated to ${targetRole}`);
+        toast.success(`User role updated to ${targetRole}`);
         setUserData((prev: any) => ({ ...prev, role: targetRole }));
       }
     } catch (error) {
@@ -88,7 +89,7 @@ export default function UserDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Order status updated to ${status}`);
+        toast.success(`Order status updated to ${status}`);
         // Refresh orders
         fetchUserDetail();
       }
@@ -106,7 +107,7 @@ export default function UserDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Payment status updated to ${paymentStatus}`);
+        toast.success(`Payment status updated to ${paymentStatus}`);
         // Refresh orders
         fetchUserDetail();
       }
@@ -124,7 +125,7 @@ export default function UserDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Tracking number updated to: ${trackingNum}`);
+        toast.success(`Tracking number updated to: ${trackingNum}`);
         fetchUserDetail();
       }
     } catch (error) {
