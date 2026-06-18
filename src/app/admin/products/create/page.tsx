@@ -5,17 +5,6 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Package, Plus, Trash2, X, ImageIcon } from "lucide-react";
-import CreatableSelect from "react-select/creatable";
-import toast from "react-hot-toast";
-
-const DEFAULT_MATERIALS = [
-  { value: "100% Cotton", label: "100% Cotton" },
-  { value: "Polyester", label: "Polyester" },
-  { value: "Silk", label: "Silk" },
-  { value: "Velvet", label: "Velvet" },
-  { value: "Felt", label: "Felt" },
-  { value: "Satin", label: "Satin" },
-];
 
 interface SizeEntry {
   size: string;
@@ -44,46 +33,6 @@ export default function CreateProductPage() {
   const [formFeatured, setFormFeatured] = useState(false);
   const mainInputRef = useRef<HTMLInputElement>(null);
   const detailInputRef = useRef<HTMLInputElement>(null);
-
-  const [materials, setMaterials] = useState(DEFAULT_MATERIALS);
-  
-  useEffect(() => {
-    const saved = localStorage.getItem("customMaterials");
-    if (saved) {
-      try {
-        setMaterials([...DEFAULT_MATERIALS, ...JSON.parse(saved)]);
-      } catch (e) {}
-    }
-  }, []);
-
-  const selectedMaterials = formMaterial ? formMaterial.split(',').map(s => s.trim()).filter(Boolean) : [];
-
-  const handleCreateMaterial = (inputValue: string) => {
-    const newOption = { value: inputValue, label: inputValue };
-    setMaterials((prev) => [...prev, newOption]);
-    
-    // Auto-add it to selection
-    if (!selectedMaterials.includes(inputValue)) {
-      setFormMaterial([...selectedMaterials, inputValue].join(', '));
-    }
-    
-    const saved = localStorage.getItem("customMaterials");
-    const parsed = saved ? JSON.parse(saved) : [];
-    localStorage.setItem("customMaterials", JSON.stringify([...parsed, newOption]));
-  };
-
-  const handleAddMaterial = (newValue: any) => {
-    if (!newValue) return;
-    const val = newValue.value;
-    if (!selectedMaterials.includes(val)) {
-      setFormMaterial([...selectedMaterials, val].join(', '));
-    }
-  };
-
-  const handleRemoveMaterial = (matToRemove: string) => {
-    const newMats = selectedMaterials.filter(m => m !== matToRemove);
-    setFormMaterial(newMats.join(', '));
-  };
 
   // Revoke object URLs on unmount to prevent memory leaks
   useEffect(() => {
@@ -140,13 +89,13 @@ export default function CreateProductPage() {
     // Validate file sizes
     const MAX_SIZE = 500 * 1024; // 500KB
     if (mainImageFile && mainImageFile.size > MAX_SIZE) {
-      toast.error("Main image exceeds 500KB limit.");
+      alert("Main image exceeds 500KB limit.");
       setSubmitting(false);
       return;
     }
     for (const file of detailedImagesFiles) {
       if (file.size > MAX_SIZE) {
-        toast.error(`Image ${file.name} exceeds 500KB limit.`);
+        alert(`Image ${file.name} exceeds 500KB limit.`);
         setSubmitting(false);
         return;
       }
@@ -155,7 +104,7 @@ export default function CreateProductPage() {
     // Validate size entries
     const validSizes = sizeEntries.filter((e) => e.size.trim());
     if (validSizes.length === 0) {
-      toast.error("Please add at least one size with stock quantity.");
+      alert("Please add at least one size with stock quantity.");
       setSubmitting(false);
       return;
     }
@@ -188,14 +137,14 @@ export default function CreateProductPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast("Product created successfully! SKU: " + data.product.sku);
+        alert("Product created successfully! SKU: " + data.product.sku);
         router.push("/admin");
       } else {
-        toast.error("Error: " + data.message);
+        alert("Error: " + data.message);
       }
     } catch (error) {
       console.error(error);
-      toast.error("An error occurred.");
+      alert("An error occurred.");
     } finally {
       setSubmitting(false);
     }
@@ -269,9 +218,6 @@ export default function CreateProductPage() {
                 <option value="School Favourite">🎓 School Favourite</option>
               </select>
             </div>
-          </div>
-
-          <div>
             <div className="grid gap-6 sm:grid-cols-3">
               <div>
                 <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Net Cost Price (₹)</label>
@@ -298,7 +244,28 @@ export default function CreateProductPage() {
             )}
           </div>
 
-
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Tag / Badge</label>
+              <select value={formTag} onChange={(e) => setFormTag(e.target.value)} className="h-12 w-full rounded-xl border border-[#EEDDF0] px-3 text-[14px] outline-none bg-white focus:border-[#E1BFE6]">
+                <option value="">No Badge</option>
+                <option value="Bestseller">🏆 Bestseller</option>
+                <option value="New Arrival">✨ New Arrival</option>
+                <option value="Hot">🔥 Hot</option>
+                <option value="Trending">📈 Trending</option>
+                <option value="Limited Stock">⚡ Limited Stock</option>
+                <option value="Sale">🏷️ Sale</option>
+                <option value="Exclusive">💎 Exclusive</option>
+                <option value="Top Rated">⭐ Top Rated</option>
+                <option value="Festival Special">🎉 Festival Special</option>
+                <option value="School Favourite">🎓 School Favourite</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Material</label>
+              <input type="text" value={formMaterial} onChange={(e) => setFormMaterial(e.target.value)} placeholder="e.g. 100% Cotton" className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
+            </div>
+          </div>
 
           {/* Size & Stock Management */}
           <div className="rounded-2xl border border-[#EEDDF0] bg-[#FCF7FD]/40 p-5">
@@ -412,55 +379,6 @@ export default function CreateProductPage() {
           <div>
             <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Costume Description</label>
             <textarea rows={4} value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="w-full rounded-xl border border-[#EEDDF0] p-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Material</label>
-            <CreatableSelect
-              isClearable
-              controlShouldRenderValue={false}
-              options={materials.filter(m => !selectedMaterials.includes(m.value))}
-              value={null}
-              onChange={handleAddMaterial}
-              onCreateOption={handleCreateMaterial}
-              placeholder="Select or type to add material..."
-              styles={{
-                control: (base, state) => ({
-                  ...base,
-                  minHeight: '48px',
-                  borderRadius: '12px',
-                  borderColor: state.isFocused ? '#E1BFE6' : '#EEDDF0',
-                  boxShadow: state.isFocused ? '0 0 0 1px #E1BFE6' : 'none',
-                  fontSize: '14px',
-                  '&:hover': {
-                    borderColor: '#E1BFE6'
-                  }
-                }),
-                option: (base, state) => ({
-                  ...base,
-                  fontSize: '14px',
-                  backgroundColor: state.isSelected ? '#8B1D8F' : state.isFocused ? '#F3E7F5' : 'white',
-                  color: state.isSelected ? 'white' : '#1A0F1C',
-                  cursor: 'pointer',
-                  '&:active': {
-                    backgroundColor: '#8B1D8F',
-                    color: 'white'
-                  }
-                })
-              }}
-            />
-            {selectedMaterials.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {selectedMaterials.map((mat) => (
-                  <span key={mat} className="flex items-center gap-1.5 rounded-full bg-[#F3E7F5] px-3 py-1.5 text-[12px] font-medium text-[#7A187C]">
-                    {mat}
-                    <button type="button" onClick={() => handleRemoveMaterial(mat)} className="text-[#8B1D8F] hover:text-red-500 transition-colors">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Image Upload Section */}
