@@ -7,7 +7,7 @@ import { uploadToGridFS } from "@/utils/gridfs";
 export async function GET() {
   try {
     await dbConnect();
-    const products = await Product.find({}).sort({ id: 1 });
+    const products = await Product.find({}).sort({ id: -1 });
     return NextResponse.json({ success: true, products });
   } catch (error) {
     console.error("Error fetching products:", error);

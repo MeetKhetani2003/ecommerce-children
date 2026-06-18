@@ -7,7 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { 
   Package, ShoppingBag, Users, HelpCircle, Plus, Edit, Trash2, 
-  RefreshCw, LayoutDashboard, DollarSign, Heart, ShoppingCart, Star, ArrowLeftRight, LogOut, ShieldCheck, Tag, Image, Download
+  RefreshCw, LayoutDashboard, DollarSign, Heart, ShoppingCart, Star, ArrowLeftRight, LogOut, ShieldCheck, Tag, Image, Download, X
 } from "lucide-react";
 
 function AdminDashboard() {
@@ -25,6 +25,7 @@ function AdminDashboard() {
   const [exchanges, setExchanges] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [banners, setBanners] = useState<any[]>([]);
+  const [selectedInquiry, setSelectedInquiry] = useState<any>(null);
 
   // Loading & Action states
   const [loading, setLoading] = useState(true);
@@ -506,7 +507,7 @@ function AdminDashboard() {
                       </div>
                       <div className="space-y-3">
                         {inquiries.slice(0, 5).map((inq) => (
-                          <div key={inq._id} className="text-[13px] border-b border-[#FDFBFE] pb-2 last:border-0 last:pb-0">
+                          <div key={inq._id} onClick={() => setSelectedInquiry(inq)} className="text-[13px] border-b border-[#FDFBFE] pb-2 last:border-0 last:pb-0 cursor-pointer hover:bg-gray-50/50 p-2 rounded transition">
                             <div className="flex justify-between font-semibold">
                               <span className="text-[#1A0F1C]">{inq.name}</span>
                               <span className="text-[11px] font-normal text-[#8B7A8F]">{new Date(inq.createdAt).toLocaleDateString()}</span>
@@ -959,7 +960,7 @@ function AdminDashboard() {
                       <p className="text-[14px] text-center text-[#8B7A8F] py-8">No customer inquiries found.</p>
                     ) : (
                       filteredInquiries.map((inq) => (
-                        <div key={inq._id} className="rounded-2xl border border-[#F0E6F2] p-5 bg-[#FCF7FD]/50">
+                        <div key={inq._id} onClick={() => setSelectedInquiry(inq)} className="rounded-2xl border border-[#F0E6F2] p-5 bg-[#FCF7FD]/50 cursor-pointer hover:border-[#E1BFE6] hover:bg-white transition">
                           <div className="flex items-center justify-between border-b border-[#F8F0F9] pb-3 mb-3">
                             <div>
                               <div className="font-semibold text-[#1A0F1C]">{inq.name}</div>
@@ -1086,6 +1087,64 @@ function AdminDashboard() {
 
         </div>
       </div>
+
+      {selectedInquiry && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-[500px] overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#F0E6F2] p-5">
+              <h3 className="text-[16px] font-semibold text-[#1A0F1C] flex items-center gap-2">
+                <HelpCircle className="h-4.5 w-4.5 text-[#8B1D8F]" /> Inquiry Details
+              </h3>
+              <button onClick={() => setSelectedInquiry(null)} className="grid h-8 w-8 place-items-center rounded-full hover:bg-gray-100 transition">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <div className="text-[12px] font-semibold text-[#8B7A8F] uppercase tracking-wide">Customer Info</div>
+                <div className="text-[14px] font-medium text-[#1A0F1C] mt-1">{selectedInquiry.name}</div>
+                <div className="text-[13px] text-[#4A354D]">{selectedInquiry.email}</div>
+                <div className="text-[13px] text-[#4A354D]">{selectedInquiry.phone}</div>
+              </div>
+              <div className="border-t border-[#F0E6F2] pt-4">
+                <div className="text-[12px] font-semibold text-[#8B7A8F] uppercase tracking-wide">Inquiry Details</div>
+                <div className="text-[13px] text-[#4A354D] mt-1"><span className="font-semibold text-[#1A0F1C]">Product:</span> <Link href={`/product/${selectedInquiry.productId}`} target="_blank" className="text-[#8B1D8F] hover:underline">{selectedInquiry.productTitle}</Link></div>
+                <div className="text-[13px] text-[#4A354D]"><span className="font-semibold text-[#1A0F1C]">Quantity:</span> {selectedInquiry.quantity}</div>
+                <div className="text-[13px] text-[#4A354D]"><span className="font-semibold text-[#1A0F1C]">Event Date:</span> {selectedInquiry.eventDate}</div>
+              </div>
+              <div className="border-t border-[#F0E6F2] pt-4">
+                <div className="text-[12px] font-semibold text-[#8B7A8F] uppercase tracking-wide mb-1.5">Message</div>
+                <div className="bg-[#FCF7FD] p-3 rounded-xl border border-[#EEDDF0] text-[13px] text-[#4A354D] whitespace-pre-wrap">
+                  {selectedInquiry.message}
+                </div>
+              </div>
+              <div className="border-t border-[#F0E6F2] pt-4 flex justify-between items-center">
+                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${selectedInquiry.status === "resolved" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  {selectedInquiry.status === "resolved" ? "Resolved" : "Pending Action"}
+                </span>
+                <button
+                  onClick={async () => {
+                    const status = selectedInquiry.status === "resolved" ? "pending" : "resolved";
+                    const res = await fetch(`/api/inquiries`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ id: selectedInquiry._id, status })
+                    });
+                    if (res.ok) {
+                      setInquiries(inquiries.map((inq) => inq._id === selectedInquiry._id ? { ...inq, status } : inq));
+                      setSelectedInquiry({ ...selectedInquiry, status });
+                      toast.success(`Inquiry marked as ${status}`);
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-xl text-[13px] font-semibold transition ${selectedInquiry.status === "resolved" ? "bg-orange-100 text-orange-700 hover:bg-orange-200" : "bg-green-100 text-green-700 hover:bg-green-200"}`}
+                >
+                  Mark as {selectedInquiry.status === "resolved" ? "Pending" : "Resolved"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
 
 

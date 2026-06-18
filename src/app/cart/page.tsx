@@ -42,6 +42,9 @@ export default function Cart() {
       if (session.user?.name && !shippingName) {
         setShippingName(session.user.name);
       }
+      if ((session.user as any)?.phone && !shippingPhone) {
+        setShippingPhone((session.user as any).phone);
+      }
       if (savedAddresses.length > 0) {
         let initialIndex = 0;
         if (defaultAddress) {
@@ -135,6 +138,19 @@ export default function Cart() {
     setProcessing(true);
 
     try {
+      if (session?.user?.email && shippingPhone && shippingPhone !== (session.user as any).phone) {
+        try {
+          await fetch("/api/user/profile", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: session.user.email, phone: shippingPhone }),
+          });
+          await update();
+        } catch (phoneErr) {
+          console.error("Failed to save phone during checkout:", phoneErr);
+        }
+      }
+
       if (session?.user?.email && selectedAddressIndex === "new" && saveNewAddress && newAddressText.trim()) {
         try {
           const trimmedNewAddr = newAddressText.trim();

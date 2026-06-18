@@ -65,6 +65,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
   const { wishlist, cartCount, showCart, setShowCart } = useShop();
 
+  useEffect(() => {
+    const handleOpenLogin = () => setIsLoginOpen(true);
+    window.addEventListener("openLoginModal", handleOpenLogin as EventListener);
+    return () => window.removeEventListener("openLoginModal", handleOpenLogin as EventListener);
+  }, []);
+
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);

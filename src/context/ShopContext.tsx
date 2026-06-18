@@ -92,7 +92,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const toggleWishlist = (id: number) => {
     if (!session?.user) {
-      toast.error("Please sign in first to add to your wishlist.");
+      window.dispatchEvent(new CustomEvent("openLoginModal"));
       return;
     }
     setWishlist((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]));

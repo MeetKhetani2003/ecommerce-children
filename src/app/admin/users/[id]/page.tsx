@@ -261,7 +261,9 @@ export default function UserDetailPage() {
                       <div key={i} className="flex items-center gap-3 rounded-xl border border-[#F8F0F9] p-2 hover:bg-[#FCF7FD]/30 transition">
                         <img src={item.image} alt="" className="h-10 w-9 rounded object-cover bg-gray-50 border shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-[13px] font-semibold text-[#1A0F1C] truncate">{item.title}</h4>
+                          <h4 className="text-[13px] font-semibold text-[#1A0F1C] truncate hover:text-[#8B1D8F] transition">
+                            <Link href={`/product/${item.id}`} target="_blank">{item.title}</Link>
+                          </h4>
                           <p className="text-[11px] text-[#8B7A8F]">Qty: {item.quantity} • ₹{item.price} each</p>
                         </div>
                         <span className="text-[13px] font-bold text-[#1A0F1C]">₹{item.price * item.quantity}</span>
@@ -288,7 +290,9 @@ export default function UserDetailPage() {
                             <>
                               <img src={prod.image} alt="" className="h-10 w-9 rounded object-cover bg-gray-50 border shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <h4 className="text-[13px] font-semibold text-[#1A0F1C] truncate">{prod.title}</h4>
+                                <h4 className="text-[13px] font-semibold text-[#1A0F1C] truncate hover:text-[#8B1D8F] transition">
+                                  <Link href={`/product/${prod.id}`} target="_blank">{prod.title}</Link>
+                                </h4>
                                 <p className="text-[11px] text-[#8B7A8F]">Category: {prod.category}</p>
                               </div>
                               <span className="text-[13.5px] font-semibold text-[#8B1D8F]">₹{prod.price}</span>

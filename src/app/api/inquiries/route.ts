@@ -28,3 +28,24 @@ export async function GET() {
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }
+
+export async function PUT(req: Request) {
+  try {
+    const { id, status } = await req.json();
+    if (!id || !status) {
+      return NextResponse.json({ success: false, message: "ID and status are required" }, { status: 400 });
+    }
+
+    await dbConnect();
+    const inquiry = await Inquiry.findByIdAndUpdate(id, { status }, { new: true });
+    
+    if (!inquiry) {
+      return NextResponse.json({ success: false, message: "Inquiry not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, inquiry });
+  } catch (error) {
+    console.error("Error updating inquiry:", error);
+    return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
+  }
+}

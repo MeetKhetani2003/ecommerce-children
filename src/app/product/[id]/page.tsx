@@ -400,7 +400,7 @@ export default function ProductSlug() {
                   <input required type="tel" placeholder="Phone Number" value={bulkPhone} onChange={(e) => setBulkPhone(e.target.value)} className="h-10 sm:h-9 rounded-lg border border-[#EEDDF0] bg-white px-3 text-[13px] sm:text-[12.5px] outline-none" />
                   <div className="flex gap-2 items-center">
                     <input required type="number" min={10} placeholder="Qty" value={bulkQty} onChange={(e) => setBulkQty(e.target.value)} className="h-10 sm:h-9 w-16 sm:w-14 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[13px] sm:text-[12.5px] outline-none text-center" />
-                    <input required type="text" placeholder="Event Date" value={bulkDate} onChange={(e) => setBulkDate(e.target.value)} className="h-10 sm:h-9 flex-1 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[13px] sm:text-[12.5px] outline-none" />
+                    <input required type="date" placeholder="Event Date" value={bulkDate} onChange={(e) => setBulkDate(e.target.value)} className="h-10 sm:h-9 flex-1 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[13px] sm:text-[12.5px] outline-none" />
                   </div>
                 </div>
                 <textarea required rows={2} placeholder="Custom sizes, custom requirements, event details..." value={bulkMsg} onChange={(e) => setBulkMsg(e.target.value)} className="w-full rounded-lg border border-[#EEDDF0] bg-white p-2.5 text-[12.5px] outline-none" />
