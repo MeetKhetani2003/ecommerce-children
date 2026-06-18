@@ -28,6 +28,7 @@ const OrderSchema = new Schema({
   paymentMethod: { type: String, enum: ["online", "cod", "offline"], default: "online" },
   shippingStatus: { type: String, enum: ["Processing", "Shipped", "Delivered", "Cancelled", "Exchange Processing"], default: "Processing" },
   trackingNumber: { type: String },
+  trackingLink: { type: String },
   invoiceSent: { type: Boolean, default: false },
   exchangeRequested: { type: Boolean, default: false },
   exchangeFee: { type: Number, default: 0 },

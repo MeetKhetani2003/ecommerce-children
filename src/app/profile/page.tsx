@@ -14,6 +14,8 @@ export default function Profile() {
   const [activeSection, setActiveSection] = useState<"info" | "orders" | "wishlist" | "addresses">("info");
   const [orders, setOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [savingPhone, setSavingPhone] = useState(false);
 
   // Address fields
   const [addresses, setAddresses] = useState<string[]>([]);
@@ -201,6 +203,7 @@ export default function Profile() {
       fetchOrders();
       setAddresses((session.user as any).addresses || []);
       setDefaultAddress((session.user as any).defaultAddress || "");
+      setPhone((session.user as any).phone || "");
     }
   }, [session, activeSection]);
 
@@ -222,6 +225,30 @@ export default function Profile() {
       }
     } catch (err) {
       console.error("Failed to save addresses:", err);
+    }
+  };
+
+  const handleSavePhone = async () => {
+    if (!session?.user?.email) return;
+    setSavingPhone(true);
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: session.user.email, phone }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Phone number saved successfully");
+        await update();
+      } else {
+        toast.error("Failed to save phone number");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error saving phone number");
+    } finally {
+      setSavingPhone(false);
     }
   };
 
@@ -440,10 +467,29 @@ export default function Profile() {
                   <input type="text" readOnly value={session.user?.name || ""} className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-[#FCF7FD] px-4 text-[14px] text-[#8B7A8F] outline-none" />
                 </div>
                 <div>
+                  <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Mobile Number</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="tel" 
+                      value={phone} 
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+91" 
+                      className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-white px-4 text-[14px] text-[#1A0F1C] outline-none focus:border-[#8B1D8F]" 
+                    />
+                    <button 
+                      onClick={handleSavePhone}
+                      disabled={savingPhone || phone === (session.user as any).phone}
+                      className="h-11 px-4 rounded-xl bg-[#8B1D8F] text-white text-[13px] font-medium transition hover:bg-[#7A187C] disabled:opacity-50"
+                    >
+                      {savingPhone ? "Saving" : "Save"}
+                    </button>
+                  </div>
+                </div>
+                <div>
                   <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Account Role</label>
                   <input type="text" readOnly value={(session.user as any)?.role || "user"} className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-[#FCF7FD] px-4 text-[14px] text-[#8B7A8F] outline-none capitalize" />
                 </div>
-                <div className="md:col-span-2">
+                <div>
                   <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Email Address</label>
                   <input type="email" readOnly value={session.user?.email || ""} className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-[#FCF7FD] px-4 text-[14px] text-[#8B7A8F] outline-none" />
                 </div>
@@ -489,7 +535,9 @@ export default function Profile() {
                         {order.items.map((item: any, idx: number) => (
                           <li key={idx} className="flex items-center gap-4 text-[13.5px]">
                             <div className="h-10 w-8 rounded bg-gray-50 border border-gray-100 overflow-hidden shrink-0"><img src={item.image} className="h-full w-full object-cover" /></div>
-                            <span className="font-medium text-[#1A0F1C] flex-1 truncate">{item.title}</span>
+                            <span className="font-medium text-[#1A0F1C] flex-1 truncate hover:text-[#8B1D8F] transition">
+                              <Link href={`/product/${item.productId}`}>{item.title}</Link>
+                            </span>
                             <span className="text-[#8B7A8F]">{item.quantity}x</span>
                             <span className="font-semibold text-[#1A0F1C]">₹{item.price * item.quantity}</span>
                           </li>
@@ -527,7 +575,14 @@ export default function Profile() {
 
                           {order.trackingNumber && (
                             <div className="mt-5 text-[12px] text-gray-500 bg-[#FCF7FD] p-2.5 rounded-xl border border-[#F0E6F2]">
-                              <strong>Awb tracking number:</strong> <span className="font-mono text-[#8B1D8F]">{order.trackingNumber}</span> (Mumbai/Delhi Express Speed Post)
+                              <strong>AWB tracking number:</strong>{" "}
+                              {order.trackingLink ? (
+                                <a href={order.trackingLink} target="_blank" rel="noopener noreferrer" className="font-mono text-[#8B1D8F] hover:underline">
+                                  {order.trackingNumber}
+                                </a>
+                              ) : (
+                                <span className="font-mono text-[#8B1D8F]">{order.trackingNumber}</span>
+                              )}
                             </div>
                           )}
                         </div>
@@ -542,7 +597,11 @@ export default function Profile() {
                               (Includes ₹{order.exchangeFee} Exchange Delivery Fee)
                             </span>
                           )}
+                          {order.couponUsed && (
+                            <div className="mt-1 text-[12px] font-semibold text-[#0F8A4B]">Coupon Used: {order.couponUsed}</div>
+                          )}
                         </div>
+
 
                         {/* Exchange button */}
                         {((Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60 * 24) <= 7) && order.shippingStatus !== "Cancelled" && !order.exchangeRequested && (

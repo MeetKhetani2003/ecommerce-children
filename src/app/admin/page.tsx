@@ -7,13 +7,13 @@ import { useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { 
   Package, ShoppingBag, Users, HelpCircle, Plus, Edit, Trash2, 
-  RefreshCw, LayoutDashboard, DollarSign, Heart, ShoppingCart, Star, ArrowLeftRight, LogOut, ShieldCheck
+  RefreshCw, LayoutDashboard, DollarSign, Heart, ShoppingCart, Star, ArrowLeftRight, LogOut, ShieldCheck, Tag, Image, Download
 } from "lucide-react";
 
 function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "exchanges" | "users" | "inquiries">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "exchanges" | "users" | "inquiries" | "coupons" | "banners">("overview");
 
   const isEnvAdmin = (session?.user as any)?.isEnvAdmin === true;
 
@@ -23,6 +23,8 @@ function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
   const [exchanges, setExchanges] = useState<any[]>([]);
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [banners, setBanners] = useState<any[]>([]);
 
   // Loading & Action states
   const [loading, setLoading] = useState(true);
@@ -39,7 +41,7 @@ function AdminDashboard() {
 
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam && ["overview", "products", "orders", "exchanges", "users", "inquiries"].includes(tabParam)) {
+    if (tabParam && ["overview", "products", "orders", "exchanges", "users", "inquiries", "coupons", "banners"].includes(tabParam)) {
       setActiveTab(tabParam as any);
       setSearchQuery("");
     }
@@ -55,25 +57,31 @@ function AdminDashboard() {
     setLoading(true);
     try {
       if (activeTab === "overview") {
-        const [prodRes, orderRes, userRes, inqRes, exchRes] = await Promise.all([
+        const [prodRes, orderRes, userRes, inqRes, exchRes, couponRes, bannerRes] = await Promise.all([
           fetch("/api/products"),
           fetch("/api/admin/orders"),
           fetch("/api/admin/users"),
           fetch("/api/inquiries"),
-          fetch("/api/admin/orders?exchangeOnly=true")
+          fetch("/api/admin/orders?exchangeOnly=true"),
+          fetch("/api/admin/coupons"),
+          fetch("/api/admin/banners")
         ]);
-        const [prodData, orderData, userData, inqData, exchData] = await Promise.all([
+        const [prodData, orderData, userData, inqData, exchData, couponData, bannerData] = await Promise.all([
           prodRes.json(),
           orderRes.json(),
           userRes.json(),
           inqRes.json(),
-          exchRes.json()
+          exchRes.json(),
+          couponRes.json(),
+          bannerRes.json()
         ]);
         if (prodData.success) setProducts(prodData.products);
         if (orderData.success) setOrders(orderData.orders);
         if (userData.success) setUsers(userData.users);
         if (inqData.success) setInquiries(inqData.inquiries);
         if (exchData.success) setExchanges(exchData.orders.filter((o: any) => o.exchangeRequested));
+        if (couponData.success) setCoupons(couponData.coupons);
+        if (bannerData.success) setBanners(bannerData.banners);
       } else if (activeTab === "products") {
         const res = await fetch("/api/products");
         const data = await res.json();
@@ -94,6 +102,14 @@ function AdminDashboard() {
         const res = await fetch("/api/inquiries");
         const data = await res.json();
         if (data.success) setInquiries(data.inquiries);
+      } else if (activeTab === "coupons") {
+        const res = await fetch("/api/admin/coupons");
+        const data = await res.json();
+        if (data.success) setCoupons(data.coupons);
+      } else if (activeTab === "banners") {
+        const res = await fetch("/api/admin/banners");
+        const data = await res.json();
+        if (data.success) setBanners(data.banners);
       }
     } catch (err) {
       console.error("Error fetching admin data:", err);
@@ -157,6 +173,25 @@ function AdminDashboard() {
     }
   };
 
+  const handleTrackingUpdate = async (orderId: string, trackingNumber: string, trackingLink: string) => {
+    try {
+      const res = await fetch("/api/admin/orders/tracking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId, trackingNumber, trackingLink }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Tracking information updated");
+        fetchData();
+      } else {
+        toast.error("Error updating tracking: " + data.message);
+      }
+    } catch (error) {
+      console.error("Error updating tracking:", error);
+    }
+  };
+
   const handleOrderPaymentStatusUpdate = async (orderId: string, paymentStatus: string) => {
     try {
       const res = await fetch("/api/admin/orders", {
@@ -191,6 +226,35 @@ function AdminDashboard() {
     } catch (error) {
       console.error(error);
     }
+  };
+
+  const handleDownloadInquiries = () => {
+    if (inquiries.length === 0) {
+      toast.error("No inquiries to download");
+      return;
+    }
+    
+    // Create CSV content
+    const headers = ["Name", "Email", "Status", "Date", "Message"];
+    const rows = inquiries.map(inq => [
+      `"${inq.name}"`, 
+      `"${inq.email}"`, 
+      `"${inq.status}"`, 
+      `"${new Date(inq.createdAt).toLocaleDateString()}"`, 
+      `"${inq.message.replace(/"/g, '""')}"`
+    ]);
+    
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + headers.join(",") + "\n" 
+      + rows.map(e => e.join(",")).join("\n");
+      
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `inquiries_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Filtered Lists based on search query
@@ -274,8 +338,10 @@ function AdminDashboard() {
             { id: "products", label: "Products CRUD", icon: Package },
             { id: "orders", label: "Orders Tracking", icon: ShoppingBag },
             { id: "exchanges", label: "Exchange Requests", icon: ArrowLeftRight, badge: exchanges.length },
+            { id: "coupons", label: "Coupons", icon: Tag },
             { id: "users", label: "User Accounts", icon: Users },
             { id: "inquiries", label: "Support Inquiries", icon: HelpCircle },
+            { id: "banners", label: "Home Banners", icon: Image },
           ].map((tab: any) => {
             const Icon = tab.icon;
             const isTabActive = activeTab === tab.id;
@@ -605,7 +671,9 @@ function AdminDashboard() {
                                 {order.items.map((item: any, i: number) => (
                                   <li key={i} className="flex items-center gap-3 text-[13.5px] text-[#4A354D]">
                                     <div className="h-8 w-7 rounded bg-gray-50 border border-gray-100 overflow-hidden shrink-0"><img src={item.image} className="h-full w-full object-cover" /></div>
-                                    <span className="font-medium text-[#1A0F1C]">{item.title}</span>
+                                    <span className="font-medium text-[#1A0F1C] hover:text-[#8B1D8F] transition">
+                                      <Link href={`/product/${item.productId}`}>{item.title}</Link>
+                                    </span>
                                     <span className="text-[#8B7A8F]">({item.quantity}x)</span>
                                     <span className="ml-auto font-semibold">₹{item.price * item.quantity}</span>
                                   </li>
@@ -620,6 +688,39 @@ function AdminDashboard() {
                               <div className="mt-2 border-t border-[#EEDDF0] pt-2 flex justify-between font-bold text-[#1A0F1C]">
                                 <span>Grand Total:</span>
                                 <span>₹{order.total}</span>
+                              </div>
+                              {order.couponUsed && (
+                                <div className="mt-1 flex justify-between text-[11px] font-semibold text-[#0F8A4B]">
+                                  <span>Coupon: {order.couponUsed}</span>
+                                  <span>Applied</span>
+                                </div>
+                              )}
+                              <div className="mt-4 border-t border-[#EEDDF0] pt-3">
+                                <div className="text-[12px] font-bold text-[#4A354D] uppercase mb-2">Tracking (AWB)</div>
+                                <div className="flex flex-col gap-2">
+                                  <input 
+                                    type="text" 
+                                    placeholder="AWB Number" 
+                                    defaultValue={order.trackingNumber || ""}
+                                    onBlur={(e) => {
+                                      if (e.target.value !== order.trackingNumber) {
+                                        handleTrackingUpdate(order._id, e.target.value, order.trackingLink || "");
+                                      }
+                                    }}
+                                    className="rounded-lg border border-[#EEDDF0] px-3 py-1.5 text-[12px] outline-none"
+                                  />
+                                  <input 
+                                    type="url" 
+                                    placeholder="Tracking Link" 
+                                    defaultValue={order.trackingLink || ""}
+                                    onBlur={(e) => {
+                                      if (e.target.value !== order.trackingLink) {
+                                        handleTrackingUpdate(order._id, order.trackingNumber || "", e.target.value);
+                                      }
+                                    }}
+                                    className="rounded-lg border border-[#EEDDF0] px-3 py-1.5 text-[12px] outline-none"
+                                  />
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -844,7 +945,15 @@ function AdminDashboard() {
               {/* 4. INQUIRIES TAB */}
               {activeTab === "inquiries" && (
                 <div>
-                  <h2 className="mb-6 text-[18px] font-semibold text-[#1A0F1C]">Customer Support Inquiries</h2>
+                  <div className="mb-6 flex items-center justify-between">
+                    <h2 className="text-[18px] font-semibold text-[#1A0F1C]">Customer Support Inquiries</h2>
+                    <button 
+                      onClick={handleDownloadInquiries}
+                      className="flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-4 py-2 text-[13px] font-medium text-blue-700 transition hover:bg-blue-100"
+                    >
+                      <Download className="h-4 w-4" /> Download CSV
+                    </button>
+                  </div>
                   <div className="space-y-4">
                     {filteredInquiries.length === 0 ? (
                       <p className="text-[14px] text-center text-[#8B7A8F] py-8">No customer inquiries found.</p>
@@ -863,6 +972,110 @@ function AdminDashboard() {
                           <p className="text-[13.5px] text-[#4A354D] leading-relaxed">"{inq.message}"</p>
                         </div>
                       ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 5. COUPONS TAB */}
+              {activeTab === "coupons" && (
+                <div>
+                  <div className="mb-6 flex items-center justify-between">
+                    <h2 className="text-[18px] font-semibold text-[#1A0F1C]">Discount Coupons</h2>
+                    <Link href="/admin/coupons/create" className="flex items-center gap-1.5 rounded-full bg-[#8B1D8F] px-4 py-2 text-[13px] font-medium text-white transition hover:bg-[#7A187C]">
+                      <Plus className="h-4 w-4" /> Create Coupon
+                    </Link>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-[14px]">
+                      <thead>
+                        <tr className="border-b border-[#F0E6F2] text-left text-[#8B7A8F] font-medium">
+                          <th className="pb-3 pr-4">Code</th>
+                          <th className="pb-3 pr-4">Discount</th>
+                          <th className="pb-3 pr-4">Status</th>
+                          <th className="pb-3 pr-4">Expiry</th>
+                          <th className="pb-3 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {coupons.map((c) => (
+                          <tr key={c._id} className="border-b border-[#F8F0F9] last:border-0 hover:bg-[#FCF7FD]/30">
+                            <td className="py-3.5 pr-4 font-mono font-bold text-[#8B1D8F]">{c.code}</td>
+                            <td className="py-3.5 pr-4 text-[#1A0F1C] font-semibold">{c.discountPercent}%</td>
+                            <td className="py-3.5 pr-4">
+                              <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${c.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                {c.active ? "Active" : "Inactive"}
+                              </span>
+                            </td>
+                            <td className="py-3.5 pr-4 text-[#6B5A6F]">
+                              {c.expiresAt ? new Date(c.expiresAt).toLocaleDateString() : "Never"}
+                            </td>
+                            <td className="py-3.5 text-center">
+                              <button
+                                onClick={async () => {
+                                  if (!confirm("Delete this coupon?")) return;
+                                  await fetch(`/api/admin/coupons?id=${c._id}`, { method: "DELETE" });
+                                  fetchData();
+                                }}
+                                className="grid h-8 w-8 mx-auto place-items-center rounded-lg border border-red-100 text-red-500 transition hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {coupons.length === 0 && (
+                          <tr><td colSpan={5} className="py-8 text-center text-[#8B7A8F]">No coupons found.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* 6. BANNERS TAB */}
+              {activeTab === "banners" && (
+                <div>
+                  <div className="mb-6 flex items-center justify-between">
+                    <h2 className="text-[18px] font-semibold text-[#1A0F1C]">Homepage Banners</h2>
+                    <Link href="/admin/banners/create" className="flex items-center gap-1.5 rounded-full bg-[#8B1D8F] px-4 py-2 text-[13px] font-medium text-white transition hover:bg-[#7A187C]">
+                      <Plus className="h-4 w-4" /> Add Banner
+                    </Link>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {banners.map((b) => (
+                      <div key={b._id} className="overflow-hidden rounded-[20px] border border-[#F0E6F2] bg-white shadow-sm">
+                        <div className="relative aspect-[21/9] bg-gray-100">
+                          <img src={b.image} alt="" className="h-full w-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40" />
+                          <div className="absolute inset-0 p-4 flex flex-col justify-end text-white">
+                            {b.eyebrow && <span className="text-[10px] uppercase font-bold text-[#FFB3E0]">{b.eyebrow}</span>}
+                            <h3 className="text-[16px] font-bold leading-tight">{b.title}</h3>
+                            <div className="mt-2 text-[12px]"><span className="bg-white/20 px-2 py-0.5 rounded">{b.ctaText}</span></div>
+                          </div>
+                          {!b.active && (
+                            <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] flex items-center justify-center">
+                              <span className="bg-white text-black font-bold px-3 py-1 rounded-full shadow-lg">INACTIVE</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3 border-t border-[#F0E6F2] flex items-center justify-between bg-[#FCF7FD]">
+                          <span className="text-[12px] text-[#6B5A6F]">Added {new Date(b.createdAt).toLocaleDateString()}</span>
+                          <button
+                            onClick={async () => {
+                              if (!confirm("Delete this banner?")) return;
+                              await fetch(`/api/admin/banners?id=${b._id}`, { method: "DELETE" });
+                              fetchData();
+                            }}
+                            className="flex items-center gap-1 text-[12px] font-semibold text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {banners.length === 0 && (
+                      <p className="col-span-full py-8 text-center text-[#8B7A8F]">No banners added yet.</p>
                     )}
                   </div>
                 </div>

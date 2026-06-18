@@ -11,6 +11,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, message: "Missing email parameter" }, { status: 400 });
     }
 
+    if (email === "admin@saheli.internal") {
+      return NextResponse.json({ success: true, cart: [], wishlist: [] });
+    }
+
     await dbConnect();
     const user = await User.findOne({ email });
 
@@ -35,6 +39,10 @@ export async function POST(req: Request) {
 
     if (!email) {
       return NextResponse.json({ success: false, message: "Missing email" }, { status: 400 });
+    }
+
+    if (email === "admin@saheli.internal") {
+      return NextResponse.json({ success: true, message: "Admin user doesn't sync data", cart: [], wishlist: [] });
     }
 
     await dbConnect();

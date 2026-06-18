@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from 'next/link';
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Star, Truck, ShieldCheck, RotateCcw, Sparkles, IndianRupee, Play, ArrowRight, Check, Heart, ShoppingBag } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, Truck, ShieldCheck, RotateCcw, Sparkles, IndianRupee, ArrowRight, Check, Heart, ShoppingBag } from "lucide-react";
 import { heroSlides, categories, testimonials } from "@/data/mockData";
 import { useShop } from "@/context/ShopContext";
 
@@ -25,22 +25,35 @@ export default function Home() {
 
   const [productsList, setProductsList] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [banners, setBanners] = useState<any[]>(heroSlides); // Fallback to mock data initially
 
   useEffect(() => {
-    async function fetchProducts() {
+    async function fetchInitialData() {
       try {
-        const res = await fetch("/api/products");
-        const data = await res.json();
-        if (data.success) {
-          setProductsList(data.products);
+        const [prodRes, bannerRes] = await Promise.all([
+          fetch("/api/products"),
+          fetch("/api/admin/banners")
+        ]);
+        
+        const [prodData, bannerData] = await Promise.all([
+          prodRes.json(),
+          bannerRes.json()
+        ]);
+
+        if (prodData.success) setProductsList(prodData.products);
+        if (bannerData.success && bannerData.banners.length > 0) {
+          const activeBanners = bannerData.banners.filter((b: any) => b.active);
+          if (activeBanners.length > 0) {
+            setBanners(activeBanners);
+          }
         }
       } catch (err) {
-        console.error("Error fetching products:", err);
+        console.error("Error fetching data:", err);
       } finally {
         setLoadingProducts(false);
       }
     }
-    fetchProducts();
+    fetchInitialData();
   }, []);
 
   const scrollTestimonialCarousel = (dir: "left" | "right") => {
@@ -51,10 +64,10 @@ export default function Home() {
 
   useEffect(() => {
     const id = setInterval(() => {
-      setActiveSlide((s) => (s + 1) % heroSlides.length);
+      setActiveSlide((s) => (s + 1) % banners.length);
     }, 5500);
     return () => clearInterval(id);
-  }, []);
+  }, [banners.length]);
 
   const scrollCarousel = (dir: "left" | "right") => {
     if (!carouselRef.current) return;
@@ -68,36 +81,40 @@ export default function Home() {
       <section className="relative mx-auto max-w-[1240px] px-4 pt-5 md:pt-7">
         <div className="relative">
           <div className="relative h-[68vh] min-h-[520px] w-full overflow-hidden rounded-[28px] bg-[#1A0F1C] md:h-[76vh] md:min-h-[580px] md:rounded-[32px]">
-            <AnimatePresence mode="wait">
-              <motion.div key={activeSlide} initial={{ opacity: 0, scale: 1.02 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }} className="absolute inset-0">
-                <img src={heroSlides[activeSlide].image} alt={heroSlides[activeSlide].title} className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#8B1D8F]/30 via-transparent to-[#E91E7A]/20 mix-blend-multiply" />
+            <AnimatePresence initial={false}>
+              <motion.div
+                key={activeSlide}
+                initial={{ opacity: 0, scale: 1.05 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.05 }}
+                transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute inset-0"
+              >
+                <div className="absolute inset-0 bg-[#1A0F1C]/20 mix-blend-multiply" />
+                <img src={banners[activeSlide].image} alt="" className="h-full w-full object-cover" />
               </motion.div>
             </AnimatePresence>
 
-            {/* Content */}
             <div className="absolute inset-0 flex items-end md:items-center">
               <div className="w-full px-5 pb-10 pt-20 md:px-12 md:pb-0">
                 <div className="max-w-[620px]">
                   <AnimatePresence mode="wait">
                     <motion.div key={activeSlide} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
-                      <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 backdrop-blur-md">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#FFB3E0]" />
-                        <span className="text-[11px] font-medium uppercase tracking-wider text-white/90">{heroSlides[activeSlide].eyebrow}</span>
-                        <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium text-white">{heroSlides[activeSlide].badge}</span>
-                      </div>
-                      <h1 className="text-[32px] font-semibold leading-[1.1] tracking-tight text-white md:text-[48px]">{heroSlides[activeSlide].title}</h1>
-                      <p className="mt-3 max-w-[520px] text-[14.5px] leading-relaxed text-white/85 md:text-[16px]">{heroSlides[activeSlide].subtitle}</p>
+                      {(banners[activeSlide].eyebrow || banners[activeSlide].badge) && (
+                        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 backdrop-blur-md">
+                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#FFB3E0]" />
+                          {banners[activeSlide].eyebrow && <span className="text-[11px] font-medium uppercase tracking-wider text-white/90">{banners[activeSlide].eyebrow}</span>}
+                          {banners[activeSlide].badge && <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium text-white">{banners[activeSlide].badge}</span>}
+                        </div>
+                      )}
+                      <h1 className="text-[32px] font-semibold leading-[1.1] tracking-tight text-white md:text-[48px]">{banners[activeSlide].title}</h1>
+                      <p className="mt-3 max-w-[520px] text-[14.5px] leading-relaxed text-white/85 md:text-[16px]">{banners[activeSlide].subtitle}</p>
                       <div className="mt-6 flex items-center gap-3">
-                        <Link href="/products" className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-white px-6 py-[12px] text-[14px] font-medium text-[#6B146E] transition hover:shadow-lg hover:shadow-white/20">
-                          <span className="relative z-10">{heroSlides[activeSlide].cta}</span>
+                        <Link href={banners[activeSlide].ctaLink || "/products"} className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-white px-6 py-[12px] text-[14px] font-medium text-[#6B146E] transition hover:shadow-lg hover:shadow-white/20">
+                          <span className="relative z-10">{banners[activeSlide].ctaText || banners[activeSlide].cta || "Shop Now"}</span>
                           <ArrowRight className="relative z-10 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                           <span className="absolute inset-0 -z-0 translate-y-full bg-gradient-to-r from-[#F3E7F5] to-[#FFE4F2] transition-transform duration-300 group-hover:translate-y-0" />
                         </Link>
-                        <a href="#" className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-5 py-[11px] text-[14px] font-medium text-white backdrop-blur-md transition hover:bg-white/20">
-                          <Play className="h-3.5 w-3.5" /> Watch reel
-                        </a>
                       </div>
                     </motion.div>
                   </AnimatePresence>
@@ -107,17 +124,17 @@ export default function Home() {
 
             {/* Controls */}
             <div className="absolute bottom-5 right-5 flex items-center gap-2 md:bottom-7 md:right-7">
-              <button onClick={() => setActiveSlide((s) => (s - 1 + heroSlides.length) % heroSlides.length)} className="grid h-9 w-9 place-items-center rounded-full bg-black/30 text-white backdrop-blur-md transition hover:bg-black/50">
+              <button onClick={() => setActiveSlide((s) => (s - 1 + banners.length) % banners.length)} className="grid h-9 w-9 place-items-center rounded-full bg-black/30 text-white backdrop-blur-md transition hover:bg-black/50">
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <button onClick={() => setActiveSlide((s) => (s + 1) % heroSlides.length)} className="grid h-9 w-9 place-items-center rounded-full bg-black/30 text-white backdrop-blur-md transition hover:bg-black/50">
+              <button onClick={() => setActiveSlide((s) => (s + 1) % banners.length)} className="grid h-9 w-9 place-items-center rounded-full bg-black/30 text-white backdrop-blur-md transition hover:bg-black/50">
                 <ChevronRight className="h-5 w-5" />
               </button>
             </div>
 
             {/* Indicators */}
             <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-1.5 md:bottom-7">
-              {heroSlides.map((_, i) => (
+              {banners.map((_, i) => (
                 <button key={i} onClick={() => setActiveSlide(i)} className={cn("h-[3px] rounded-full transition-all", i === activeSlide ? "w-8 bg-white" : "w-5 bg-white/40 hover:bg-white/70")} />
               ))}
             </div>
