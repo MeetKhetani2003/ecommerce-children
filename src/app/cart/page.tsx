@@ -374,7 +374,7 @@ export default function Cart() {
                 <div className="flex flex-1 flex-col justify-between py-1">
                   <div className="flex justify-between gap-2">
                     <div>
-                      <div className="text-[14.5px] font-semibold text-[#1A0F1C]">{item.title}</div>
+                      <Link href={`/product/${item.id}`} className="text-[14.5px] font-semibold text-[#1A0F1C] hover:text-[#8B1D8F] transition-colors">{item.title}</Link>
                       <div className="mt-0.5 text-[12.5px] text-[#6B5A6F]">Category: {item.category}</div>
                       {item.size && <div className="mt-0.5 text-[12.5px] text-[#6B5A6F]">Size: {item.size}</div>}
                     </div>
