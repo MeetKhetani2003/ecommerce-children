@@ -29,7 +29,7 @@ export async function PUT(req: Request) {
     if (isFirstTimePhone) {
       // Generate a unique 10% coupon code
       const uniqueSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
-      generatedCouponCode = \`WELCOME10-\${uniqueSuffix}\`;
+      generatedCouponCode = `WELCOME10-${uniqueSuffix}`;
       
       await Coupon.create({
         code: generatedCouponCode,

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
-import { User, MapPin, Package, Heart, LogOut, Shield, Compass, CheckCircle, Truck, ShoppingBag, Trash2, X, Star } from "lucide-react";
+import { User, MapPin, Package, Heart, LogOut, CheckCircle, Truck, ShoppingBag, Trash2, X, Star } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 import toast from "react-hot-toast";
 
@@ -199,7 +199,7 @@ export default function Profile() {
     }
   };
 
-  const isAdmin = (session?.user as any)?.role === "admin";
+  // const isAdmin = (session?.user as any)?.role === "admin";
 
   useEffect(() => {
     if (session?.user?.email) {
@@ -314,24 +314,24 @@ export default function Profile() {
     }
   };
 
-  const handleDevBypass = async () => {
-    if (!session?.user?.email) return;
-    try {
-      const targetRole = isAdmin ? "user" : "admin";
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: session.user.email, role: targetRole }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(`Your role has been set to ${targetRole}. Please refresh.`);
-        window.location.reload();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  // const handleDevBypass = async () => {
+  //   if (!session?.user?.email) return;
+  //   try {
+  //     const targetRole = isAdmin ? "user" : "admin";
+  //     const res = await fetch("/api/admin/users", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ email: session.user.email, role: targetRole }),
+  //     });
+  //     const data = await res.json();
+  //     if (data.success) {
+  //       toast.success(`Your role has been set to ${targetRole}. Please refresh.`);
+  //       window.location.reload();
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //   }
+  // };
 
   // Sign in state check
   if (!session) {
@@ -727,7 +727,7 @@ export default function Profile() {
                   <p className="text-[14px] text-center text-[#8B7A8F] py-8">Your cart is empty.</p>
                 ) : (
                   <div className="space-y-4">
-                    {cartItems.map((item, idx) => (
+                    {cartItems.map((item) => (
                       <div key={item.cartItemId} className="flex gap-4 rounded-2xl border border-[#F0E6F2] p-4 bg-[#FFFCFE]/40">
                         <Link href={`/product/${item.id}`} className="block h-24 w-20 shrink-0 overflow-hidden rounded-xl border border-gray-100">
                           <img src={item.image} alt={item.title} className="h-full w-full object-cover" />

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, User, Shield, Compass } from "lucide-react";
+import { X, Sparkles, User } from "lucide-react";
 import { signIn } from "next-auth/react";
 
 interface LoginModalProps {

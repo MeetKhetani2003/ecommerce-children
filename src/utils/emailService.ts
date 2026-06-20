@@ -589,13 +589,13 @@ export async function sendWelcomeCouponEmail(email: string, name: string, coupon
       });
 
       await transporter.sendMail({
-        from: \`"Saheli Shrungar" <\${user}>\`,
+        from: `"Saheli Shrungar" <${user}>`,
         to: email,
-        subject: \`Here is your 10% Discount Code! 🎁\`,
+        subject: `Here is your 10% Discount Code! 🎁`,
         html: customerHtml,
       });
 
-      console.log(\`[Email Service] Welcome coupon email sent successfully to \${email}.\`);
+      console.log(`[Email Service] Welcome coupon email sent successfully to ${email}.`);
       return;
     } catch (error) {
       console.error("[Email Service] Failed to send welcome coupon email via SMTP:", error);
@@ -603,8 +603,8 @@ export async function sendWelcomeCouponEmail(email: string, name: string, coupon
   }
 
   console.log("==================================================================");
-  console.log(\`[MOCK EMAIL FALLBACK] Welcome Coupon Email Sent.\`);
-  console.log(\`Customer: \${name} (\${email})\`);
-  console.log(\`Coupon Code: \${couponCode}\`);
+  console.log(`[MOCK EMAIL FALLBACK] Welcome Coupon Email Sent.`);
+  console.log(`Customer: ${name} (${email})`);
+  console.log(`Coupon Code: ${couponCode}`);
   console.log("==================================================================");
 }

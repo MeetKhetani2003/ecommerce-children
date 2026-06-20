@@ -103,8 +103,6 @@ function ProductsContent() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
-  
-  const { wishlist, toggleWishlist, addToCart } = useShop();
 
   const filteredProducts = useMemo(() => {
     let result = productsList;
