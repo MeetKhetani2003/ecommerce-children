@@ -7,7 +7,7 @@ import { useParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { 
   ArrowLeft, Mail, Calendar, Shield, MapPin, 
-  ShoppingCart, Heart, Package
+  ShoppingCart, Heart, Package, Phone
 } from "lucide-react";
 
 export default function UserDetailPage() {
@@ -58,25 +58,6 @@ export default function UserDetailPage() {
       }
     } catch (err) {
       console.error("Failed to load products list:", err);
-    }
-  };
-
-  const handleToggleUserRole = async () => {
-    if (!userData) return;
-    const targetRole = userData.role === "admin" ? "user" : "admin";
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userData.email, role: targetRole }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(`User role updated to ${targetRole}`);
-        setUserData((prev: any) => ({ ...prev, role: targetRole }));
-      }
-    } catch (error) {
-      console.error(error);
     }
   };
 
@@ -200,6 +181,10 @@ export default function UserDetailPage() {
                     <span className="truncate">{userData.email}</span>
                   </div>
                   <div className="flex items-center gap-3">
+                    <Phone className="h-4 w-4 text-[#8B7A8F] shrink-0" />
+                    <span className="truncate">{userData.phone || "No phone added"}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
                     <Calendar className="h-4 w-4 text-[#8B7A8F] shrink-0" />
                     <span>Registered: {new Date(userData.createdAt).toLocaleDateString()}</span>
                   </div>
@@ -208,13 +193,6 @@ export default function UserDetailPage() {
                     <span>User ID: <span className="font-mono text-[12px]">{userData._id}</span></span>
                   </div>
                 </div>
-
-                <button
-                  onClick={handleToggleUserRole}
-                  className="mt-6 w-full rounded-full border border-[#EEDDF0] py-2 text-[13px] font-semibold text-[#8B1D8F] hover:bg-[#FCF7FD] transition"
-                >
-                  Toggle to {userData.role === "admin" ? "User" : "Admin"} Role
-                </button>
               </div>
             </div>
 
