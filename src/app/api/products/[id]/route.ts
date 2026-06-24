@@ -16,11 +16,27 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     
     let updateData: any = {};
     
-    const fields = ['title', 'category', 'price', 'mrp', 'netPrice', 'stock', 'description', 'tag', 'material', 'careInstructions'];
+    const fields = ['title', 'category', 'price', 'mrp', 'netPrice', 'stock', 'description', 'tag', 'features', 'careInstructions', 'brand'];
     fields.forEach(f => {
       const val = formData.get(f);
       if (val !== null) updateData[f] = val;
     });
+
+    // Handle features and material synchronization for backward compatibility
+    const featuresVal = formData.get("features");
+    const materialVal = formData.get("material");
+    if (featuresVal !== null) {
+      updateData.features = featuresVal;
+      updateData.material = featuresVal;
+    } else if (materialVal !== null) {
+      updateData.features = materialVal;
+      updateData.material = materialVal;
+    }
+
+    const citiesStr = formData.get("cities");
+    if (citiesStr !== null) {
+      updateData.cities = (citiesStr as string).split(",").map(s => s.trim()).filter(Boolean);
+    }
 
     if (updateData.price) updateData.price = parseFloat(updateData.price);
     if (updateData.mrp) updateData.mrp = parseFloat(updateData.mrp);

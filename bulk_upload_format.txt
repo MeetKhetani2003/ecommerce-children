@@ -1,0 +1,142 @@
+PRODUCT BULK UPLOAD EXCEL FORMAT GUIDE
+======================================
+
+Please share this guide and the column headings with your client so they can prepare the product database accurately.
+
+--------------------------------------------------------------------------------
+1. EXCEL COLUMNS & DATA FORMATS
+--------------------------------------------------------------------------------
+
+Fill out the Excel sheet using the following column headers. Make sure all values follow the exact formats:
+
+- Column A: Product ID
+  Format: Number (e.g. 1001)
+  Description: Unique numerical ID for each product.
+
+- Column B: SKU
+  Format: Text (e.g. ANIM-LION-01)
+  Description: Unique SKU code. Can be left blank if your system auto-generates them.
+
+- Column C: Title
+  Format: Text (e.g. Deluxe Lion Costume for Kids)
+  Description: Full name of the costume/product.
+
+- Column D: Category
+  Format: Text (e.g. Animal Costume)
+  Description: Must match one of the exact category names from the lists below.
+
+- Column E: Tag / Badge
+  Format: Text (e.g. Bestseller)
+  Description: Optional badge (e.g. Bestseller, New Arrival, Sale). Leave blank for none.
+
+- Column F: Net Cost Price
+  Format: Number (e.g. 450)
+  Description: Your purchase/manufacturing cost price in INR (₹).
+
+- Column G: Selling Price
+  Format: Number (e.g. 799)
+  Description: The price at which customers purchase the product in INR (₹).
+
+- Column H: MRP
+  Format: Number (e.g. 1299)
+  Description: Maximum Retail Price (shown crossed-out) in INR (₹).
+
+- Column I: Sizes & Stock
+  Format: Text (e.g. 3-4 Yrs:15, 5-6 Yrs:20, 7-8 Yrs:5)
+  Description: Sizes and stock quantities. Use the pattern "SizeName:StockAmount" separated by commas.
+
+- Column J: What's Included
+  Format: Text (e.g. 1 Headpiece, 1 Jumpsuit, 1 Tail)
+  Description: Items included in the package. Separate items with a comma.
+
+- Column K: Costume Features
+  Format: Text (e.g. Complete Costume Set, Comfortable Fit, Breathable)
+  Description: Key costume features and highlights. Separate multiple features with a comma.
+
+- Column L: Care Instructions
+  Format: Text (e.g. Hand wash only. Dry in shade. Do not iron.)
+  Description: Care guidelines. Separate multiple rules with a period.
+
+- Column M: Costume Description
+  Format: Text (e.g. A high-quality soft plush lion jumpsuit perfect for school plays.)
+  Description: Full product description.
+
+- Column N: Featured
+  Format: Text (TRUE or FALSE)
+  Description: Use TRUE to feature it on the home page under "Featured This Week", otherwise use FALSE.
+
+- Column O: Main Image File
+  Format: Text (e.g. lion_main.jpg)
+  Description: Exact filename of the main product image.
+
+- Column P: Gallery Image Files
+  Format: Text (e.g. lion_back.jpg, lion_detail.jpg)
+  Description: Exact filenames of extra images, separated by commas. Leave blank if none.
+
+
+--------------------------------------------------------------------------------
+2. IMAGE FOLDERS MAPPING FORMAT
+--------------------------------------------------------------------------------
+
+The client must organize product images in separate folders named after the "Product ID" or "SKU":
+
+Structure Example:
+CostumeImages/
+├── 1001/
+│   ├── lion_main.jpg
+│   ├── lion_back.jpg
+│   └── lion_detail.jpg
+└── 1002/
+    ├── superhero_main.png
+    └── superhero_back.png
+
+Instructions:
+1. Create a root folder named "CostumeImages".
+2. Inside it, create a subfolder for each product using its numerical Product ID (e.g., "1001") or SKU.
+3. Place all images for that specific product inside its subfolder.
+4. Put the exact image filenames in the "Main Image File" and "Gallery Image Files" columns in your Excel sheet.
+
+
+--------------------------------------------------------------------------------
+3. VALID REFERENCE VALUES LISTS
+--------------------------------------------------------------------------------
+
+To avoid upload errors, choose values only from these lists:
+
+EXACT CATEGORY LIST:
+- Animal Costume
+- Birds Costume
+- Indian State Costume
+- Fruit Costume
+- Vegetable Costume
+- Water Animals Costume
+- Hair Wigs
+- Super Heroes
+- Insect Costume
+- Our Helpers
+- Flower Costume
+- Cartoon Characters Costume
+- Community Helpers
+- Indian Mythology Costume
+- Republic Day / Independence Day
+- Indian Dance Costume
+- Caps / Hats / Safa / Pagdi
+- Face Masks
+- Halloween Costumes
+- National Heroes
+- Silver / Golden Jewellery
+- Offer Products
+- Umbrella / Fans
+
+EXACT TAG / BADGE LIST:
+- Bestseller
+- New Arrival
+- Hot
+- Trending
+- Limited Stock
+- Sale
+- Exclusive
+- Top Rated
+- Festival Special
+- School Favourite
+- (Or leave blank for no badge)

@@ -63,7 +63,7 @@ async function seedDatabase() {
           tag: p.tag,
           description: p.description || "Premium costume set, perfect for school events, festivals, and parties.",
           stock: totalStock,
-          material: p.material || "Soft, comfortable kid-safe fabrics",
+          features: p.features || "Soft, comfortable kid-safe fabrics",
           sizes: sizeObjects,
           whatsIncluded: p.whatsIncluded || ["Main Costume Accessories"],
           careInstructions: p.careInstructions || "Dry clean or gentle hand wash.",
@@ -77,6 +77,12 @@ async function seedDatabase() {
       for (const prod of existingProductsList) {
         let needsUpdate = false;
         let updateFields: any = {};
+
+        // Migrate material to features
+        if (prod.material && !prod.features) {
+          updateFields.features = prod.material;
+          needsUpdate = true;
+        }
 
         // Migrate images if missing
         if (!prod.images || prod.images.length === 0) {

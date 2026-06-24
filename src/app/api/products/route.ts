@@ -26,11 +26,13 @@ export async function POST(req: Request) {
     const netPriceStr = formData.get("netPrice") as string;
     const description = formData.get("description") as string;
     const tag = formData.get("tag") as string;
-    const material = formData.get("material") as string;
+    const features = (formData.get("features") as string || formData.get("material") as string || "");
     const sizesStr = formData.get("sizes") as string;
     const whatsIncludedStr = formData.get("whatsIncluded") as string;
     const careInstructions = formData.get("careInstructions") as string;
     const featuredStr = formData.get("featured") as string;
+    const brand = (formData.get("brand") as string || "Saheli Shrungar").trim();
+    const citiesStr = formData.get("cities") as string || "All";
     
     const imageFile = formData.get("image") as File | null;
     const imagesFiles = formData.getAll("images") as File[];
@@ -138,7 +140,10 @@ export async function POST(req: Request) {
       description: description || "",
       rating: 4.5,
       tag: tag || "",
-      material: material || "",
+      features: features,
+      material: features,
+      brand,
+      cities: citiesStr.split(",").map(s => s.trim()).filter(Boolean),
       sizes,
       whatsIncluded,
       careInstructions: careInstructions || "",

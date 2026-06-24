@@ -6,17 +6,8 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Edit, Trash2, Plus, X, ImageIcon } from "lucide-react";
 import Barcode from "react-barcode";
-import CreatableSelect from "react-select/creatable";
 import toast from "react-hot-toast";
 
-const DEFAULT_MATERIALS = [
-  { value: "100% Cotton", label: "100% Cotton" },
-  { value: "Polyester", label: "Polyester" },
-  { value: "Silk", label: "Silk" },
-  { value: "Velvet", label: "Velvet" },
-  { value: "Felt", label: "Felt" },
-  { value: "Satin", label: "Satin" },
-];
 
 interface SizeEntry {
   size: string;
@@ -40,9 +31,11 @@ export default function EditProductPage() {
   const [formNetPrice, setFormNetPrice] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formTag, setFormTag] = useState("");
-  const [formMaterial, setFormMaterial] = useState("");
+  const [formFeatures, setFormFeatures] = useState("");
   const [formWhatsIncluded, setFormWhatsIncluded] = useState("");
   const [formCareInstructions, setFormCareInstructions] = useState("");
+  const [formBrand, setFormBrand] = useState("Saheli Shrungar");
+  const [formCities, setFormCities] = useState("All");
   
   // Size-stock pairs
   const [sizeEntries, setSizeEntries] = useState<SizeEntry[]>([{ size: "", stock: 0 }]);
@@ -63,45 +56,7 @@ export default function EditProductPage() {
 
   const isAdmin = (session?.user as any)?.role === "admin";
 
-  const [materials, setMaterials] = useState(DEFAULT_MATERIALS);
-  
-  useEffect(() => {
-    const saved = localStorage.getItem("customMaterials");
-    if (saved) {
-      try {
-        setMaterials([...DEFAULT_MATERIALS, ...JSON.parse(saved)]);
-      } catch (e) {}
-    }
-  }, []);
 
-  const selectedMaterials = formMaterial ? formMaterial.split(',').map(s => s.trim()).filter(Boolean) : [];
-
-  const handleCreateMaterial = (inputValue: string) => {
-    const newOption = { value: inputValue, label: inputValue };
-    setMaterials((prev) => [...prev, newOption]);
-    
-    // Auto-add it to selection
-    if (!selectedMaterials.includes(inputValue)) {
-      setFormMaterial([...selectedMaterials, inputValue].join(', '));
-    }
-    
-    const saved = localStorage.getItem("customMaterials");
-    const parsed = saved ? JSON.parse(saved) : [];
-    localStorage.setItem("customMaterials", JSON.stringify([...parsed, newOption]));
-  };
-
-  const handleAddMaterial = (newValue: any) => {
-    if (!newValue) return;
-    const val = newValue.value;
-    if (!selectedMaterials.includes(val)) {
-      setFormMaterial([...selectedMaterials, val].join(', '));
-    }
-  };
-
-  const handleRemoveMaterial = (matToRemove: string) => {
-    const newMats = selectedMaterials.filter(m => m !== matToRemove);
-    setFormMaterial(newMats.join(', '));
-  };
 
   useEffect(() => {
     if (isAdmin && id) {
@@ -125,9 +80,11 @@ export default function EditProductPage() {
         setExistingDetailedImages(product.images && product.images.length > 0 ? product.images : []);
         setFormDescription(product.description || "");
         setFormTag(product.tag || "");
-        setFormMaterial(product.material || "");
+        setFormFeatures(product.features || product.material || "");
         setFormWhatsIncluded(product.whatsIncluded ? product.whatsIncluded.join("\n") : "");
         setFormCareInstructions(product.careInstructions || "");
+        setFormBrand(product.brand || "Saheli Shrungar");
+        setFormCities(product.cities && product.cities.length > 0 ? product.cities.join(", ") : "All");
         setFormFeatured(!!product.featured);
         setReviews(product.reviews || []);
 
@@ -240,11 +197,14 @@ export default function EditProductPage() {
     formData.append("netPrice", formNetPrice);
     formData.append("description", formDescription);
     formData.append("tag", formTag);
-    formData.append("material", formMaterial);
+    formData.append("features", formFeatures);
+    formData.append("material", formFeatures);
     formData.append("sizes", JSON.stringify(validSizes));
     formData.append("whatsIncluded", formWhatsIncluded);
     formData.append("careInstructions", formCareInstructions);
     formData.append("featured", formFeatured ? "true" : "false");
+    formData.append("brand", formBrand);
+    formData.append("cities", formCities);
     // Send which existing detailed images to keep
     formData.append("keepImages", JSON.stringify(existingDetailedImages));
     
@@ -352,6 +312,17 @@ export default function EditProductPage() {
                 <option value="Festival Special">🎉 Festival Special</option>
                 <option value="School Favourite">🎓 School Favourite</option>
               </select>
+            </div>
+          </div>
+
+          <div className="hidden">
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Brand</label>
+              <input type="text" value={formBrand} onChange={(e) => setFormBrand(e.target.value)} placeholder="e.g. Saheli Shrungar" className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Available Cities (comma-separated)</label>
+              <input type="text" value={formCities} onChange={(e) => setFormCities(e.target.value)} placeholder="e.g. All, Mumbai, Pune" className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
             </div>
           </div>
 
@@ -501,52 +472,14 @@ export default function EditProductPage() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Material</label>
-            <CreatableSelect
-              isClearable
-              controlShouldRenderValue={false}
-              options={materials.filter(m => !selectedMaterials.includes(m.value))}
-              value={null}
-              onChange={handleAddMaterial}
-              onCreateOption={handleCreateMaterial}
-              placeholder="Select or type to add material..."
-              styles={{
-                control: (base, state) => ({
-                  ...base,
-                  minHeight: '48px',
-                  borderRadius: '12px',
-                  borderColor: state.isFocused ? '#E1BFE6' : '#EEDDF0',
-                  boxShadow: state.isFocused ? '0 0 0 1px #E1BFE6' : 'none',
-                  fontSize: '14px',
-                  '&:hover': {
-                    borderColor: '#E1BFE6'
-                  }
-                }),
-                option: (base, state) => ({
-                  ...base,
-                  fontSize: '14px',
-                  backgroundColor: state.isSelected ? '#8B1D8F' : state.isFocused ? '#F3E7F5' : 'white',
-                  color: state.isSelected ? 'white' : '#1A0F1C',
-                  cursor: 'pointer',
-                  '&:active': {
-                    backgroundColor: '#8B1D8F',
-                    color: 'white'
-                  }
-                })
-              }}
+            <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Costume Features (comma-separated)</label>
+            <input 
+              type="text" 
+              value={formFeatures} 
+              onChange={(e) => setFormFeatures(e.target.value)} 
+              placeholder="e.g. Complete Costume Set, Comfortable Fit, Breathable Material" 
+              className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" 
             />
-            {selectedMaterials.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {selectedMaterials.map((mat) => (
-                  <span key={mat} className="flex items-center gap-1.5 rounded-full bg-[#F3E7F5] px-3 py-1.5 text-[12px] font-medium text-[#7A187C]">
-                    {mat}
-                    <button type="button" onClick={() => handleRemoveMaterial(mat)} className="text-[#8B1D8F] hover:text-red-500 transition-colors">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Image Upload Section */}

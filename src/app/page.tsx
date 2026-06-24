@@ -220,8 +220,13 @@ export default function Home() {
                     <Link href={`/product/${p.id}`}>
                       <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                     </Link>
-                    <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
-                      <span className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur">{p.category}</span>
+                    <div className="absolute left-2.5 top-2.5 right-11 flex flex-wrap items-center gap-1.5">
+                      <span 
+                        className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur max-w-[90px] sm:max-w-[130px] truncate inline-block" 
+                        title={p.category}
+                      >
+                        {p.category.includes(">") ? p.category.split(">").pop()?.trim() : p.category}
+                      </span>
                       {p.tag && <span className="rounded-full bg-[#1A0F1C] px-2 py-1 text-[10.5px] font-medium leading-none text-white">{p.tag}</span>}
                     </div>
                     <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(p.id); }} className="absolute right-2.5 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-[#6B5A6F] shadow-sm backdrop-blur transition-all hover:text-[#E91E7A]">

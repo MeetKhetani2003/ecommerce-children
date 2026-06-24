@@ -13,6 +13,7 @@ const ProductSchema = new Schema({
   description: { type: String },
   stock: { type: Number, default: 50 },
   featured: { type: Boolean, default: false },
+  features: { type: String },
   material: { type: String },
   sizes: [{
     size: { type: String, required: true },
@@ -22,6 +23,8 @@ const ProductSchema = new Schema({
   careInstructions: { type: String },
   images: [{ type: String }],
   sku: { type: String, unique: true },
+  brand: { type: String, default: "Saheli Shrungar" },
+  cities: { type: [String], default: ["All"] },
   reviews: {
     type: [{
       userName: { type: String, required: true },

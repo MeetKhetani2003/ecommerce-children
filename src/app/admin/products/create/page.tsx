@@ -22,9 +22,11 @@ export default function CreateProductPage() {
   const [formNetPrice, setFormNetPrice] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formTag, setFormTag] = useState("");
-  const [formMaterial, setFormMaterial] = useState("");
+  const [formFeatures, setFormFeatures] = useState("");
   const [formWhatsIncluded, setFormWhatsIncluded] = useState("");
   const [formCareInstructions, setFormCareInstructions] = useState("");
+  const [formBrand, setFormBrand] = useState("Saheli Shrungar");
+  const [formCities, setFormCities] = useState("All");
   const [mainImageFile, setMainImageFile] = useState<File | null>(null);
   const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
   const [detailedImagesFiles, setDetailedImagesFiles] = useState<File[]>([]);
@@ -33,6 +35,7 @@ export default function CreateProductPage() {
   const [formFeatured, setFormFeatured] = useState(false);
   const mainInputRef = useRef<HTMLInputElement>(null);
   const detailInputRef = useRef<HTMLInputElement>(null);
+
 
   // Revoke object URLs on unmount to prevent memory leaks
   useEffect(() => {
@@ -117,11 +120,14 @@ export default function CreateProductPage() {
     formData.append("netPrice", formNetPrice);
     formData.append("description", formDescription);
     formData.append("tag", formTag);
-    formData.append("material", formMaterial);
+    formData.append("features", formFeatures);
+    formData.append("material", formFeatures);
     formData.append("sizes", JSON.stringify(validSizes));
     formData.append("whatsIncluded", formWhatsIncluded);
     formData.append("careInstructions", formCareInstructions);
     formData.append("featured", formFeatured ? "true" : "false");
+    formData.append("brand", formBrand);
+    formData.append("cities", formCities);
 
     if (mainImageFile) {
       formData.append("image", mainImageFile);
@@ -218,6 +224,20 @@ export default function CreateProductPage() {
                 <option value="School Favourite">🎓 School Favourite</option>
               </select>
             </div>
+          </div>
+
+          <div className="hidden">
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Brand</label>
+              <input type="text" value={formBrand} onChange={(e) => setFormBrand(e.target.value)} placeholder="e.g. Saheli Shrungar" className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Available Cities (comma-separated)</label>
+              <input type="text" value={formCities} onChange={(e) => setFormCities(e.target.value)} placeholder="e.g. All, Mumbai, Pune" className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
+            </div>
+          </div>
+
+          <div>
             <div className="grid gap-6 sm:grid-cols-3">
               <div>
                 <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Net Cost Price (₹)</label>
@@ -242,29 +262,6 @@ export default function CreateProductPage() {
                 </span>
               </div>
             )}
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Tag / Badge</label>
-              <select value={formTag} onChange={(e) => setFormTag(e.target.value)} className="h-12 w-full rounded-xl border border-[#EEDDF0] px-3 text-[14px] outline-none bg-white focus:border-[#E1BFE6]">
-                <option value="">No Badge</option>
-                <option value="Bestseller">🏆 Bestseller</option>
-                <option value="New Arrival">✨ New Arrival</option>
-                <option value="Hot">🔥 Hot</option>
-                <option value="Trending">📈 Trending</option>
-                <option value="Limited Stock">⚡ Limited Stock</option>
-                <option value="Sale">🏷️ Sale</option>
-                <option value="Exclusive">💎 Exclusive</option>
-                <option value="Top Rated">⭐ Top Rated</option>
-                <option value="Festival Special">🎉 Festival Special</option>
-                <option value="School Favourite">🎓 School Favourite</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Material</label>
-              <input type="text" value={formMaterial} onChange={(e) => setFormMaterial(e.target.value)} placeholder="e.g. 100% Cotton" className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
-            </div>
           </div>
 
           {/* Size & Stock Management */}
@@ -379,6 +376,17 @@ export default function CreateProductPage() {
           <div>
             <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Costume Description</label>
             <textarea rows={4} value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="w-full rounded-xl border border-[#EEDDF0] p-4 text-[14px] outline-none focus:border-[#E1BFE6]" />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Costume Features (comma-separated)</label>
+            <input 
+              type="text" 
+              value={formFeatures} 
+              onChange={(e) => setFormFeatures(e.target.value)} 
+              placeholder="e.g. Complete Costume Set, Comfortable Fit, Breathable Material" 
+              className="h-12 w-full rounded-xl border border-[#EEDDF0] px-4 text-[14px] outline-none focus:border-[#E1BFE6]" 
+            />
           </div>
 
           {/* Image Upload Section */}

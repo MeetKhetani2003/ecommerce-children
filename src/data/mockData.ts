@@ -53,7 +53,7 @@ export const products = [
     ],
     tag: "Bestseller",
     description: "The ultimate superhero cape for your little one. Features premium fabric and a comfortable fit.",
-    material: "100% Breathable Polyester",
+    features: "100% Breathable Polyester",
     sizes: ["2-3 Yrs", "4-5 Yrs", "6-7 Yrs", "8-9 Yrs"],
     whatsIncluded: ["Cape", "Eye Mask", "Wrist Bands", "Action Belt"],
     careInstructions: "Hand wash cold, line dry. Do not iron the print."
@@ -73,7 +73,7 @@ export const products = [
     ],
     tag: "Festive",
     description: "A complete set including dhoti, bansuri, mukut, and jewelry. Perfect for Janmashtami and school plays.",
-    material: "Soft Silk Blend & Cotton",
+    features: "Soft Silk Blend & Cotton",
     sizes: ["1-2 Yrs", "3-4 Yrs", "5-6 Yrs", "7-8 Yrs"],
     whatsIncluded: ["Dhoti", "Kurta", "Mukut (Crown)", "Bansuri (Flute)", "Mala (Necklace)"],
     careInstructions: "Dry clean recommended due to delicate embellishments."
@@ -93,7 +93,7 @@ export const products = [
     ],
     tag: "School Pick",
     description: "Roar like a lion! This comfortable, breathable bodysuit includes a headpiece and tail.",
-    material: "Faux Fur & Cotton Lining",
+    features: "Faux Fur & Cotton Lining",
     sizes: ["2-3 Yrs", "4-5 Yrs", "6-7 Yrs"],
     whatsIncluded: ["Full Bodysuit", "Lion Headpiece", "Detachable Tail"],
     careInstructions: "Machine wash cold on gentle cycle. Tumble dry low."
@@ -113,7 +113,7 @@ export const products = [
     ],
     tag: "Premium",
     description: "Authentic classical dance attire made with rich silk-blend fabric and intricate zari work.",
-    material: "Art Silk with Zari Border",
+    features: "Art Silk with Zari Border",
     sizes: ["4-5 Yrs", "6-7 Yrs", "8-9 Yrs", "10-12 Yrs"],
     whatsIncluded: ["Blouse", "Pajama with Pleats", "Pallu (Dhavani)", "Back Piece"],
     careInstructions: "Strictly dry clean only to maintain the zari luster."
@@ -133,7 +133,7 @@ export const products = [
     ],
     tag: "-27%",
     description: "Striped tiger costume that's easy to wear and play in. Great for animal-themed parties.",
-    material: "Soft Fleece & Cotton",
+    features: "Soft Fleece & Cotton",
     sizes: ["2-3 Yrs", "4-5 Yrs", "6-7 Yrs"],
     whatsIncluded: ["Jumpsuit", "Tiger Hood", "Attached Tail", "Paws"],
     careInstructions: "Machine wash gently. Do not bleach."
@@ -153,7 +153,7 @@ export const products = [
     ],
     tag: "New",
     description: "A magical gown with wings and a wand. Sparkly, lightweight, and perfect for fairy tales.",
-    material: "Tulle, Satin & Sequin Details",
+    features: "Tulle, Satin & Sequin Details",
     sizes: ["3-4 Yrs", "5-6 Yrs", "7-8 Yrs", "9-10 Yrs"],
     whatsIncluded: ["Princess Gown", "Fairy Wings", "Magic Wand", "Tiara"],
     careInstructions: "Hand wash cold. Hang to dry. Do not iron the tulle."
@@ -173,7 +173,7 @@ export const products = [
     ],
     tag: "Limited",
     description: "Celebrate freedom with this tricolor kurta pyjama set. Comfortable cotton for all-day wear.",
-    material: "100% Pure Khadi Cotton",
+    features: "100% Pure Khadi Cotton",
     sizes: ["4-5 Yrs", "6-7 Yrs", "8-9 Yrs", "10-12 Yrs"],
     whatsIncluded: ["White Kurta", "White Pyjama", "Tricolor Dupatta/Sash", "Tricolor Cap"],
     careInstructions: "Machine wash cold with like colors. Iron on medium heat."
@@ -193,7 +193,7 @@ export const products = [
     ],
     tag: "Cute Pick",
     description: "Bzz bzz! Adorable yellow and black striped suit with attached wings and antennae.",
-    material: "Fleece & Mesh",
+    features: "Fleece & Mesh",
     sizes: ["1-2 Yrs", "3-4 Yrs", "5-6 Yrs"],
     whatsIncluded: ["Striped Tunic", "Attached Wings", "Antennae Headband"],
     careInstructions: "Hand wash only. Air dry."
