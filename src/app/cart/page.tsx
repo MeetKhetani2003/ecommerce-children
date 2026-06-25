@@ -368,13 +368,13 @@ export default function Cart() {
             <h2 className="text-[18px] font-semibold text-[#1A0F1C]">Costume List</h2>
             {cartItems.map((item) => (
               <div key={item.cartItemId} className="flex gap-4 rounded-2xl border border-[#F0E6F2] bg-white p-4 transition-all hover:shadow-sm">
-                <Link href={`/product/${item.id}`} className="block h-[100px] w-[80px] shrink-0 overflow-hidden rounded-xl bg-[#FCF7FD]">
+                <Link href={`/product/${item.slug || item.id}`} className="block h-[100px] w-[80px] shrink-0 overflow-hidden rounded-xl bg-[#FCF7FD]">
                   <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
                 </Link>
                 <div className="flex flex-1 flex-col justify-between py-1">
                   <div className="flex justify-between gap-2">
                     <div>
-                      <Link href={`/product/${item.id}`} className="text-[14.5px] font-semibold text-[#1A0F1C] hover:text-[#8B1D8F] transition-colors">{item.title}</Link>
+                      <Link href={`/product/${item.slug || item.id}`} className="text-[14.5px] font-semibold text-[#1A0F1C] hover:text-[#8B1D8F] transition-colors">{item.title}</Link>
                       <div className="mt-0.5 text-[12.5px] text-[#6B5A6F]">Category: {item.category}</div>
                       {item.size && <div className="mt-0.5 text-[12.5px] text-[#6B5A6F]">Size: {item.size}</div>}
                     </div>

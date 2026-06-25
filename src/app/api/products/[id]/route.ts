@@ -22,6 +22,29 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       if (val !== null) updateData[f] = val;
     });
 
+    // Update slug if title changes
+    if (updateData.title) {
+      const newTitle = updateData.title as string;
+      const baseSlug = newTitle
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)+/g, "");
+      
+      let slug = baseSlug;
+      let counter = 1;
+      const numId = !isNaN(Number(id)) ? Number(id) : null;
+      while (true) {
+        const existing = await Product.findOne({ 
+          slug, 
+          ...(numId ? { id: { $ne: numId } } : { _id: { $ne: id } }) 
+        });
+        if (!existing) break;
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+      }
+      updateData.slug = slug;
+    }
+
     // Handle features and material synchronization for backward compatibility
     const featuresVal = formData.get("features");
     const materialVal = formData.get("material");

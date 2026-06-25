@@ -427,68 +427,78 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
             </div>
           </div>
 
-          {/* Product Details Section */}
-          <div className="mt-8 sm:mt-10 border-t border-[#F0E6F2] pt-6 sm:pt-8">
-            <h3 className="mb-4 sm:mb-5 text-[16px] sm:text-[18px] font-semibold text-[#1A0F1C]">Product Details</h3>
+        </div>
+      </div>
 
-            <dl className="grid gap-y-5 sm:gap-y-6 gap-x-4 text-[13px] sm:text-[14px] sm:grid-cols-2">
-              {product.sku && (
-                <div className="sm:col-span-2">
-                  <dt className="mb-2 font-medium text-[#8B7A8F]">SKU / Barcode</dt>
-                  <dd className="font-medium text-[#2E1F31]">
-                    <div className="inline-block overflow-hidden rounded-xl border border-[#F0E6F2] bg-white p-2 sm:p-3 shadow-sm max-w-full">
-                      <div className="overflow-x-auto">
-                        <Barcode value={product.sku} width={1.2} height={35} fontSize={12} background="transparent" />
-                      </div>
-                    </div>
-                  </dd>
+      {/* Product Details Section */}
+      <div className="mt-8 sm:mt-12 border-t border-[#F0E6F2] pt-8 sm:pt-10">
+        <h3 className="mb-6 text-[18px] sm:text-[20px] font-semibold text-[#1A0F1C]">Product Details</h3>
+
+        <div className="grid gap-8 md:grid-cols-2 text-[13px] sm:text-[14px]">
+          {/* Left Column: Features */}
+          <div className="space-y-6">
+            {(product.features || product.material) && (
+              <div>
+                <h4 className="mb-3 font-semibold text-[#1A0F1C] text-[14px] sm:text-[15px]">Features</h4>
+                <ul className="space-y-2">
+                  {((product.features || product.material).includes("\n")
+                    ? (product.features || product.material).split(/\r?\n/)
+                    : (product.features || product.material).split(",")
+                  ).map((s: string) => s.trim()).filter(Boolean).map((feat: string, idx: number) => (
+                    <li key={idx} className="flex items-start gap-2.5 text-[13.5px] sm:text-[14px] font-medium text-[#2E1F31]">
+                      <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#8B1D8F]" />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: SKU, What's Included, Care Instructions */}
+          <div className="space-y-6">
+            {product.sku && (
+              <div>
+                <h4 className="mb-2 font-semibold text-[#1A0F1C] text-[14px] sm:text-[15px]">SKU / Barcode</h4>
+                <div className="inline-block overflow-hidden rounded-xl border border-[#F0E6F2] bg-white p-2.5 sm:p-3 shadow-sm max-w-full">
+                  <div className="overflow-x-auto">
+                    <Barcode value={product.sku} width={1.2} height={35} fontSize={12} background="transparent" />
+                  </div>
                 </div>
-              )}
-              {(product.features || product.material) && (
-                <div>
-                  <dt className="mb-1 font-medium text-[#8B7A8F]">Features</dt>
-                  <dd className="flex flex-wrap gap-1.5 mt-1">
-                    {(product.features || product.material).split(",").map((s: string) => s.trim()).filter(Boolean).map((feat: string, idx: number) => (
-                      <span key={idx} className="rounded-full bg-[#F3E7F5] px-3 py-1 text-[12px] font-semibold text-[#7A187C] border border-[#E1BFE6]/40">
-                        {feat}
-                      </span>
-                    ))}
-                  </dd>
-                </div>
-              )}
-              {product.whatsIncluded && product.whatsIncluded.length > 0 && (
-                <div className="sm:col-span-2">
-                  <dt className="mb-2 font-medium text-[#8B7A8F]">What&apos;s Included</dt>
-                  <dd>
-                    <ul className="space-y-1.5">
-                      {(Array.isArray(product.whatsIncluded)
-                        ? product.whatsIncluded.flatMap((item: string) => {
-                          if (typeof item === "string" && item.startsWith("[")) {
-                            try { return JSON.parse(item); } catch { return [item]; }
-                          }
-                          if (typeof item === "string" && item.includes(",")) {
-                            return item.split(",").map((s: string) => s.trim()).filter(Boolean);
-                          }
-                          return [item];
-                        })
-                        : []
-                      ).map((item: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-2 text-[13px] sm:text-[14px] font-medium text-[#2E1F31]">
-                          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#8B1D8F]" />
-                          {typeof item === "string" ? item.replace(/^"|"$/g, "").trim() : item}
-                        </li>
-                      ))}
-                    </ul>
-                  </dd>
-                </div>
-              )}
-              {product.careInstructions && (
-                <div className="sm:col-span-2">
-                  <dt className="mb-1 font-medium text-[#8B7A8F]">Care Instructions</dt>
-                  <dd className="leading-relaxed text-[#2E1F31] whitespace-pre-wrap">{product.careInstructions}</dd>
-                </div>
-              )}
-            </dl>
+              </div>
+            )}
+
+            {product.whatsIncluded && product.whatsIncluded.length > 0 && (
+              <div>
+                <h4 className="mb-3 font-semibold text-[#1A0F1C] text-[14px] sm:text-[15px]">What&apos;s Included</h4>
+                <ul className="space-y-2">
+                  {(Array.isArray(product.whatsIncluded)
+                    ? product.whatsIncluded.flatMap((item: string) => {
+                      if (typeof item === "string" && item.startsWith("[")) {
+                        try { return JSON.parse(item); } catch { return [item]; }
+                      }
+                      if (typeof item === "string" && item.includes(",")) {
+                        return item.split(",").map((s: string) => s.trim()).filter(Boolean);
+                      }
+                      return [item];
+                    })
+                    : []
+                  ).map((item: string, idx: number) => (
+                    <li key={idx} className="flex items-start gap-2.5 text-[13.5px] sm:text-[14px] font-medium text-[#2E1F31]">
+                      <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#8B1D8F]" />
+                      <span>{typeof item === "string" ? item.replace(/^"|"$/g, "").trim() : item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {product.careInstructions && (
+              <div>
+                <h4 className="mb-2 font-semibold text-[#1A0F1C] text-[14px] sm:text-[15px]">Care Instructions</h4>
+                <p className="leading-relaxed text-[#2E1F31] whitespace-pre-wrap text-[13.5px] sm:text-[14px] font-medium">{product.careInstructions}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -629,7 +639,7 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
               <div key={p.id} className="group relative w-full">
                 <div className="overflow-hidden rounded-[20px] border border-[#F0E6F2] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
                   <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
-                    <Link href={`/product/${p.id}`}>
+                    <Link href={`/product/${p.slug || p.id}`}>
                       <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                     </Link>
                     <div className="absolute left-2.5 top-2.5 right-11 flex flex-wrap items-center gap-1.5">
@@ -653,7 +663,7 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
                     </button>
                   </div>
                   <div className="p-3.5 flex flex-col h-full">
-                    <Link href={`/product/${p.id}`} className="line-clamp-1 text-[14px] font-medium text-[#2E1F31] hover:text-[#8B1D8F]">{p.title}</Link>
+                    <Link href={`/product/${p.slug || p.id}`} className="line-clamp-1 text-[14px] font-medium text-[#2E1F31] hover:text-[#8B1D8F]">{p.title}</Link>
                     <div className="mt-1.5 flex items-center gap-1.5">
                       <div className="flex items-center gap-0.5">
                         {Array.from({ length: 5 }).map((_, i) => (

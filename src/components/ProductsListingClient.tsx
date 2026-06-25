@@ -368,7 +368,7 @@ export default function ProductsListingClient({
                 <div key={p.id} className="group relative w-full shrink-0">
                   <div className="overflow-hidden rounded-[20px] border border-[#F0E6F2] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
                     <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
-                      <Link href={`/product/${p.id}`}>
+                      <Link href={`/product/${p.slug || p.id}`}>
                         <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                       </Link>
                       <div className="absolute left-2.5 top-2.5 right-11 flex flex-wrap items-center gap-1.5">
@@ -388,7 +388,7 @@ export default function ProductsListingClient({
                       </button>
                     </div>
                     <div className="p-3.5">
-                      <Link href={`/product/${p.id}`} className="line-clamp-1 text-[14px] font-medium text-[#2E1F31] hover:text-[#8B1D8F]">{p.title}</Link>
+                      <Link href={`/product/${p.slug || p.id}`} className="line-clamp-1 text-[14px] font-medium text-[#2E1F31] hover:text-[#8B1D8F]">{p.title}</Link>
                       <div className="mt-1.5 flex items-center gap-1.5">
                         <div className="flex items-center gap-0.5">
                           {Array.from({ length: 5 }).map((_, i) => (

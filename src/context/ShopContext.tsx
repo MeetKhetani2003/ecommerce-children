@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 
 export type Product = {
   id: number;
+  slug?: string;
   title: string;
   category: string;
   price: number;

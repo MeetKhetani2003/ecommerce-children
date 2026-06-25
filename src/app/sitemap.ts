@@ -119,7 +119,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const products = await Product.find({}).lean();
     products.forEach((p: any) => {
       routes.push({
-        url: `${siteUrl}/product/${p.id}`,
+        url: `${siteUrl}/product/${p.slug || p.id}`,
         lastModified: p.updatedAt ? new Date(p.updatedAt) : new Date(),
         changeFrequency: "weekly",
         priority: 0.8,

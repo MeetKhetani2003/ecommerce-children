@@ -126,9 +126,25 @@ export async function POST(req: Request) {
     const computedStock = sizes.reduce((sum: number, s: any) => sum + (Number(s.stock) || 0), 0);
     const whatsIncluded = whatsIncludedStr ? whatsIncludedStr.split("\n").map(s => s.trim()).filter(Boolean) : [];
 
+    // Generate unique slug
+    let baseSlug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+    
+    let slug = baseSlug;
+    let counter = 1;
+    while (true) {
+      const existing = await Product.findOne({ slug });
+      if (!existing) break;
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
     const product = await Product.create({
       id: nextId,
       sku,
+      slug,
       title,
       category,
       price: parseFloat(price),

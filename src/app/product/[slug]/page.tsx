@@ -1,20 +1,27 @@
 import dbConnect from "@/utils/dbConnect";
 import { Product } from "@/models/Product";
 import ProductDetailClient from "@/components/ProductDetailClient";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import mongoose from "mongoose";
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }
 
-async function getProductData(id: string) {
+async function getProductData(slug: string) {
   await dbConnect();
   
-  let product = null;
-  if (!isNaN(Number(id))) {
-    product = await Product.findOne({ id: Number(id) }).lean();
-  } else {
-    product = await Product.findById(id).lean();
+  // 1. Try finding by slug
+  let product = await Product.findOne({ slug }).lean();
+  
+  // 2. Try finding by numerical ID for backward compatibility
+  if (!product && !isNaN(Number(slug))) {
+    product = await Product.findOne({ id: Number(slug) }).lean();
+  }
+  
+  // 3. Try finding by MongoDB ObjectId for backward compatibility
+  if (!product && mongoose.Types.ObjectId.isValid(slug)) {
+    product = await Product.findById(slug).lean();
   }
   
   if (!product) return null;
@@ -86,8 +93,8 @@ function generateProductKeywords(product: any): string[] {
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const { id } = await params;
-  const data = await getProductData(id);
+  const { slug } = await params;
+  const data = await getProductData(slug);
   
   if (!data || !data.product) {
     return {
@@ -97,13 +104,19 @@ export async function generateMetadata({ params }: PageProps) {
   }
 
   const { product } = data;
+
+  // SEO Redirection if accessed via ID or ObjectId instead of slug
+  if (product.slug && slug !== product.slug) {
+    redirect(`/product/${product.slug}`);
+  }
+
   const title = `Buy ${product.title} Online | Kids Fancy Dress Costume - Saheli Shrungar`;
   const description = product.description
     ? `${product.description.substring(0, 155)}...`
     : `Buy premium quality ${product.title} fancy dress costume for kids online at Saheli Shrungar. Complete set, fast next-day delivery, cash on delivery available.`;
   
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sahelishrungar.com";
-  const canonicalUrl = `${siteUrl}/product/${product.id}`;
+  const canonicalUrl = `${siteUrl}/product/${product.slug || product.id}`;
 
   return {
     title,
@@ -130,14 +143,19 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 export default async function ProductPage({ params }: PageProps) {
-  const { id } = await params;
-  const data = await getProductData(id);
+  const { slug } = await params;
+  const data = await getProductData(slug);
 
-  if (!data) {
+  if (!data || !data.product) {
     notFound();
   }
 
   const { product, allProducts } = data;
+
+  // SEO Redirection if accessed via ID or ObjectId instead of slug
+  if (product.slug && slug !== product.slug) {
+    redirect(`/product/${product.slug}`);
+  }
 
   // Generate JSON-LD Product Schema Markup
   const productSchema = {
@@ -153,7 +171,7 @@ export default async function ProductPage({ params }: PageProps) {
     },
     "offers": {
       "@type": "Offer",
-      "url": `${process.env.NEXT_PUBLIC_SITE_URL || "https://sahelishrungar.com"}/product/${product.id}`,
+      "url": `${process.env.NEXT_PUBLIC_SITE_URL || "https://sahelishrungar.com"}/product/${product.slug || product.id}`,
       "priceCurrency": "INR",
       "price": product.price,
       "priceValidUntil": "2027-12-31",
@@ -187,7 +205,7 @@ export default async function ProductPage({ params }: PageProps) {
         "@type": "ListItem",
         "position": 3,
         "name": product.title,
-        "item": `${process.env.NEXT_PUBLIC_SITE_URL || "https://sahelishrungar.com"}/product/${product.id}`
+        "item": `${process.env.NEXT_PUBLIC_SITE_URL || "https://sahelishrungar.com"}/product/${product.slug || product.id}`
       }
     ]
   };

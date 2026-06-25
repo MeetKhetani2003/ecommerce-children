@@ -255,7 +255,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                           {searchResults.map((p) => (
                             <Link
                               key={p.id}
-                              href={`/product/${p.id}`}
+                              href={`/product/${p.slug || p.id}`}
                               onClick={() => {
                                 setSearchQuery("");
                                 setIsSearchFocused(false);
@@ -371,7 +371,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         {searchResults.map((p) => (
                           <Link
                             key={p.id}
-                            href={`/product/${p.id}`}
+                            href={`/product/${p.slug || p.id}`}
                             onClick={() => {
                               setSearchQuery("");
                               setMobileMenu(false);
