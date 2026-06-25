@@ -67,7 +67,7 @@ export default function Wishlist() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
         {wishlistedProducts.map((p) => (
           <div key={p.id} className="group relative w-full shrink-0">
-            <div className="overflow-hidden rounded-[20px] border border-[#F0E6F2] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
+            <div className="overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
               <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
                 <Link href={`/product/${p.slug || p.id}`}>
                   <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />

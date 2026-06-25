@@ -215,7 +215,7 @@ export default function Home() {
           ) : (
             productsList.filter((p: any) => p.featured).map((p) => (
               <motion.div key={p.id} whileHover={{ y: -4 }} className="group relative w-[210px] shrink-0 snap-start md:w-[242px]">
-                <div className="overflow-hidden rounded-[20px] border border-[#F0E6F2] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
+                <div className="overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
                   <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
                     <Link href={`/product/${p.slug || p.id}`}>
                       <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
@@ -254,7 +254,7 @@ export default function Home() {
                           value={selectedSizes[p.id] || ""}
                           onChange={(e) => setSelectedSizes({ ...selectedSizes, [p.id]: e.target.value })}
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                          className="w-full h-8 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12px] text-[#4A354D] outline-none"
+                          className="w-full h-8 rounded-lg border border-[#B59CB9] bg-white px-2 text-[12px] text-[#4A354D] outline-none"
                         >
                           <option value="" disabled>Select Size</option>
                           {p.sizes.map((s: any) => (
@@ -336,7 +336,7 @@ export default function Home() {
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-6">
           {categories.slice(0, 6).map((c) => (
-            <Link key={c.name} href={`/products?category=${c.name}`} className="group relative overflow-hidden rounded-[20px] border border-[#F0E6F2] bg-white">
+            <Link key={c.name} href={`/products?category=${c.name}`} className="group relative overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white">
               <div className="aspect-[4/5] overflow-hidden">
                 <img src={c.image} alt={c.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />

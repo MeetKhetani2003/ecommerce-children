@@ -35,7 +35,7 @@ const ImageMagnifier = ({ src, alt }: { src: string; alt: string }) => {
         <div
           className="pointer-events-none absolute inset-0 z-20 bg-white"
           style={{
-            backgroundImage: `url(${src})`,
+            backgroundImage: `url("${encodeURI(src)}")`,
             backgroundPosition: `${position.x}% ${position.y}%`,
             backgroundSize: "250%",
             backgroundRepeat: "no-repeat",
@@ -277,7 +277,7 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
 
           <div className="mt-4 sm:mt-6">
             <p className="text-[13.5px] sm:text-[15px] leading-relaxed text-[#5E4F63] whitespace-pre-wrap">{product.description}</p>
-            
+
             {product.brand && product.brand !== "Saheli Shrungar" && (
               <div className="mt-3 text-[14px] text-[#6B5A6F]">
                 <span className="font-semibold text-[#1A0F1C]">Brand:</span>{" "}
@@ -432,14 +432,14 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
 
       {/* Product Details Section */}
       <div className="mt-8 sm:mt-12 border-t border-[#F0E6F2] pt-8 sm:pt-10">
-        <h3 className="mb-6 text-[18px] sm:text-[20px] font-semibold text-[#1A0F1C]">Product Details</h3>
 
-        <div className="grid gap-8 md:grid-cols-2 text-[13px] sm:text-[14px]">
+        <div className="grid gap-8 md:grid-cols-2 text-[13px] sm:text-[14px] items-start">
           {/* Left Column: Features */}
           <div className="space-y-6">
+            <h3 className="mb-6 text-[18px] sm:text-[20px] font-semibold text-[#1A0F1C]">Product Details</h3>
             {(product.features || product.material) && (
               <div>
-                <h4 className="mb-3 font-semibold text-[#1A0F1C] text-[14px] sm:text-[15px]">Features</h4>
+                <h4 className="mt-0 mb-3 font-semibold text-[#1A0F1C] text-[14px] sm:text-[15px]">Features</h4>
                 <ul className="space-y-2">
                   {((product.features || product.material).includes("\n")
                     ? (product.features || product.material).split(/\r?\n/)
@@ -459,7 +459,7 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
           <div className="space-y-6">
             {product.sku && (
               <div>
-                <h4 className="mb-2 font-semibold text-[#1A0F1C] text-[14px] sm:text-[15px]">SKU / Barcode</h4>
+                <h4 className="mt-0 mb-3 font-semibold text-[#1A0F1C] text-[14px] sm:text-[15px]">SKU / Barcode</h4>
                 <div className="inline-block overflow-hidden rounded-xl border border-[#F0E6F2] bg-white p-2.5 sm:p-3 shadow-sm max-w-full">
                   <div className="overflow-x-auto">
                     <Barcode value={product.sku} width={1.2} height={35} fontSize={12} background="transparent" />
@@ -470,7 +470,7 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
 
             {product.whatsIncluded && product.whatsIncluded.length > 0 && (
               <div>
-                <h4 className="mb-3 font-semibold text-[#1A0F1C] text-[14px] sm:text-[15px]">What&apos;s Included</h4>
+                <h4 className="mt-0 mb-3 font-semibold text-[#1A0F1C] text-[14px] sm:text-[15px]">What&apos;s Included</h4>
                 <ul className="space-y-2">
                   {(Array.isArray(product.whatsIncluded)
                     ? product.whatsIncluded.flatMap((item: string) => {
@@ -495,8 +495,8 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
 
             {product.careInstructions && (
               <div>
-                <h4 className="mb-2 font-semibold text-[#1A0F1C] text-[14px] sm:text-[15px]">Care Instructions</h4>
-                <p className="leading-relaxed text-[#2E1F31] whitespace-pre-wrap text-[13.5px] sm:text-[14px] font-medium">{product.careInstructions}</p>
+                <h4 className="mt-0 mb-3 font-semibold text-[#1A0F1C] text-[14px] sm:text-[15px]">Care Instructions</h4>
+                <p className="leading-relaxed text-[#2E1F31] whitespace-pre-wrap text-[13.5px] sm:text-[14px] font-medium mt-0">{product.careInstructions}</p>
               </div>
             )}
           </div>
@@ -637,14 +637,14 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
             .slice(0, 4)
             .map((p) => (
               <div key={p.id} className="group relative w-full">
-                <div className="overflow-hidden rounded-[20px] border border-[#F0E6F2] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
+                <div className="overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
                   <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
                     <Link href={`/product/${p.slug || p.id}`}>
                       <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                     </Link>
                     <div className="absolute left-2.5 top-2.5 right-11 flex flex-wrap items-center gap-1.5">
-                      <span 
-                        className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur max-w-[90px] sm:max-w-[130px] truncate inline-block" 
+                      <span
+                        className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur max-w-[90px] sm:max-w-[130px] truncate inline-block"
                         title={p.category}
                       >
                         {p.category.includes(">") ? p.category.split(">").pop()?.trim() : p.category}

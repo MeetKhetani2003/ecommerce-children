@@ -643,7 +643,7 @@ export default function Profile() {
                       if (!p) return null;
                       return (
                         <div key={p.id} className="group relative w-full shrink-0">
-                          <div className="overflow-hidden rounded-[20px] border border-[#F0E6F2] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
+                          <div className="overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
                             <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
                               <Link href={`/product/${p.slug || p.id}`}>
                                 <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
@@ -685,7 +685,7 @@ export default function Profile() {
                                     value={selectedSizes[p.id] || ""}
                                     onChange={(e) => setSelectedSizes({ ...selectedSizes, [p.id]: e.target.value })}
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                    className="w-full h-8 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12px] text-[#4A354D] outline-none"
+                                    className="w-full h-8 rounded-lg border border-[#B59CB9] bg-white px-2 text-[12px] text-[#4A354D] outline-none"
                                   >
                                     <option value="" disabled>Select Size</option>
                                     {p.sizes.map((s: any) => (
