@@ -21,11 +21,78 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
+import { execSync } from "child_process";
+
+const originalUri = process.env.MONGODB_URI;
+if (!originalUri) {
   console.error("❌ MONGODB_URI is not defined");
   process.exit(1);
 }
+
+function resolveSrvUriSync(uri) {
+  if (!uri.startsWith("mongodb+srv://")) {
+    return uri;
+  }
+  console.log("🔄 Translating mongodb+srv connection URI to standard connection string...");
+  const match = uri.match(/^mongodb\+srv:\/\/([^:]+):([^@]+)@([^/?]+)([^?]*)(.*)$/);
+  if (!match) return uri;
+  const [_, username, password, host, pathName, queryStr] = match;
+  try {
+    const srvCmd = `nslookup -type=SRV _mongodb._tcp.${host}`;
+    const srvOutput = execSync(srvCmd, { encoding: "utf8" });
+    const hostnames = [];
+    const srvLines = srvOutput.split("\n");
+    for (const line of srvLines) {
+      if (line.includes("svr hostname")) {
+        const parts = line.split("=");
+        if (parts.length > 1) {
+          hostnames.push(parts[1].trim() + ":27017");
+        }
+      }
+    }
+    if (hostnames.length === 0) {
+      throw new Error("Could not parse SRV hostnames from nslookup output");
+    }
+    const hostsList = hostnames.join(",");
+    let txtOptions = "";
+    try {
+      const txtCmd = `nslookup -type=TXT ${host}`;
+      const txtOutput = execSync(txtCmd, { encoding: "utf8" });
+      const txtLines = txtOutput.split("\n");
+      for (const line of txtLines) {
+        if (line.includes("text =") || (line.trim().startsWith('"') && line.trim().endsWith('"'))) {
+          const textMatch = line.match(/"([^"]+)"/);
+          if (textMatch) txtOptions = textMatch[1];
+        }
+      }
+    } catch (e) {
+      console.warn("⚠️ Warning: Could not resolve TXT record options via nslookup:", e.message);
+    }
+    let finalQuery = `ssl=true`;
+    if (txtOptions) finalQuery += `&${txtOptions}`;
+    const originalQuery = queryStr.startsWith("?") ? queryStr.substring(1) : queryStr;
+    if (originalQuery) finalQuery += `&${originalQuery}`;
+    const dbName = pathName || "/";
+    const directUri = `mongodb://${username}:${password}@${hostsList}${dbName}?${finalQuery}`;
+    console.log(`✅ Successfully translated using nslookup!`);
+    return directUri;
+  } catch (error) {
+    console.error("❌ Failed resolving SRV via nslookup:", error.message);
+    if (host === "cluster0.tt5mrdx.mongodb.net") {
+      console.log("ℹ️ Using hardcoded shard fallback for cluster0.tt5mrdx.mongodb.net");
+      const hostsList = "ac-jl2mrtd-shard-00-00.tt5mrdx.mongodb.net:27017,ac-jl2mrtd-shard-00-01.tt5mrdx.mongodb.net:27017,ac-jl2mrtd-shard-00-02.tt5mrdx.mongodb.net:27017";
+      const txtOptions = "authSource=admin&replicaSet=atlas-62q3hn-shard-0";
+      let finalQuery = `ssl=true&${txtOptions}`;
+      const originalQuery = queryStr.startsWith("?") ? queryStr.substring(1) : queryStr;
+      if (originalQuery) finalQuery += `&${originalQuery}`;
+      const dbName = pathName || "/";
+      return `mongodb://${username}:${password}@${hostsList}${dbName}?${finalQuery}`;
+    }
+    return uri;
+  }
+}
+
+const MONGODB_URI = resolveSrvUriSync(originalUri);
 
 const ProductSchema = new mongoose.Schema({
   id: Number,

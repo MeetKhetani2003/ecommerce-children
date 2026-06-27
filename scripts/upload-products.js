@@ -2,6 +2,9 @@ import mongoose from "mongoose";
 import fs from "fs";
 import path from "path";
 import xlsx from "xlsx";
+import { GridFSBucket } from "mongodb";
+
+let bucket;
 
 // 1. Load environment variables from .env.local
 const envPath = path.resolve(process.cwd(), ".env.local");
@@ -25,11 +28,84 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
+import { execSync } from "child_process";
+
+const originalUri = process.env.MONGODB_URI;
+if (!originalUri) {
   console.error("❌ MONGODB_URI is not defined in .env.local");
   process.exit(1);
 }
+
+function resolveSrvUriSync(uri) {
+  if (!uri.startsWith("mongodb+srv://")) {
+    return uri;
+  }
+  console.log("🔄 Translating mongodb+srv connection URI to standard connection string...");
+  const match = uri.match(/^mongodb\+srv:\/\/([^:]+):([^@]+)@([^/?]+)([^?]*)(.*)$/);
+  if (!match) return uri;
+  const [_, username, password, host, pathName, queryStr] = match;
+  try {
+    const srvCmd = `nslookup -type=SRV _mongodb._tcp.${host}`;
+    const srvOutput = execSync(srvCmd, { encoding: "utf8" });
+    const hostnames = [];
+    const srvLines = srvOutput.split("\n");
+    for (const line of srvLines) {
+      if (line.includes("svr hostname")) {
+        const parts = line.split("=");
+        if (parts.length > 1) {
+          hostnames.push(parts[1].trim() + ":27017");
+        }
+      }
+    }
+    if (hostnames.length === 0) {
+      throw new Error("Could not parse SRV hostnames from nslookup output");
+    }
+    const hostsList = hostnames.join(",");
+    let txtOptions = "";
+    try {
+      const txtCmd = `nslookup -type=TXT ${host}`;
+      const txtOutput = execSync(txtCmd, { encoding: "utf8" });
+      const txtLines = txtOutput.split("\n");
+      for (const line of txtLines) {
+        if (line.includes("text =") || (line.trim().startsWith('"') && line.trim().endsWith('"'))) {
+          const textMatch = line.match(/"([^"]+)"/);
+          if (textMatch) txtOptions = textMatch[1];
+        }
+      }
+    } catch (e) {
+      console.warn("⚠️ Warning: Could not resolve TXT record options via nslookup:", e.message);
+    }
+    let finalQuery = `ssl=true`;
+    if (txtOptions) finalQuery += `&${txtOptions}`;
+    const originalQuery = queryStr.startsWith("?") ? queryStr.substring(1) : queryStr;
+    if (originalQuery) finalQuery += `&${originalQuery}`;
+    const dbName = pathName || "/";
+    const directUri = `mongodb://${username}:${password}@${hostsList}${dbName}?${finalQuery}`;
+    console.log(`✅ Successfully translated using nslookup!`);
+    return directUri;
+  } catch (error) {
+    console.error("❌ Failed resolving SRV via nslookup:", error.message);
+    if (host === "cluster0.tt5mrdx.mongodb.net") {
+      console.log("ℹ️ Using hardcoded shard fallback for cluster0.tt5mrdx.mongodb.net");
+      const hostsList = "ac-jl2mrtd-shard-00-00.tt5mrdx.mongodb.net:27017,ac-jl2mrtd-shard-00-01.tt5mrdx.mongodb.net:27017,ac-jl2mrtd-shard-00-02.tt5mrdx.mongodb.net:27017";
+      const txtOptions = "authSource=admin&replicaSet=atlas-62q3hn-shard-0";
+      let finalQuery = `ssl=true&${txtOptions}`;
+      const originalQuery = queryStr.startsWith("?") ? queryStr.substring(1) : queryStr;
+      if (originalQuery) finalQuery += `&${originalQuery}`;
+      const dbName = pathName || "/";
+      return `mongodb://${username}:${password}@${hostsList}${dbName}?${finalQuery}`;
+    }
+    return uri;
+  }
+}
+
+const MONGODB_URI = resolveSrvUriSync(originalUri);
+
+const xlsxFilename = process.argv[2] || "AnimalCategoryproduct.xlsx";
+const imageFolderName = process.argv[3] || "Animal category";
+
+console.log(`Spreadsheet: public/${xlsxFilename}`);
+console.log(`Image Folder: public/${imageFolderName}`);
 
 // 2. Define Mongoose Schema & Model (matching src/models/Product.ts exactly)
 const ProductSchema = new mongoose.Schema({
@@ -87,8 +163,8 @@ function findValue(row, possibleKeys) {
   return undefined;
 }
 
-// Helper: Normalize image path
-function normalizeImagePath(imgStr) {
+// Helper: Upload image file to GridFS and return its URL path
+async function uploadImageToGridFS(imgStr) {
   if (!imgStr) return "";
   const cleaned = String(imgStr).trim();
   if (!cleaned) return "";
@@ -96,20 +172,61 @@ function normalizeImagePath(imgStr) {
   // Get just the filename
   let filename = path.basename(cleaned);
   
-  // If the filename does not have an extension, try appending .webp
+  // If the filename does not have an extension, try to find the correct file physically
   if (!path.extname(filename)) {
-    filename = `${filename}.webp`;
+    const extensions = [".webp", ".png", ".jpg", ".jpeg"];
+    let found = false;
+    for (const ext of extensions) {
+      const testPath = path.join(process.cwd(), "public", imageFolderName, `${filename}${ext}`);
+      if (fs.existsSync(testPath)) {
+        filename = `${filename}${ext}`;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      filename = `${filename}.webp`;
+    }
   }
   
-  const targetPath = `/Animal category/${filename}`;
-  
-  // Verify physical existence
-  const physicalPath = path.join(process.cwd(), "public", "Animal category", filename);
+  const physicalPath = path.join(process.cwd(), "public", imageFolderName, filename);
   if (!fs.existsSync(physicalPath)) {
-    console.warn(`⚠️ Warning: Image file not found physically: public/Animal category/${filename}`);
+    console.warn(`⚠️ Warning: Image file not found physically: public/${imageFolderName}/${filename}`);
+    return "";
   }
-  
-  return targetPath;
+
+  try {
+    // Check if the file is already uploaded to GridFS
+    const files = await bucket.find({ filename }).toArray();
+    if (files.length > 0) {
+      const fileId = files[0]._id.toString();
+      return `/api/image/${fileId}`;
+    }
+
+    // Upload new file to GridFS bucket
+    const buffer = fs.readFileSync(physicalPath);
+    let contentType = "image/webp";
+    if (filename.endsWith(".png")) contentType = "image/png";
+    else if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) contentType = "image/jpeg";
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = bucket.openUploadStream(filename, {
+        contentType,
+      });
+      
+      uploadStream.on("error", (error) => reject(error));
+      uploadStream.on("finish", () => {
+        const fileId = uploadStream.id.toString();
+        console.log(`  📤 Uploaded ${filename} to GridFS. URL: /api/image/${fileId}`);
+        resolve(`/api/image/${fileId}`);
+      });
+      
+      uploadStream.end(buffer);
+    });
+  } catch (error) {
+    console.error(`❌ Failed to upload image ${filename} to GridFS:`, error);
+    return "";
+  }
 }
 
 // SKU encoder matching Next.js API route
@@ -139,7 +256,7 @@ function buildSizeCode(sizeList) {
 async function run() {
   try {
     // 3. Read the Excel file
-    const xlsxPath = path.resolve(process.cwd(), "public", "AnimalCategoryproduct.xlsx");
+    const xlsxPath = path.resolve(process.cwd(), "public", xlsxFilename);
     if (!fs.existsSync(xlsxPath)) {
       console.error(`❌ Excel file not found at: ${xlsxPath}`);
       process.exit(1);
@@ -161,6 +278,9 @@ async function run() {
     console.log("Connecting to MongoDB...");
     await mongoose.connect(MONGODB_URI);
     console.log("Connected successfully to MongoDB.");
+    bucket = new GridFSBucket(mongoose.connection.db, {
+      bucketName: "images",
+    });
 
     let insertedCount = 0;
     let updatedCount = 0;
@@ -211,33 +331,51 @@ async function run() {
           continue;
         }
 
-        // Parse ID
-        let id = idVal ? parseInt(String(idVal).replace(/[^\d]/g, "")) : null;
-        if (!id || isNaN(id)) {
-          id = runningNextId;
-          runningNextId++;
-          console.log(`ℹ️ Row ${rowNum}: Product ID missing or invalid. Auto-assigned ID: ${id}`);
+        // Slug generation from title (used for lookup)
+        let baseSlug = String(title)
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)+/g, "");
+        
+        let slug = baseSlug;
+
+        // Check if the product already exists by looking up the slug
+        let existingProduct = await Product.findOne({ slug });
+        let id;
+        if (existingProduct) {
+          id = existingProduct.id;
         } else {
-          // If the spreadsheet provides IDs, keep runningNextId ahead of it to prevent collisions
-          if (id >= runningNextId) {
-            runningNextId = id + 1;
+          // It's a new product: get max ID from DB and increment
+          const lastProduct = await Product.findOne().sort({ id: -1 });
+          id = lastProduct ? lastProduct.id + 1 : 101;
+          
+          // Double check slug uniqueness
+          let counter = 1;
+          while (true) {
+            const collision = await Product.findOne({ slug, id: { $ne: id } });
+            if (!collision) break;
+            slug = `${baseSlug}-${counter}`;
+            counter++;
           }
         }
 
-        // Normalize images
-        const mainImageNormalized = normalizeImagePath(mainImageStr);
+        // Normalize and upload images to GridFS
+        const mainImageNormalized = await uploadImageToGridFS(mainImageStr);
         if (!mainImageNormalized) {
-          console.error(`❌ Row ${rowNum}: Main Image File is missing. Skipping.`);
+          console.error(`❌ Row ${rowNum}: Main Image File is missing or not found physically. Skipping.`);
           errorCount++;
           continue;
         }
 
         let galleryImages = [];
         if (galleryImagesStr) {
-          galleryImages = String(galleryImagesStr)
-            .split(",")
-            .map(s => normalizeImagePath(s.trim()))
-            .filter(Boolean);
+          const galleryTokens = String(galleryImagesStr).split(",");
+          for (const token of galleryTokens) {
+            const uploadedUrl = await uploadImageToGridFS(token.trim());
+            if (uploadedUrl) {
+              galleryImages.push(uploadedUrl);
+            }
+          }
         }
 
         // Merge main image into gallery images list if not already there, matching project pattern
@@ -290,20 +428,7 @@ async function run() {
           sku = `SAH-${catAbbrev}-${id}-${sizeCode}-${randomNum}`;
         }
 
-        // Generate unique slug
-        let baseSlug = String(title)
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)+/g, "");
-        
-        let slug = baseSlug;
-        let counter = 1;
-        while (true) {
-          const existing = await Product.findOne({ slug, id: { $ne: id } });
-          if (!existing) break;
-          slug = `${baseSlug}-${counter}`;
-          counter++;
-        }
+        // Slug and ID already generated at the beginning of loop
 
         // Prepare product record
         const productData = {
@@ -331,9 +456,8 @@ async function run() {
         };
 
         // Perform Upsert (Update if exists, Insert if new)
-        const existingProduct = await Product.findOne({ id });
         if (existingProduct) {
-          await Product.updateOne({ id }, { $set: productData });
+          await Product.updateOne({ slug }, { $set: productData });
           console.log(`🔄 Row ${rowNum}: Updated product ID ${id} (${title})`);
           updatedCount++;
         } else {
