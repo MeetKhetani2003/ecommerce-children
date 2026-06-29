@@ -161,7 +161,7 @@ export const products = [
   {
     id: 107,
     title: "Republic Day Tricolor Set",
-    category: "Republic Day / Independence Day",
+    category: "Independence Day Costume",
     price: 649,
     mrp: 899,
     rating: 4.7,
@@ -272,7 +272,7 @@ export const categories = [
     count: "32 styles",
   },
   {
-    name: "Republic Day / Independence Day",
+    name: "Independence Day Costume",
     image: "https://images.pexels.com/photos/6202806/pexels-photo-6202806.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
     count: "22 styles",
   },

@@ -399,15 +399,15 @@ export default function Home() {
           </div>
           <div className="grid gap-4">
             {[
-              { title: "Independence & Republic Day", desc: "Tricolor sets, freedom fighters", color: "from-[#FF9933]/20 to-[#138808]/20" },
-              { title: "Halloween Specials", desc: "Cute, not scary. Parent-approved", color: "from-[#8B1D8F]/20 to-[#E91E7A]/20" },
+              { title: "Independence Day Costume", desc: "Tricolor sets, freedom fighters", color: "from-[#FF9933]/20 to-[#138808]/20", href: "/products?category=Independence%20Day%20Costume" },
+              { title: "Halloween Specials", desc: "Cute, not scary. Parent-approved", color: "from-[#8B1D8F]/20 to-[#E91E7A]/20", href: "/products?category=Halloween%20Costumes" },
             ].map((b) => (
               <div key={b.title} className="relative overflow-hidden rounded-[24px] border border-[#F0E6F2] bg-white p-6">
                 <div className={cn("pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-gradient-to-br blur-3xl", b.color)} />
                 <div className="relative">
                   <div className="text-[17px] font-semibold text-[#1A0F1C]">{b.title}</div>
                   <div className="mt-1 text-[13.5px] text-[#6B5A6F]">{b.desc}</div>
-                  <Link href="/products" className="mt-3 inline-flex items-center gap-1 text-[13px] font-medium text-[#8B1D8F] hover:gap-1.5">Explore <ArrowRight className="h-3.5 w-3.5 transition-all" /></Link>
+                  <Link href={b.href} className="mt-3 inline-flex items-center gap-1 text-[13px] font-medium text-[#8B1D8F] hover:gap-1.5">Explore <ArrowRight className="h-3.5 w-3.5 transition-all" /></Link>
                 </div>
               </div>
             ))}

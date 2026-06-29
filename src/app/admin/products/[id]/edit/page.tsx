@@ -286,7 +286,7 @@ export default function EditProductPage() {
                 <option value="Cartoon Characters Costume">Cartoon Characters Costume</option>
                 <option value="Community Helpers">Community Helpers</option>
                 <option value="Indian Mythology Costume">Indian Mythology Costume</option>
-                <option value="Republic Day / Independence Day">Republic Day / Independence Day</option>
+                <option value="Independence Day Costume">Independence Day Costume</option>
                 <option value="Indian Dance Costume">Indian Dance Costume</option>
                 <option value="Caps / Hats / Safa / Pagdi">Caps / Hats / Safa / Pagdi</option>
                 <option value="Face Masks">Face Masks</option>

@@ -28,7 +28,7 @@ const megaMenuGroups = [
       "Indian State Costume",
       "Indian Mythology Costume",
       "Indian Dance Costume",
-      "Republic Day / Independence Day",
+      "Independence Day Costume",
       "National Heroes",
       "Halloween Costumes",
     ]
