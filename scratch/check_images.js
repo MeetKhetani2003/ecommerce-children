@@ -64,5 +64,5 @@ function checkFile(folder, filename) {
   return false;
 }
 
-checkCategory("Super Heroes Category.xlsx", "SuperHeros");
-checkCategory("Water Animals Category.xlsx", "water animal");
+checkCategory("Accessories Category.xlsx", "Assecories");
+checkCategory("Our Helpers Category.xlsx", "Our Helpers");
