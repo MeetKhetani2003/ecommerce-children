@@ -7,7 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { 
   Package, ShoppingBag, Users, HelpCircle, Plus, Edit, Trash2, 
-  RefreshCw, LayoutDashboard, DollarSign, Heart, ShoppingCart, Star, ArrowLeftRight, LogOut, ShieldCheck, Tag, Image, Download, X, QrCode
+  RefreshCw, LayoutDashboard, DollarSign, Heart, ShoppingCart, Star, ArrowLeftRight, LogOut, ShieldCheck, Tag, Image, Download, X, QrCode, Printer
 } from "lucide-react";
 import OrderBarcode from "@/components/OrderBarcode";
 
@@ -879,6 +879,29 @@ function AdminDashboard() {
                                   </button>
                                 )}
 
+                                {/* Courier Shipping Label PDF actions */}
+                                <div className="mt-2 flex gap-1.5">
+                                  <a
+                                    href={`/api/admin/orders/shipping-label?orderId=${order._id}`}
+                                    download
+                                    className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-[#EEDDF0] bg-white hover:bg-[#FCF7FD] py-1.5 text-[10px] font-bold text-gray-500 shadow-sm transition cursor-pointer"
+                                    title="Download 4x6 Courier Shipping Label PDF"
+                                  >
+                                    <Download className="h-3 w-3 text-gray-400" />
+                                    <span>Label PDF</span>
+                                  </a>
+                                  <a
+                                    href={`/api/admin/orders/shipping-label?orderId=${order._id}&print=true`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-[#EEDDF0] bg-white hover:bg-[#FCF7FD] py-1.5 text-[10px] font-bold text-gray-500 shadow-sm transition cursor-pointer"
+                                    title="Print 4x6 Courier Shipping Label"
+                                  >
+                                    <Printer className="h-3 w-3 text-gray-400" />
+                                    <span>Print Label</span>
+                                  </a>
+                                </div>
+
                                 {/* Barcode display */}
                                 <div className="mt-4 flex flex-col items-center justify-center p-2.5 rounded-2xl border border-dashed border-[#EEDDF0] bg-white">
                                   <span className="text-[9px] font-bold text-[#8B7A8F] uppercase tracking-wider mb-2">Scan Barcode</span>
@@ -1418,30 +1441,54 @@ function AdminDashboard() {
               </div>
 
               {/* Actions for manual shiprocket integration */}
-              <div className="mt-8 border-t border-[#F8F0F9] pt-5 flex justify-end gap-3">
-                {!lookupOrder.trackingNumber ? (
-                  <button
-                    onClick={() => handleManualShiprocketSync(lookupOrder._id)}
-                    disabled={syncingOrderId === lookupOrder._id}
-                    className="flex items-center gap-1.5 rounded-full bg-[#8B1D8F] px-5 py-2.5 text-[12.5px] font-bold text-white transition hover:bg-[#7A187C] shadow-sm cursor-pointer"
+              <div className="mt-8 border-t border-[#F8F0F9] pt-5 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex gap-2">
+                  <a
+                    href={`/api/admin/orders/shipping-label?orderId=${lookupOrder._id}`}
+                    download
+                    className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 px-4 py-2.5 text-[11.5px] font-bold text-gray-500 shadow-sm transition cursor-pointer"
+                    title="Download 4x6 Courier Shipping Label PDF"
                   >
-                    Create Shiprocket Order
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleManualTrackingSync(lookupOrder._id)}
-                    disabled={syncingOrderId === lookupOrder._id}
-                    className="flex items-center gap-1.5 rounded-full bg-blue-600 px-5 py-2.5 text-[12.5px] font-bold text-white transition hover:bg-blue-700 shadow-sm cursor-pointer"
+                    <Download className="h-3.5 w-3.5 text-gray-400" />
+                    <span>Download Label</span>
+                  </a>
+                  <a
+                    href={`/api/admin/orders/shipping-label?orderId=${lookupOrder._id}&print=true`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 px-4 py-2.5 text-[11.5px] font-bold text-gray-500 shadow-sm transition cursor-pointer"
+                    title="Print 4x6 Courier Shipping Label"
                   >
-                    Refresh Tracking Status
+                    <Printer className="h-3.5 w-3.5 text-gray-400" />
+                    <span>Print Label</span>
+                  </a>
+                </div>
+                
+                <div className="flex gap-2 ml-auto">
+                  {!lookupOrder.trackingNumber ? (
+                    <button
+                      onClick={() => handleManualShiprocketSync(lookupOrder._id)}
+                      disabled={syncingOrderId === lookupOrder._id}
+                      className="flex items-center gap-1.5 rounded-full bg-[#8B1D8F] px-5 py-2.5 text-[12.5px] font-bold text-white transition hover:bg-[#7A187C] shadow-sm cursor-pointer"
+                    >
+                      Create Shiprocket Order
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleManualTrackingSync(lookupOrder._id)}
+                      disabled={syncingOrderId === lookupOrder._id}
+                      className="flex items-center gap-1.5 rounded-full bg-blue-600 px-5 py-2.5 text-[12.5px] font-bold text-white transition hover:bg-blue-700 shadow-sm cursor-pointer"
+                    >
+                      Refresh Tracking Status
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setLookupOrder(null)}
+                    className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-[12.5px] font-semibold text-gray-600 transition hover:bg-gray-50 cursor-pointer"
+                  >
+                    Close
                   </button>
-                )}
-                <button 
-                  onClick={() => setLookupOrder(null)}
-                  className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-[12.5px] font-semibold text-gray-600 transition hover:bg-gray-50 cursor-pointer"
-                >
-                  Close
-                </button>
+                </div>
               </div>
             </div>
           </div>

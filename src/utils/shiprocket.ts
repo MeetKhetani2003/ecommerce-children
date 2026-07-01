@@ -1,5 +1,6 @@
 import dbConnect from "./dbConnect";
 import { Order } from "@/models/Order";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 // In-memory cache for Shiprocket JWT token
 let cachedToken: string | null = null;
@@ -430,4 +431,361 @@ export async function syncShiprocketTracking(orderId: string) {
     mappedStatus: newShippingStatus,
     updated: newShippingStatus !== order.shippingStatus
   };
+}
+
+/**
+ * Generates a 6x4 inch thermal-ready shipping/courier label PDF in LANDSCAPE orientation
+ */
+export async function generateShippingLabelPDF(orderId: string, autoPrint = false): Promise<Buffer> {
+  await dbConnect();
+  const order = await Order.findById(orderId);
+  if (!order) {
+    throw new Error(`Order ${orderId} not found in database.`);
+  }
+
+  if (!order.shippingDetails) {
+    throw new Error(`Order ${orderId} does not have shipping details.`);
+  }
+
+  const pdfDoc = await PDFDocument.create();
+  
+  // 6 x 4 inches in PostScript points: 432 x 288 pt (standard landscape thermal shipping label)
+  const page = pdfDoc.addPage([432, 288]);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  // Outer border box (Margin 10pt)
+  page.drawRectangle({
+    x: 10,
+    y: 10,
+    width: 412,
+    height: 268,
+    borderColor: rgb(0, 0, 0),
+    borderWidth: 1.5,
+  });
+
+  // 1. Header Box (Y: 243 to 278, Height: 35)
+  page.drawRectangle({
+    x: 10,
+    y: 243,
+    width: 412,
+    height: 35,
+    color: rgb(240/255, 230/255, 242/255),
+    borderColor: rgb(0, 0, 0),
+    borderWidth: 1,
+  });
+
+  page.drawText("SAHELI SHRUNGAR", {
+    x: 18,
+    y: 261,
+    size: 11.5,
+    font: boldFont,
+    color: rgb(139/255, 29/255, 143/255),
+  });
+
+  page.drawText("FANCY DRESS SPECIALIST", {
+    x: 18,
+    y: 251,
+    size: 7,
+    font: boldFont,
+    color: rgb(107/255, 90/255, 111/255),
+  });
+
+  // Header Right Side Badge (EXPRESS SHIPPING)
+  page.drawRectangle({
+    x: 316,
+    y: 251,
+    width: 96,
+    height: 18,
+    color: rgb(139/255, 29/255, 143/255),
+    borderRadius: 4,
+  } as any);
+
+  page.drawText("EXPRESS SHIPPING", {
+    x: 325,
+    y: 257,
+    size: 7,
+    font: boldFont,
+    color: rgb(1, 1, 1),
+  });
+
+  // Vertical Divider line between Left and Right columns
+  page.drawLine({
+    start: { x: 216, y: 45 },
+    end: { x: 216, y: 243 },
+    thickness: 1.2,
+    color: rgb(0, 0, 0),
+  });
+
+  // Left Column Horizontal Splitter (SHIP TO vs. RETURN ADDRESS)
+  page.drawLine({
+    start: { x: 10, y: 105 },
+    end: { x: 216, y: 105 },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
+
+  // Right Column Horizontal Splitters (BARCODE vs. SPECS vs. CHECKLIST)
+  page.drawLine({
+    start: { x: 216, y: 145 },
+    end: { x: 422, y: 145 },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
+  page.drawLine({
+    start: { x: 216, y: 95 },
+    end: { x: 422, y: 95 },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
+
+  // 2. Left Column - SHIP TO (RECIPIENT)
+  page.drawText("SHIP TO (RECIPIENT):", {
+    x: 18,
+    y: 228,
+    size: 7.5,
+    font: boldFont,
+    color: rgb(139/255, 29/255, 143/255),
+  });
+
+  page.drawText(order.shippingDetails.name, {
+    x: 18,
+    y: 214,
+    size: 11,
+    font: boldFont,
+    color: rgb(0, 0, 0),
+  });
+
+  // Phone number cleanup (prevent double +91 +91)
+  let cleanPhone = order.shippingDetails.phone.trim();
+  cleanPhone = cleanPhone.replace(/[\s\-\(\)]/g, ""); // Strip punctuation
+  if (!cleanPhone.startsWith("+")) {
+    if (cleanPhone.startsWith("91") && cleanPhone.length === 12) {
+      cleanPhone = "+" + cleanPhone;
+    } else {
+      if (cleanPhone.startsWith("0")) {
+        cleanPhone = cleanPhone.substring(1);
+      }
+      cleanPhone = "+91" + cleanPhone;
+    }
+  }
+
+  page.drawText(`Contact Phone: ${cleanPhone}`, {
+    x: 18,
+    y: 201,
+    size: 8.5,
+    font: boldFont,
+    color: rgb(0, 0, 0),
+  });
+
+  // Address text (Prefixed with "Address: ")
+  const fullAddressText = `Address: ${order.shippingDetails.address}`;
+  page.drawText(fullAddressText, {
+    x: 18,
+    y: 189,
+    size: 8,
+    font: font,
+    color: rgb(0, 0, 0),
+    maxWidth: 186,
+    lineHeight: 10.5,
+  });
+
+  // Highlight Destination PINCODE
+  const pincodeMatch = order.shippingDetails.address.match(/\b\d{6}\b/);
+  const pinText = pincodeMatch ? pincodeMatch[0] : "400001";
+  
+  page.drawRectangle({
+    x: 18,
+    y: 110,
+    width: 186,
+    height: 20,
+    color: rgb(248/255, 240/255, 249/255),
+  });
+
+  page.drawText(`PINCODE: ${pinText}`, {
+    x: 24,
+    y: 116,
+    size: 9.5,
+    font: boldFont,
+    color: rgb(139/255, 29/255, 143/255),
+  });
+
+  // 3. Left Column Bottom - RETURN ADDRESS (SENDER)
+  page.drawText("FROM / RETURN TO:", {
+    x: 18,
+    y: 93,
+    size: 6.5,
+    font: boldFont,
+    color: rgb(107/255, 90/255, 111/255),
+  });
+
+  page.drawText("Saheli Shrungar Costumes", {
+    x: 18,
+    y: 83,
+    size: 8,
+    font: boldFont,
+    color: rgb(0, 0, 0),
+  });
+
+  page.drawText("Anand Nagar Main Road, Oppo Harsad Provision Store,\nRajkot, Gujarat - 360002. Contact: 8866331293", {
+    x: 18,
+    y: 73,
+    size: 6.5,
+    font: font,
+    color: rgb(0, 0, 0),
+    maxWidth: 186,
+    lineHeight: 8.5,
+  });
+
+  // 4. Right Column - AWB Barcode & Specs
+  // Fetch and embed the barcode from bwip-js API
+  const barcodeValue = order.trackingNumber || order._id.toString();
+  let barcodeImage = null;
+  try {
+    const barcodeUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(barcodeValue)}&scale=3&height=12&includetext=false`;
+    const res = await fetch(barcodeUrl);
+    if (res.ok) {
+      const buffer = await res.arrayBuffer();
+      barcodeImage = await pdfDoc.embedPng(buffer);
+    }
+  } catch (err) {
+    console.error("[Courier Label PDF] Barcode fetch failed:", err);
+  }
+
+  if (barcodeImage) {
+    page.drawImage(barcodeImage, {
+      x: 224,
+      y: 178,
+      width: 190,
+      height: 48,
+    });
+  } else {
+    page.drawRectangle({
+      x: 224,
+      y: 178,
+      width: 190,
+      height: 48,
+      borderColor: rgb(0, 0, 0),
+      borderWidth: 1,
+    });
+  }
+
+  const isRealAwb = order.trackingNumber && !order.trackingNumber.startsWith("PENDING_AWB_");
+  const trackingNumberText = isRealAwb ? order.trackingNumber : "MOCK_AWB_SANDBOX_TEST";
+  page.drawText(`AWB NO: ${trackingNumberText}`, {
+    x: 224,
+    y: 160,
+    size: 9,
+    font: boldFont,
+    color: rgb(0, 0, 0),
+  });
+
+  // 5. Right Column Middle - PACKAGE SPECIFICATION
+  page.drawText("PACKAGE SPECIFICATION:", {
+    x: 224,
+    y: 134,
+    size: 6.5,
+    font: boldFont,
+    color: rgb(107/255, 90/255, 111/255),
+  });
+
+  const dateStr = new Date(order.createdAt || new Date()).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+
+  page.drawText(`Order ID: #${order._id.toString().substring(0, 16)}`, {
+    x: 224,
+    y: 124,
+    size: 7.5,
+    font: boldFont,
+    color: rgb(0, 0, 0),
+  });
+
+  page.drawText(`Date: ${dateStr}`, {
+    x: 224,
+    y: 114,
+    size: 7,
+    font: font,
+    color: rgb(0, 0, 0),
+  });
+
+
+  // 6. Right Column Bottom - Items Checklist & Specifications
+  page.drawText("ITEMS CHECKLIST & SIZES:", {
+    x: 224,
+    y: 85,
+    size: 6.5,
+    font: boldFont,
+    color: rgb(139/255, 29/255, 143/255),
+  });
+
+  let itemY = 73;
+  order.items.slice(0, 3).forEach((item: any) => {
+    const sizePart = item.size ? ` | Size: ${item.size.toUpperCase()}` : " | Size: Std";
+    page.drawText(`[ ]  ${item.title.substring(0, 20)} (Qty: ${item.quantity})${sizePart}`, {
+      x: 224,
+      y: itemY,
+      size: 7,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+    itemY -= 9.5;
+  });
+
+  if (order.items.length > 3) {
+    page.drawText(`... and ${order.items.length - 3} more items`, {
+      x: 224,
+      y: itemY,
+      size: 6,
+      font: font,
+      color: rgb(120/255, 120/255, 120/255),
+    });
+  }
+
+  // Horizontal Divider for bottom payment badge
+  page.drawLine({
+    start: { x: 10, y: 45 },
+    end: { x: 422, y: 45 },
+    thickness: 1.2,
+    color: rgb(0, 0, 0),
+  });
+
+  // 6. Payment Badge Banner (Y: 10 to 45, Height: 35)
+  const isCod = order.paymentMethod === "cod";
+  const payMethodText = isCod ? `COD (Collect Rs. ${order.total})` : "PREPAID - ONLINE SECURED";
+  const payMethodColor = isCod ? rgb(180/255, 83/255, 9/255) : rgb(21/255, 128/255, 61/255);
+
+  page.drawRectangle({
+    x: 11,
+    y: 11,
+    width: 410,
+    height: 33,
+    color: isCod ? rgb(254/255, 243/255, 199/255) : rgb(240/255, 253/255, 244/255),
+  });
+
+  page.drawText(payMethodText.toUpperCase(), {
+    x: 18,
+    y: 24,
+    size: 10.5,
+    font: boldFont,
+    color: payMethodColor,
+  });
+
+  page.drawText(`TOTAL COLLECTABLE BILL: Rs. ${order.total}`, {
+    x: 18,
+    y: 14,
+    size: 7,
+    font: font,
+    color: payMethodColor,
+  });
+
+  // Trigger print dialog automatically when PDF opens
+  if (autoPrint) {
+    pdfDoc.addJavaScript("print", "print({});");
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
 }
