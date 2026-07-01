@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle, Mail, MapPin, Phone, Calendar, ArrowRight, ShoppingBag, Loader, Download } from "lucide-react";
 import { motion } from "framer-motion";
+import OrderBarcode from "@/components/OrderBarcode";
 
 function SuccessContent() {
   const searchParams = useSearchParams();
@@ -216,6 +217,16 @@ function SuccessContent() {
             <span>Total Bill Paid:</span>
             <span className="text-[#8B1D8F]">₹{order.total}</span>
           </div>
+        </div>
+
+        {/* Barcode section */}
+        <div className="mt-8 pt-6 border-t border-[#F8F0F9] flex flex-col items-center justify-center">
+          <div className="text-[11px] font-bold text-[#8B7A8F] mb-3 uppercase tracking-wider">Scan Order Barcode</div>
+          <OrderBarcode 
+            orderId={order._id} 
+            customerName={order.shippingDetails?.name} 
+            phone={order.shippingDetails?.phone} 
+          />
         </div>
       </div>
 

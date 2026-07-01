@@ -3,6 +3,7 @@ import dbConnect from "@/utils/dbConnect";
 import { Order } from "@/models/Order";
 import { Reservation } from "@/models/Reservation";
 import crypto from "crypto";
+import { createShiprocketShipmentAndAwb } from "@/utils/shiprocket";
 
 export async function POST(req: Request) {
   try {
@@ -56,7 +57,13 @@ export async function POST(req: Request) {
       await reservation.save();
     }
 
-
+    // Integrate with Shiprocket automatically
+    try {
+      await createShiprocketShipmentAndAwb(order._id.toString());
+    } catch (shiprocketError) {
+      console.error("[Shiprocket Auto-Integration] Failed to create order/shipment:", shiprocketError);
+      // Do not fail the checkout flow if Shiprocket has an issue, just log it.
+    }
 
     return NextResponse.json({ success: true, message: "Payment verified and order finalized" });
 

@@ -7,8 +7,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { 
   Package, ShoppingBag, Users, HelpCircle, Plus, Edit, Trash2, 
-  RefreshCw, LayoutDashboard, DollarSign, Heart, ShoppingCart, Star, ArrowLeftRight, LogOut, ShieldCheck, Tag, Image, Download, X
+  RefreshCw, LayoutDashboard, DollarSign, Heart, ShoppingCart, Star, ArrowLeftRight, LogOut, ShieldCheck, Tag, Image, Download, X, QrCode
 } from "lucide-react";
+import OrderBarcode from "@/components/OrderBarcode";
 
 function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -26,6 +27,11 @@ function AdminDashboard() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [banners, setBanners] = useState<any[]>([]);
   const [selectedInquiry, setSelectedInquiry] = useState<any>(null);
+
+  // Shiprocket Lookup & Action States
+  const [lookupOrder, setLookupOrder] = useState<any>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [syncingOrderId, setSyncingOrderId] = useState<string | null>(null);
 
   // Loading & Action states
   const [loading, setLoading] = useState(true);
@@ -207,6 +213,96 @@ function AdminDashboard() {
       }
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleLookupOrder = async (orderId: string) => {
+    if (!/^[0-9a-fA-F]{24}$/.test(orderId)) {
+      toast.error("Invalid Order ID. Must be a 24-character hexadecimal code.");
+      return;
+    }
+
+    setLookupLoading(true);
+    const loadId = toast.loading("Searching for order...");
+    try {
+      const res = await fetch(`/api/admin/orders?orderId=${orderId}`);
+      const data = await res.json();
+      if (data.success && data.order) {
+        setLookupOrder(data.order);
+        toast.success("Order found!");
+      } else {
+        toast.error("Order not found.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error looking up order.");
+    } finally {
+      toast.dismiss(loadId);
+      setLookupLoading(false);
+    }
+  };
+
+  const handleManualShiprocketSync = async (orderId: string) => {
+    setSyncingOrderId(orderId);
+    const loadId = toast.loading("Syncing order and assigning AWB on Shiprocket...");
+    try {
+      const res = await fetch("/api/admin/orders/shiprocket-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Shiprocket order placed and AWB assigned successfully!");
+        fetchData();
+        if (lookupOrder && lookupOrder._id === orderId) {
+          const freshRes = await fetch(`/api/admin/orders?orderId=${orderId}`);
+          const freshData = await freshRes.json();
+          if (freshData.success) {
+            setLookupOrder(freshData.order);
+          }
+        }
+      } else {
+        toast.error("Shiprocket sync failed: " + (data.message || "Unknown error"));
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error connecting to Shiprocket integration API.");
+    } finally {
+      toast.dismiss(loadId);
+      setSyncingOrderId(null);
+    }
+  };
+
+  const handleManualTrackingSync = async (orderId: string) => {
+    setSyncingOrderId(orderId);
+    const loadId = toast.loading("Checking tracking events from Shiprocket...");
+    try {
+      const res = await fetch("/api/admin/orders/shiprocket-track-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Tracking updated! Current status: ${data.currentStatus}`);
+        fetchData();
+        if (lookupOrder && lookupOrder._id === orderId) {
+          const freshRes = await fetch(`/api/admin/orders?orderId=${orderId}`);
+          const freshData = await freshRes.json();
+          if (freshData.success) {
+            setLookupOrder(freshData.order);
+          }
+        }
+      } else {
+        toast.error("Tracking sync failed: " + (data.message || "Unknown error"));
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error connecting to Shiprocket tracking API.");
+    } finally {
+      toast.dismiss(loadId);
+      setSyncingOrderId(null);
     }
   };
 
@@ -622,6 +718,47 @@ function AdminDashboard() {
                       <Plus className="h-4 w-4" /> Create Offline Order
                     </Link>
                   </div>
+
+                  {/* Barcode Scanner lookup bar */}
+                  <div className="mb-6 bg-gradient-to-r from-[#FCF7FD] to-[#F3E7F5] border border-[#F0E6F2] rounded-3xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-[#8B1D8F] shadow-sm">
+                        <QrCode className="h-5.5 w-5.5" />
+                      </div>
+                      <div>
+                        <h3 className="text-[14.5px] font-bold text-[#1A0F1C]">Scan Order Barcode</h3>
+                        <p className="text-[11.5px] text-[#6B5A6F] mt-0.5">Focus this input and scan the order barcode to view details instantly.</p>
+                      </div>
+                    </div>
+                    <form 
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const inputEl = e.currentTarget.elements.namedItem("barcodeSearch") as HTMLInputElement;
+                        const val = inputEl.value.trim();
+                        if (val) {
+                          handleLookupOrder(val);
+                          inputEl.value = "";
+                        }
+                      }}
+                      className="flex items-center gap-2 max-w-md w-full"
+                    >
+                      <input
+                        name="barcodeSearch"
+                        type="text"
+                        disabled={lookupLoading}
+                        placeholder="Scan or paste 24-char Order ID & press Enter..."
+                        className="flex-1 rounded-full border border-[#EEDDF0] bg-white px-4 py-2.5 text-[13px] outline-none focus:border-[#8B1D8F] shadow-sm disabled:opacity-50"
+                      />
+                      <button 
+                        type="submit"
+                        disabled={lookupLoading}
+                        className="rounded-full bg-[#8B1D8F] px-5 py-2.5 text-[12.5px] font-bold text-white transition hover:bg-[#7A187C] shadow-sm cursor-pointer disabled:opacity-50"
+                      >
+                        {lookupLoading ? "Loading..." : "Lookup"}
+                      </button>
+                    </form>
+                  </div>
+
                   <div className="space-y-4">
                     {filteredOrders.length === 0 ? (
                       <p className="text-[14px] text-center text-[#8B7A8F] py-8">No orders found.</p>
@@ -720,6 +857,38 @@ function AdminDashboard() {
                                       }
                                     }}
                                     className="rounded-lg border border-[#EEDDF0] px-3 py-1.5 text-[12px] outline-none"
+                                  />
+                                </div>
+
+                                {/* Shiprocket Actions */}
+                                {!order.trackingNumber ? (
+                                  <button
+                                    onClick={() => handleManualShiprocketSync(order._id)}
+                                    disabled={syncingOrderId === order._id}
+                                    className="mt-2.5 w-full flex items-center justify-center gap-1.5 rounded-xl bg-[#8B1D8F] hover:bg-[#7A187C] py-2 text-[11.5px] font-bold text-white transition disabled:opacity-50 cursor-pointer"
+                                  >
+                                    Sync to Shiprocket
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleManualTrackingSync(order._id)}
+                                    disabled={syncingOrderId === order._id}
+                                    className="mt-2.5 w-full flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 py-2 text-[11.5px] font-bold text-white transition disabled:opacity-50 cursor-pointer"
+                                  >
+                                    Refresh Tracking Status
+                                  </button>
+                                )}
+
+                                {/* Barcode display */}
+                                <div className="mt-4 flex flex-col items-center justify-center p-2.5 rounded-2xl border border-dashed border-[#EEDDF0] bg-white">
+                                  <span className="text-[9px] font-bold text-[#8B7A8F] uppercase tracking-wider mb-2">Scan Barcode</span>
+                                  <OrderBarcode 
+                                    orderId={order._id} 
+                                    customerName={order.shippingDetails?.name} 
+                                    phone={order.shippingDetails?.phone} 
+                                    width={0.8}
+                                    height={30}
+                                    fontSize={9}
                                   />
                                 </div>
                               </div>
@@ -1142,15 +1311,143 @@ function AdminDashboard() {
                 >
                   Mark as {selectedInquiry.status === "resolved" ? "Pending" : "Resolved"}
                 </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
+        {/* Scanned Order Details Modal */}
+        {lookupOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="relative w-full max-w-2xl rounded-3xl border border-[#F0E6F2] bg-white p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+              <button 
+                onClick={() => setLookupOrder(null)} 
+                className="absolute top-5 right-5 grid h-9 w-9 place-items-center rounded-full border border-gray-100 bg-white text-gray-500 hover:bg-gray-50 transition cursor-pointer"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
 
+              <div className="flex items-center gap-3 border-b border-[#F8F0F9] pb-4 mb-6">
+                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-purple-50 text-[#8B1D8F]">
+                  <ShoppingBag className="h-5.5 w-5.5" />
+                </div>
+                <div>
+                  <h3 className="text-[18px] font-bold text-[#1A0F1C]">Scanned Order Details</h3>
+                  <span className="text-[12px] font-mono text-[#8B1D8F] font-semibold">{lookupOrder._id}</span>
+                </div>
+              </div>
 
-    </div>
+              <div className="grid gap-6 md:grid-cols-2 mb-6">
+                <div className="rounded-2xl bg-[#FCF7FD] p-4 border border-[#F0E6F2] text-[13px]">
+                  <h4 className="font-bold text-[#1A0F1C] mb-2 uppercase tracking-wide text-[11px]">Customer & Shipping</h4>
+                  <div className="space-y-1 text-[#4A354D]">
+                    <div><strong>Name:</strong> {lookupOrder.shippingDetails.name}</div>
+                    <div><strong>Phone:</strong> {lookupOrder.shippingDetails.phone}</div>
+                    <div><strong>Email:</strong> {lookupOrder.email}</div>
+                    <div className="mt-2 pt-2 border-t border-[#EEDDF0] leading-relaxed">
+                      <strong>Address:</strong><br />
+                      {lookupOrder.shippingDetails.address}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-[#FCF7FD] p-4 border border-[#F0E6F2] text-[13px]">
+                  <h4 className="font-bold text-[#1A0F1C] mb-2 uppercase tracking-wide text-[11px]">Billing & Status</h4>
+                  <div className="space-y-1 text-[#4A354D]">
+                    <div><strong>Date:</strong> {new Date(lookupOrder.createdAt).toLocaleString("en-IN")}</div>
+                    <div>
+                      <strong>Payment Method:</strong>{" "}
+                      <span className="font-semibold uppercase text-purple-700">{lookupOrder.paymentMethod}</span>
+                    </div>
+                    <div>
+                      <strong>Payment Status:</strong>{" "}
+                      <span className={`font-semibold ${lookupOrder.paymentStatus === "paid" ? "text-green-700" : "text-amber-700"}`}>{lookupOrder.paymentStatus}</span>
+                    </div>
+                    <div>
+                      <strong>Shipping Status:</strong>{" "}
+                      <span className="font-semibold text-[#8B1D8F]">{lookupOrder.shippingStatus}</span>
+                    </div>
+                    {lookupOrder.trackingNumber && (
+                      <div className="mt-2 pt-2 border-t border-[#EEDDF0]">
+                        <strong>AWB Tracking:</strong>{" "}
+                        <a href={lookupOrder.trackingLink} target="_blank" rel="noopener noreferrer" className="font-mono text-[#8B1D8F] underline font-semibold">
+                          {lookupOrder.trackingNumber}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Costume Items */}
+              <div className="mb-6">
+                <h4 className="font-bold text-[#1A0F1C] mb-3 uppercase tracking-wide text-[11px]">Ordered Items</h4>
+                <ul className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  {lookupOrder.items.map((item: any, idx: number) => (
+                    <li key={idx} className="flex items-center gap-3 text-[13.5px] text-[#4A354D] border-b border-[#F8F0F9] pb-2 last:border-0 last:pb-0">
+                      <div className="h-8 w-7 rounded bg-gray-50 border border-gray-100 overflow-hidden shrink-0">
+                        <img src={item.image} className="h-full w-full object-cover" />
+                      </div>
+                      <span className="font-semibold text-[#1A0F1C]">{item.title}</span>
+                      <span className="text-[#8B7A8F]">({item.quantity}x)</span>
+                      <span className="ml-auto font-bold text-[#1A0F1C]">₹{item.price * item.quantity}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Totals & Barcode Display */}
+              <div className="border-t border-[#F0E6F2] pt-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex flex-col items-center p-3 rounded-2xl border border-dashed border-[#F0E6F2] bg-white shrink-0">
+                  <span className="text-[9px] font-bold text-[#8B7A8F] uppercase tracking-wider mb-2">Order Barcode</span>
+                  <OrderBarcode 
+                    orderId={lookupOrder._id} 
+                    customerName={lookupOrder.shippingDetails?.name} 
+                    phone={lookupOrder.shippingDetails?.phone} 
+                    width={1.0}
+                    height={35}
+                    fontSize={9}
+                  />
+                </div>
+                <div className="text-right ml-auto space-y-1">
+                  <div className="text-[13px] text-gray-500">Subtotal: ₹{lookupOrder.subtotal}</div>
+                  {lookupOrder.discount > 0 && <div className="text-[13px] text-green-700">Discount: -₹{lookupOrder.discount}</div>}
+                  <div className="text-[18px] font-extrabold text-[#8B1D8F] mt-1">Grand Total: ₹{lookupOrder.total}</div>
+                </div>
+              </div>
+
+              {/* Actions for manual shiprocket integration */}
+              <div className="mt-8 border-t border-[#F8F0F9] pt-5 flex justify-end gap-3">
+                {!lookupOrder.trackingNumber ? (
+                  <button
+                    onClick={() => handleManualShiprocketSync(lookupOrder._id)}
+                    disabled={syncingOrderId === lookupOrder._id}
+                    className="flex items-center gap-1.5 rounded-full bg-[#8B1D8F] px-5 py-2.5 text-[12.5px] font-bold text-white transition hover:bg-[#7A187C] shadow-sm cursor-pointer"
+                  >
+                    Create Shiprocket Order
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleManualTrackingSync(lookupOrder._id)}
+                    disabled={syncingOrderId === lookupOrder._id}
+                    className="flex items-center gap-1.5 rounded-full bg-blue-600 px-5 py-2.5 text-[12.5px] font-bold text-white transition hover:bg-blue-700 shadow-sm cursor-pointer"
+                  >
+                    Refresh Tracking Status
+                  </button>
+                )}
+                <button 
+                  onClick={() => setLookupOrder(null)}
+                  className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-[12.5px] font-semibold text-gray-600 transition hover:bg-gray-50 cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
   );
 }
 

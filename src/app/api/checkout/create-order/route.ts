@@ -5,6 +5,7 @@ import { Order } from "@/models/Order";
 import { Reservation } from "@/models/Reservation";
 import { Coupon } from "@/models/Coupon";
 import Razorpay from "razorpay";
+import { createShiprocketShipmentAndAwb } from "@/utils/shiprocket";
 
 export async function POST(req: Request) {
   try {
@@ -121,6 +122,13 @@ export async function POST(req: Request) {
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),
         active: false // Inactive since it's COD
       });
+
+      // Integrate with Shiprocket automatically for COD
+      try {
+        await createShiprocketShipmentAndAwb(localOrder._id.toString());
+      } catch (shiprocketError) {
+        console.error("[Shiprocket Auto-Integration COD] Failed to create order/shipment:", shiprocketError);
+      }
 
       return NextResponse.json({
         success: true,

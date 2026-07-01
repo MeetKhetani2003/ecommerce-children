@@ -6,6 +6,7 @@ import Link from "next/link";
 import { User, MapPin, Package, Heart, LogOut, CheckCircle, Truck, ShoppingBag, Trash2, X, Star } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 import toast from "react-hot-toast";
+import OrderBarcode from "@/components/OrderBarcode";
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -576,6 +577,18 @@ export default function Profile() {
                               )}
                             </div>
                           )}
+
+                           <div className="mt-5 flex flex-col items-center justify-center p-3 rounded-2xl border border-dashed border-[#F0E6F2] bg-white max-w-xs mx-auto">
+                            <span className="text-[10px] font-bold text-[#8B7A8F] uppercase tracking-wider mb-2.5">Scan Order Barcode</span>
+                            <OrderBarcode 
+                              orderId={order._id} 
+                              customerName={order.shippingDetails?.name} 
+                              phone={order.shippingDetails?.phone} 
+                              width={1.0}
+                              height={40}
+                              fontSize={10}
+                            />
+                          </div>
                         </div>
                       )}
 
