@@ -608,7 +608,7 @@ export async function generateShippingLabelPDF(orderId: string, autoPrint = fals
   });
 
   // Address text (Prefixed with "Address: ")
-  const fullAddressText = `Address: ${order.shippingDetails.address.replaceAll(" | ", ", ")}`;
+  const fullAddressText = `Address: ${order.shippingDetails.address.replace(/ \| /g, ", ")}`;
   page.drawText(fullAddressText, {
     x: 18,
     y: 189,

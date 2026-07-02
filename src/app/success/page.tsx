@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, Mail, MapPin, Phone, Calendar, ArrowRight, ShoppingBag, Loader, Download, Printer } from "lucide-react";
+import { CheckCircle, Mail, MapPin, Phone, Calendar, ArrowRight, ShoppingBag, Loader, Download } from "lucide-react";
 import { motion } from "framer-motion";
 import OrderBarcode from "@/components/OrderBarcode";
 
@@ -171,7 +171,7 @@ function SuccessContent() {
               <MapPin className="h-4 w-4 text-[#A38AA6] shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <strong>Shipping Address:</strong>
-                <p className="mt-0.5 text-[#6B5A6F] leading-relaxed break-words">{order.shippingDetails.address?.replaceAll(" | ", ", ")}</p>
+                <p className="mt-0.5 text-[#6B5A6F] leading-relaxed break-words">{order.shippingDetails.address?.replace(/ \| /g, ", ")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-[#4A354D]">

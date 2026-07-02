@@ -156,6 +156,25 @@ export default function OrderBarcode({
           renderer="canvas" 
         />
       </div>
+      <div className="flex items-center gap-3 mt-1">
+        <button
+          onClick={handleDownload}
+          className="flex items-center gap-1 text-[11px] font-bold text-[#8B1D8F] hover:underline"
+          title="Download Barcode Image"
+        >
+          <Download className="h-3.5 w-3.5" />
+          <span>Save</span>
+        </button>
+        <span className="text-gray-300">|</span>
+        <button
+          onClick={handlePrint}
+          className="flex items-center gap-1 text-[11px] font-bold text-[#8B1D8F] hover:underline"
+          title="Print Barcode Label"
+        >
+          <Printer className="h-3.5 w-3.5" />
+          <span>Print Label</span>
+        </button>
+      </div>
     </div>
   );
 }

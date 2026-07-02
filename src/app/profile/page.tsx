@@ -935,7 +935,7 @@ export default function Profile() {
                       <div className="flex items-start gap-3 min-w-0">
                         <MapPin className={`h-5 w-5 shrink-0 mt-0.5 ${addr === defaultAddress ? "text-[#8B1D8F]" : "text-[#A38AA6]"}`} />
                         <div className="min-w-0">
-                          <p className="text-[#1A0F1C] font-medium leading-relaxed break-words">{addr.replaceAll(" | ", ", ")}</p>
+                          <p className="text-[#1A0F1C] font-medium leading-relaxed break-words">{addr.replace(/ \| /g, ", ")}</p>
                           {addr === defaultAddress && (
                             <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#F3E7F5] px-2.5 py-0.5 text-[10px] font-bold text-[#8B1D8F] border border-[#E9D5ED]">
                               ★ Default Address

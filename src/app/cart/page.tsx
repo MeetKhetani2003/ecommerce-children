@@ -569,7 +569,7 @@ export default function Cart() {
                           const isDefault = addr === (session.user as any).defaultAddress;
                           return (
                             <option key={idx} value={idx.toString()}>
-                              {isDefault ? `★ [Default] ${addr.replaceAll(" | ", ", ")}` : addr.replaceAll(" | ", ", ")}
+                              {isDefault ? `★ [Default] ${addr.replace(/ \| /g, ", ")}` : addr.replace(/ \| /g, ", ")}
                             </option>
                           );
                         })}
