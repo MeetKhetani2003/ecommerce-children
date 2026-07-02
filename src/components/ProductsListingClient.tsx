@@ -6,6 +6,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Filter, Star, Heart, ShoppingBag, ChevronDown, Search } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 import toast from "react-hot-toast";
+import Image from "next/image";
 
 const categoryGroups = [
   {
@@ -368,8 +369,14 @@ export default function ProductsListingClient({
                 <div key={p.id} className="group relative w-full shrink-0">
                   <div className="overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
                     <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
-                      <Link href={`/product/${p.slug || p.id}`}>
-                        <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                      <Link href={`/product/${p.slug || p.id}`} className="block h-full w-full">
+                        <Image
+                          src={p.image}
+                          alt={p.title}
+                          fill
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px"
+                          className="object-cover transition duration-700 group-hover:scale-105"
+                        />
                       </Link>
                       <div className="absolute left-2.5 top-2.5 right-11 flex flex-wrap items-center gap-1.5">
                         <span

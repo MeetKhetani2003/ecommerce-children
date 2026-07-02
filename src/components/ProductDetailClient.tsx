@@ -9,6 +9,7 @@ import { useShop } from "@/context/ShopContext";
 import Barcode from "react-barcode";
 import { BsCash } from "react-icons/bs";
 import toast from "react-hot-toast";
+import Image from "next/image";
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -30,7 +31,14 @@ const ImageMagnifier = ({ src, alt }: { src: string; alt: string }) => {
       onMouseLeave={() => setShowMagnifier(false)}
       onMouseMove={handleMouseMove}
     >
-      <img src={src} alt={alt} className="h-full w-full object-cover transition-opacity duration-300" />
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        priority
+        sizes="(max-width: 768px) 100vw, 600px"
+        className="object-cover transition-opacity duration-300"
+      />
       {showMagnifier && (
         <div
           className="pointer-events-none absolute inset-0 z-20 bg-white"
@@ -242,8 +250,14 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
                   className={`relative aspect-[4/5] overflow-hidden rounded-xl border-2 transition-all ${activeImage === idx ? "border-[#8B1D8F]" : "border-transparent hover:border-[#E8DDE9]"
                     }`}
                 >
-                  <img src={img} alt={`${product.title} thumbnail ${idx + 1}`} className="h-full w-full object-cover" />
-                  {activeImage !== idx && <div className="absolute inset-0 bg-white/20"></div>}
+                  <Image
+                    src={img}
+                    alt={`${product.title} thumbnail ${idx + 1}`}
+                    fill
+                    sizes="120px"
+                    className="object-cover"
+                  />
+                  {activeImage !== idx && <div className="absolute inset-0 bg-white/20 z-10"></div>}
                 </button>
               ))}
             </div>

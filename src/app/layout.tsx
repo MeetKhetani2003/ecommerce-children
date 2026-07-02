@@ -1,6 +1,25 @@
 import "./globals.css";
 import Layout from "@/components/Layout";
 import Providers from "@/components/Providers";
+import { Plus_Jakarta_Sans, Outfit, Inter } from "next/font/google";
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-plus-jakarta-sans",
+  display: "swap",
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata = {
   title: {
@@ -44,8 +63,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" className={`${plusJakartaSans.variable} ${outfit.variable} ${inter.variable}`}>
+      <body className={plusJakartaSans.className}>
         <Providers>
           <Toaster position="top-center" />
           <Layout>

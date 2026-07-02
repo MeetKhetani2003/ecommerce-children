@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from 'next/link';
+import Image from 'next/image';
 
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Star, Truck, ShieldCheck, RotateCcw, Sparkles, IndianRupee, ArrowRight, Check, Heart, ShoppingBag } from "lucide-react";
@@ -77,9 +78,13 @@ export default function Home() {
     carouselRef.current.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
   };
 
+  const selectedAgeCategories = new Set<string>();
+  const selectedAgeProductIds = new Set<any>();
+
   const getRealAgeProductImage = (ageGroup: string, fallbackImg: string) => {
-    const matchedProduct = productsList.find((p: any) => {
+    let matchedProduct = productsList.find((p: any) => {
       if (!p.sizes || p.sizes.length === 0) return false;
+      if (selectedAgeCategories.has(p.category) || selectedAgeProductIds.has(p.id)) return false;
       return p.sizes.some((sz: any) => {
         const sizeStr = typeof sz === "string" ? sz : sz?.size || "";
         const numMatch = sizeStr.match(/\d+/);
@@ -97,8 +102,56 @@ export default function Home() {
         return false;
       });
     });
-    return matchedProduct ? matchedProduct.image : fallbackImg;
+
+    if (!matchedProduct) {
+      matchedProduct = productsList.find((p: any) => {
+        if (!p.sizes || p.sizes.length === 0) return false;
+        if (selectedAgeProductIds.has(p.id)) return false;
+        return p.sizes.some((sz: any) => {
+          const sizeStr = typeof sz === "string" ? sz : sz?.size || "";
+          const numMatch = sizeStr.match(/\d+/);
+          if (!numMatch) return false;
+          const firstAge = parseInt(numMatch[0]);
+          if (ageGroup === "0-2 Years") {
+            return firstAge <= 2;
+          } else if (ageGroup === "3-5 Years") {
+            return firstAge >= 3 && firstAge <= 5;
+          } else if (ageGroup === "6-8 Years") {
+            return firstAge >= 6 && firstAge <= 8;
+          } else if (ageGroup === "9-12 Years") {
+            return firstAge >= 9 && firstAge <= 13;
+          }
+          return false;
+        });
+      });
+    }
+
+    if (matchedProduct) {
+      selectedAgeCategories.add(matchedProduct.category);
+      selectedAgeProductIds.add(matchedProduct.id);
+      return matchedProduct.image;
+    }
+    return fallbackImg;
   };
+
+  // Get 3 promo banner products with unique categories
+  const promoProducts: any[] = [];
+  const seenPromoCategories = new Set<string>();
+  for (const p of productsList) {
+    if (!seenPromoCategories.has(p.category)) {
+      promoProducts.push(p);
+      seenPromoCategories.add(p.category);
+      if (promoProducts.length === 3) break;
+    }
+  }
+  if (promoProducts.length < 3) {
+    for (const p of productsList) {
+      if (!promoProducts.find(up => up.id === p.id)) {
+        promoProducts.push(p);
+        if (promoProducts.length === 3) break;
+      }
+    }
+  }
 
   return (
     <>
@@ -115,12 +168,19 @@ export default function Home() {
                 transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
                 className="absolute inset-0"
               >
-                <div className="absolute inset-0 bg-[#1A0F1C]/20 mix-blend-multiply" />
-                <img src={banners[activeSlide].image} alt="" className="h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-[#1A0F1C]/20 mix-blend-multiply z-10" />
+                <Image
+                  src={banners[activeSlide].image}
+                  alt={banners[activeSlide].title || "Banner"}
+                  fill
+                  priority
+                  sizes="(max-width: 1280px) 100vw, 1240px"
+                  className="object-cover"
+                />
               </motion.div>
             </AnimatePresence>
 
-            <div className="absolute inset-0 flex items-end md:items-center">
+            <div className="absolute inset-0 z-20 flex items-end md:items-center">
               <div className="w-full px-5 pb-10 pt-20 md:px-12 md:pb-0">
                 <div className="max-w-[620px]">
                   <AnimatePresence mode="wait">
@@ -148,7 +208,7 @@ export default function Home() {
             </div>
 
             {/* Controls */}
-            <div className="absolute bottom-5 right-5 flex items-center gap-2 md:bottom-7 md:right-7">
+            <div className="absolute bottom-5 right-5 z-20 flex items-center gap-2 md:bottom-7 md:right-7">
               <button onClick={() => setActiveSlide((s) => (s - 1 + banners.length) % banners.length)} className="grid h-9 w-9 place-items-center rounded-full bg-black/30 text-white backdrop-blur-md transition hover:bg-black/50">
                 <ChevronLeft className="h-5 w-5" />
               </button>
@@ -158,7 +218,7 @@ export default function Home() {
             </div>
 
             {/* Indicators */}
-            <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-1.5 md:bottom-7">
+            <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 md:bottom-7">
               {banners.map((_, i) => (
                 <button key={i} onClick={() => setActiveSlide(i)} className={cn("h-[3px] rounded-full transition-all", i === activeSlide ? "w-8 bg-white" : "w-5 bg-white/40 hover:bg-white/70")} />
               ))}
@@ -240,8 +300,14 @@ export default function Home() {
               <motion.div key={p.id} whileHover={{ y: -4 }} className="group relative w-[210px] shrink-0 snap-start md:w-[242px]">
                 <div className="overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
                   <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
-                    <Link href={`/product/${p.slug || p.id}`}>
-                      <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                    <Link href={`/product/${p.slug || p.id}`} className="block h-full w-full">
+                      <Image
+                        src={p.image}
+                        alt={p.title}
+                        fill
+                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 250px"
+                        className="object-cover transition duration-700 group-hover:scale-105"
+                      />
                     </Link>
                     <div className="absolute left-2.5 top-2.5 right-11 flex flex-wrap items-center gap-1.5">
                       <span
@@ -338,13 +404,19 @@ export default function Home() {
                     <div key={idx} className="aspect-[3/4] overflow-hidden rounded-2xl border border-[#F0E6F2] bg-gray-100 animate-pulse shadow-sm" />
                   ))
                 ) : (
-                  productsList.slice(0, 3).map((p) => (
+                  promoProducts.map((p) => (
                     <Link
                       key={p.id}
                       href={`/product/${p.slug || p.id}`}
                       className="group/item relative aspect-[3/4] overflow-hidden rounded-2xl border border-[#F0E6F2] bg-white shadow-sm hover:border-[#8B1D8F] transition-all duration-300 hover:shadow-md block"
                     >
-                      <img src={p.image} alt={p.title} className="h-full w-full object-cover transition-transform duration-500 group-hover/item:scale-105" />
+                      <Image
+                        src={p.image}
+                        alt={p.title}
+                        fill
+                        sizes="(max-width: 768px) 33vw, 150px"
+                        className="object-cover transition-transform duration-500 group-hover/item:scale-105"
+                      />
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 text-left">
                         <div className="line-clamp-1 text-[11px] font-semibold text-white group-hover/item:text-[#F3E7F5] transition-colors">{p.title}</div>
                         <div className="text-[10px] font-bold text-[#E91E7A]">₹{p.price}</div>
@@ -366,24 +438,30 @@ export default function Home() {
           <Link href="/products" className="text-[13.5px] font-medium text-[#8B1D8F] hover:underline">View all</Link>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-6">
-          {categories.slice(0, 6).map((c, idx) => {
+          {categories.slice(0, 6).map((c) => {
             const realProduct = productsList.find((p: any) => {
               const productCat = p.category || "";
               return productCat.toLowerCase() === c.name.toLowerCase() ||
                      productCat.toLowerCase().includes(c.name.toLowerCase());
             });
-            const displayImage = realProduct ? realProduct.image : (productsList[idx % productsList.length]?.image || c.image);
+            const displayImage = realProduct ? realProduct.image : c.image;
             return (
               <Link key={c.name} href={`/products?category=${c.name}`} className="group relative overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white">
-                <div className="aspect-[4/5] overflow-hidden">
-                  <img src={displayImage} alt={c.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                <div className="relative aspect-[4/5] overflow-hidden">
+                  <Image
+                    src={displayImage}
+                    alt={c.name}
+                    fill
+                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 25vw, 200px"
+                    className="object-cover transition duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent z-10" />
                 </div>
-                <div className="absolute inset-x-0 bottom-0 p-3.5">
+                <div className="absolute inset-x-0 bottom-0 p-3.5 z-20">
                   <div className="text-[15px] font-medium text-white">{c.name}</div>
                   <div className="text-[11.5px] text-white/80">{c.count}</div>
                 </div>
-                <div className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-white/90 opacity-0 backdrop-blur transition group-hover:opacity-100">
+                <div className="absolute right-2.5 top-2.5 z-20 grid h-7 w-7 place-items-center rounded-full bg-white/90 opacity-0 backdrop-blur transition group-hover:opacity-100">
                   <ArrowRight className="h-3.5 w-3.5 text-[#1A0F1C]" />
                 </div>
               </Link>
@@ -405,9 +483,15 @@ export default function Home() {
             const fallbackProductImg = productsList[(idx + 2) % productsList.length]?.image || item.img;
             const displayImage = getRealAgeProductImage(item.age, fallbackProductImg);
             return (
-              <Link key={item.age} href={`/products`} className="group relative overflow-hidden rounded-[20px] bg-[#FCF7FD]">
+              <Link key={item.age} href={`/products`} className="group relative aspect-square overflow-hidden rounded-[20px] bg-[#FCF7FD]">
                 <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <img src={displayImage} alt={item.age} className="aspect-square w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <Image
+                  src={displayImage}
+                  alt={item.age}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 300px"
+                  className="object-cover transition-transform duration-700 group-hover:scale-110"
+                />
                 <div className="absolute bottom-4 left-4 z-20">
                   <div className="text-[18px] font-bold text-white">{item.age}</div>
                   <div className="text-[13px] font-medium text-white/80">{item.label}</div>
@@ -422,7 +506,13 @@ export default function Home() {
       <motion.section {...fadeInUp} className="mx-auto mt-10 max-w-[1240px] px-4 md:mt-14">
         <div className="grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
           <div className="relative overflow-hidden rounded-[28px] border border-[#F0E6F2] bg-[#1A0F1C]">
-            <img src="https://images.pexels.com/photos/8501698/pexels-photo-8501698.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1200&h=800" alt="" className="absolute inset-0 h-full w-full object-cover opacity-[0.35]" />
+            <Image
+              src="https://images.pexels.com/photos/8501698/pexels-photo-8501698.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1200&h=800"
+              alt="Happy kids fancy dress"
+              fill
+              sizes="(max-width: 1024px) 100vw, 600px"
+              className="object-cover opacity-[0.35]"
+            />
             <div className="absolute inset-0 bg-gradient-to-r from-[#1A0F1C] via-[#1A0F1C]/80 to-transparent" />
             <div className="relative p-7 md:p-10">
               <h3 className="max-w-[420px] text-[24px] font-semibold leading-tight text-white md:text-[28px]">Why 12,000+ parents choose Saheli Shrungar</h3>
@@ -490,7 +580,7 @@ export default function Home() {
             </div>
           </div>
           <div className="relative h-64 w-full md:h-auto">
-            <img src="https://images.pexels.com/photos/18139756/pexels-photo-18139756.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1000&h=1200" alt="Craftsmanship" className="absolute inset-0 h-full w-full object-cover" />
+            <Image src="https://images.pexels.com/photos/18139756/pexels-photo-18139756.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1000&h=1200" alt="Craftsmanship" fill sizes="(max-width: 1024px) 100vw, 600px" className="object-cover" />
           </div>
         </div>
       </motion.section>      {/* Testimonials */}
@@ -596,7 +686,13 @@ export default function Home() {
             "https://images.pexels.com/photos/8506372/pexels-photo-8506372.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=600",
           ].map((src, i) => (
             <a key={i} href="#" className="group relative aspect-square overflow-hidden rounded-2xl">
-              <img src={src} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+              <Image
+                src={src}
+                alt="Instagram post thumbnail"
+                fill
+                sizes="(max-width: 768px) 33vw, (max-width: 1200px) 16vw, 200px"
+                className="object-cover transition duration-500 group-hover:scale-105"
+              />
               <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/20" />
             </a>
           ))}

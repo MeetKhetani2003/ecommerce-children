@@ -7,7 +7,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, Heart, ShoppingBag, User, Menu, X, ChevronDown, Check, Sparkles } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 import { useSession, signOut } from "next-auth/react";
-import LoginModal from "@/components/LoginModal";
+import Image from "next/image";
+import dynamic from "next/dynamic";
+
+const LoginModal = dynamic(() => import("@/components/LoginModal"), {
+  ssr: false,
+});
 
 const megaMenuGroups = [
   {
@@ -143,7 +148,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#FFFCFE] text-[#1A0F1C] antialiased selection:bg-[#8B1D8F]/20 selection:text-[#6B146E]" style={{ fontFamily: "Plus Jakarta Sans, Outfit, Inter, system-ui, -apple-system, sans-serif" }}>
+    <div className="min-h-screen bg-[#FFFCFE] text-[#1A0F1C] antialiased selection:bg-[#8B1D8F]/20 selection:text-[#6B146E]" style={{ fontFamily: "var(--font-plus-jakarta-sans), var(--font-outfit), var(--font-inter), system-ui, -apple-system, sans-serif" }}>
       {/* Top Announcement */}
       <div className="relative z-[60] w-full bg-gradient-to-r from-[#8B1D8F] via-[#A32B9D] to-[#C2187B] text-white print:hidden">
         <div className="mx-auto flex max-w-[1240px] items-center justify-center gap-3 px-4 py-[9px] text-[12.5px] font-medium tracking-wide">
@@ -157,7 +162,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex h-[68px] max-w-[1240px] items-center gap-4 px-4 md:h-[76px]">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <img src={logoUrl} alt="Saheli Shrungar" className="h-32  w-auto object-contain" />
+            <Image src={logoUrl} alt="Saheli Shrungar" width={200} height={128} priority className="h-32 w-auto object-contain" />
           </Link>
 
           {/* Nav */}
@@ -262,11 +267,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                               }}
                               className="flex items-center gap-3 rounded-xl p-2 transition duration-200 hover:bg-[#FCF7FD]"
                             >
-                              <img
-                                src={p.image}
-                                alt={p.title}
-                                className="h-12 w-10 rounded-lg object-cover border border-[#F0E6F2]"
-                              />
+                              <div className="relative h-12 w-10 shrink-0">
+                                <Image
+                                  src={p.image}
+                                  alt={p.title}
+                                  fill
+                                  sizes="40px"
+                                  className="rounded-lg object-cover border border-[#F0E6F2]"
+                                />
+                              </div>
                               <div className="flex-1 min-w-0">
                                 <h4 className="text-[13.5px] font-semibold text-[#1A0F1C] truncate hover:text-[#8B1D8F] transition-colors">
                                   {p.title}
@@ -304,7 +313,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {session ? (
               <Link href="/profile" className="hidden h-10 w-10 place-items-center rounded-full text-[#4A354D] transition hover:bg-[#F8F0F9] hover:text-[#8B1D8F] md:grid">
                 {session.user?.image ? (
-                  <img src={session.user.image} alt="Profile" className="h-6 w-6 rounded-full border border-[#EEDDF0] object-cover" />
+                  <div className="relative h-6 w-6 overflow-hidden rounded-full border border-[#EEDDF0]">
+                    <Image src={session.user.image} alt="Profile" fill sizes="24px" className="object-cover" />
+                  </div>
                 ) : (
                   <div className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br from-[#8B1D8F] to-[#E91E7A] text-[10px] font-bold text-white uppercase">
                     {session.user?.name ? session.user.name.substring(0, 1) : "U"}
@@ -378,11 +389,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                             }}
                             className="flex items-center gap-3 rounded-lg p-2 transition hover:bg-[#FCF7FD]"
                           >
-                            <img
-                              src={p.image}
-                              alt={p.title}
-                              className="h-10 w-8 rounded object-cover"
-                            />
+                            <div className="relative h-10 w-8 shrink-0">
+                              <Image
+                                src={p.image}
+                                alt={p.title}
+                                fill
+                                sizes="32px"
+                                className="rounded object-cover"
+                              />
+                            </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="text-[13px] font-semibold text-[#1A0F1C] truncate">
                                 {p.title}
@@ -485,7 +500,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="mx-auto max-w-[1240px] px-4 py-10">
           <div className="grid gap-8 md:grid-cols-[1.3fr_1fr_1fr_1fr]">
             <div>
-              <img src={logoUrl} alt="Saheli Shrungar" className="h-32 w-auto object-contain" />
+              <Image src={logoUrl} alt="Saheli Shrungar" width={200} height={128} className="h-32 w-auto object-contain" />
               <p className="mt-4 max-w-[320px] text-[13.5px] leading-relaxed text-[#6B5A6F]">India’s most loved fancy dress destination for school events. Premium fabrics, complete sets, delivered fast.</p>
             </div>
             {[

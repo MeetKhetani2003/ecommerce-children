@@ -33,8 +33,8 @@ async function dbConnect() {
   try {
     cached.conn = await cached.promise;
     
-    // Run auto-seeding
-    await seedDatabase();
+    // Run auto-seeding asynchronously without blocking the connection setup
+    seedDatabase().catch((err) => console.error("Database seeding error:", err));
   } catch (e) {
     cached.promise = null;
     throw e;

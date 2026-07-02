@@ -207,9 +207,9 @@ export const categories = [
     count: "18 styles",
   },
   {
-    name: "Birds Costume",
-    image: "https://images.pexels.com/photos/31625368/pexels-photo-31625368.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
-    count: "10 styles",
+    name: "Our Helpers",
+    image: "/Our Helpers/nurse_main.png",
+    count: "16 styles",
   },
   {
     name: "Indian State Costume",
@@ -218,7 +218,7 @@ export const categories = [
   },
   {
     name: "Fruit Costume",
-    image: "https://images.pexels.com/photos/8506372/pexels-photo-8506372.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    image: "/assets/strawberry_costume.png",
     count: "12 styles",
   },
   {
@@ -247,9 +247,9 @@ export const categories = [
     count: "9 styles",
   },
   {
-    name: "Our Helpers",
-    image: "https://images.pexels.com/photos/6202806/pexels-photo-6202806.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
-    count: "16 styles",
+    name: "Birds Costume",
+    image: "https://images.pexels.com/photos/31625368/pexels-photo-31625368.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=1000",
+    count: "10 styles",
   },
   {
     name: "Flower Costume",

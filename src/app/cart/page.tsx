@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import { useShop } from "@/context/ShopContext";
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Tag, Check, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
+import Image from "next/image";
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -473,8 +474,14 @@ export default function Cart() {
             <h2 className="text-[18px] font-semibold text-[#1A0F1C]">Costume List</h2>
             {cartItems.map((item) => (
               <div key={item.cartItemId} className="flex gap-4 rounded-2xl border border-[#F0E6F2] bg-white p-4 transition-all hover:shadow-sm">
-                <Link href={`/product/${item.slug || item.id}`} className="block h-[100px] w-[80px] shrink-0 overflow-hidden rounded-xl bg-[#FCF7FD]">
-                  <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
+                <Link href={`/product/${item.slug || item.id}`} className="relative block h-[100px] w-[80px] shrink-0 overflow-hidden rounded-xl bg-[#FCF7FD]">
+                  <Image
+                    src={item.image}
+                    alt={item.title}
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                  />
                 </Link>
                 <div className="flex flex-1 flex-col justify-between py-1">
                   <div className="flex justify-between gap-2">

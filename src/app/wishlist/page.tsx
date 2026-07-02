@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 
 import { Heart, Star, ShoppingBag } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
+import Image from "next/image";
 
 const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -71,8 +72,14 @@ export default function Wishlist() {
           <div key={p.id} className="group relative w-full shrink-0">
             <div className="overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
               <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
-                <Link href={`/product/${p.slug || p.id}`}>
-                  <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                <Link href={`/product/${p.slug || p.id}`} className="block h-full w-full">
+                  <Image
+                    src={p.image}
+                    alt={p.title}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 200px"
+                    className="object-cover transition duration-700 group-hover:scale-105"
+                  />
                 </Link>
                 <button 
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(p.id); }} 
