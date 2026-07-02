@@ -9,6 +9,8 @@ import { useShop } from "@/context/ShopContext";
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Tag, Check, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
+const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" ");
+
 export default function Cart() {
   const { cartItems, updateQuantity, removeFromCart, clearCart } = useShop();
   const { data: session, update } = useSession();
@@ -27,12 +29,25 @@ export default function Cart() {
   const [checkoutError, setCheckoutError] = useState("");
   const [processing, setProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"online" | "cod">("online");
+  
+  // Split address states (for new address / shiprocket requirements)
+  const [addrLine1, setAddrLine1] = useState("");
+  const [addrLine2, setAddrLine2] = useState("");
+  const [addrCity, setAddrCity] = useState("");
+  const [addrState, setAddrState] = useState("");
+  const [addrPincode, setAddrPincode] = useState("");
 
   // Saved address dropdown/saving states
   const [selectedAddressIndex, setSelectedAddressIndex] = useState<string>("");
   const [newAddressText, setNewAddressText] = useState("");
   const [saveNewAddress, setSaveNewAddress] = useState(true);
   const [newAddressAsDefault, setNewAddressAsDefault] = useState(false);
+  const [shippingFee, setShippingFee] = useState(0);
+  const [calculatingShipping, setCalculatingShipping] = useState(false);
+
+  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const discountAmount = Math.round((subtotal * discountPercent) / 100);
+  const total = subtotal - discountAmount;
 
   useEffect(() => {
     const savedAddresses = (session?.user as any)?.addresses || [];
@@ -65,13 +80,85 @@ export default function Cart() {
     }
   }, [session]);
 
+  useEffect(() => {
+    if (selectedAddressIndex === "new" || !session) {
+      const concatenated = [
+        addrLine1.trim(),
+        addrLine2.trim(),
+        addrCity.trim(),
+        addrState.trim(),
+        addrPincode.trim()
+      ].join(" | ");
+      setShippingAddress(concatenated);
+      setNewAddressText(concatenated);
+    }
+  }, [addrLine1, addrLine2, addrCity, addrState, addrPincode, selectedAddressIndex, session]);
+
+  useEffect(() => {
+    async function updateShippingFee() {
+      if (paymentMethod !== "cod") {
+        setShippingFee(0);
+        return;
+      }
+
+      // Find pincode
+      let pincode = "";
+      if (selectedAddressIndex === "new" || !session) {
+        pincode = addrPincode.trim();
+      } else {
+        const pinMatch = shippingAddress.match(/\b\d{6}\b/);
+        if (pinMatch) pincode = pinMatch[0];
+      }
+
+      if (pincode.length !== 6) {
+        setShippingFee(0);
+        return;
+      }
+
+      setCalculatingShipping(true);
+      try {
+        const totalQty = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+        const weight = Math.max(0.5, totalQty * 0.5);
+        const res = await fetch("/api/shipping/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pincode,
+            weight,
+            isCod: true,
+            declaredValue: subtotal
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setShippingFee(data.shippingFee);
+        } else {
+          setShippingFee(80); // Fallback
+        }
+      } catch (err) {
+        setShippingFee(80); // Fallback
+      } finally {
+        setCalculatingShipping(false);
+      }
+    }
+
+    updateShippingFee();
+  }, [paymentMethod, selectedAddressIndex, addrPincode, shippingAddress, cartItems, session, subtotal]);
+
   const handleAddressSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     setSelectedAddressIndex(val);
     const savedAddresses = (session?.user as any)?.addresses || [];
 
     if (val === "new") {
-      setShippingAddress(newAddressText);
+      const concatenated = [
+        addrLine1.trim(),
+        addrLine2.trim(),
+        addrCity.trim(),
+        addrState.trim(),
+        addrPincode.trim()
+      ].join(" | ");
+      setShippingAddress(concatenated);
     } else {
       const idx = parseInt(val, 10);
       if (!isNaN(idx) && savedAddresses[idx]) {
@@ -80,9 +167,7 @@ export default function Cart() {
     }
   };
 
-  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const discountAmount = Math.round((subtotal * discountPercent) / 100);
-  const total = subtotal - discountAmount;
+
 
   // Load Razorpay Script Helper
   const loadRazorpayScript = () => {
@@ -130,9 +215,25 @@ export default function Cart() {
       return;
     }
 
-    if (!shippingName.trim() || !shippingAddress.trim() || !shippingPhone.trim()) {
-      setCheckoutError("All shipping details are required to deliver your costumes.");
+    if (!shippingName.trim() || !shippingPhone.trim()) {
+      setCheckoutError("Recipient name and contact phone number are required.");
       return;
+    }
+
+    if (selectedAddressIndex === "new" || !session) {
+      if (!addrLine1.trim() || !addrCity.trim() || !addrState.trim() || !addrPincode.trim()) {
+        setCheckoutError("Address Line 1, City, State, and Pincode are required.");
+        return;
+      }
+      if (!/^\d{6}$/.test(addrPincode.trim())) {
+        setCheckoutError("Pincode must be a 6-digit number.");
+        return;
+      }
+    } else {
+      if (!shippingAddress.trim()) {
+        setCheckoutError("Please select or enter a shipping address.");
+        return;
+      }
     }
 
     setProcessing(true);
@@ -188,6 +289,7 @@ export default function Cart() {
             id: item.id,
             title: item.title,
             quantity: item.quantity,
+            selectedSize: item.size || "",
           })),
           shippingDetails: {
             name: shippingName,
@@ -206,8 +308,8 @@ export default function Cart() {
         throw new Error(orderData.message || "Order creation failed.");
       }
 
-      // If COD, bypass Razorpay flow entirely
-      if (orderData.isCod) {
+      // If COD and shipping fee is 0, bypass Razorpay flow entirely
+      if (orderData.isCod && (!orderData.amount || orderData.amount === 0)) {
         clearCart();
         toast.success("Costume order placed successfully via Cash on Delivery!");
         router.push(`/success?orderId=${orderData.orderId}`);
@@ -222,8 +324,11 @@ export default function Cart() {
 
       // If Razorpay key is mock/placeholder, simulate checkout in front-end
       if (orderData.key === "rzp_test_placeholder") {
+        const displayLabel = orderData.isCod 
+          ? `₹${orderData.amount / 100} COD shipping fee` 
+          : `₹${orderData.amount / 100} total order payment`;
         const choice = window.confirm(
-          "Razorpay Test Mode Bypass:\n\nClick OK to simulate a SUCCESSFUL payment.\nClick Cancel to simulate CANCELLED checkout (restores inventory stock)."
+          `Razorpay Test Mode Bypass:\n\nClick OK to simulate a SUCCESSFUL payment for the ${displayLabel}.\nClick Cancel to simulate CANCELLED checkout.`
         );
         if (choice) {
           // Simulate Payment Verification
@@ -275,7 +380,7 @@ export default function Cart() {
         amount: orderData.amount,
         currency: "INR",
         name: "Saheli Shrungar Costumes",
-        description: "Fancy Dress Kids Costumes Checkout",
+        description: orderData.isCod ? "COD Shipping Fee Payment" : "Fancy Dress Kids Costumes Checkout",
         order_id: orderData.razorpayOrderId,
         handler: async function (response: any) {
           // Verification
@@ -410,40 +515,123 @@ export default function Cart() {
                 />
               </div>
               {session && ((session.user as any).addresses || []).length > 0 && (
-                <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Select Saved Shipping Address</label>
-                  <select
-                    value={selectedAddressIndex}
-                    onChange={handleAddressSelectChange}
-                    className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-white px-4 text-[13.5px] text-[#2E1F31] outline-none focus:border-[#E1BFE6] cursor-pointer"
-                  >
-                    {((session.user as any).addresses || []).map((addr: string, idx: number) => {
-                      const isDefault = addr === (session.user as any).defaultAddress;
-                      return (
-                        <option key={idx} value={idx.toString()}>
-                          {isDefault ? `★ [Default] ${addr}` : addr}
-                        </option>
-                      );
-                    })}
-                    <option value="new">+ Deliver to a new address</option>
-                  </select>
+                <div className="space-y-4">
+                  <div className="flex gap-2 p-1 bg-[#FCF7FD] rounded-xl border border-[#F0E6F2]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedAddressIndex("0");
+                        const saved = (session.user as any).addresses || [];
+                        if (saved[0]) setShippingAddress(saved[0]);
+                      }}
+                      className={cn(
+                        "flex-1 py-2 px-3 text-[12.5px] font-semibold rounded-lg transition-all cursor-pointer",
+                        selectedAddressIndex !== "new" 
+                          ? "bg-[#8B1D8F] text-white shadow-sm" 
+                          : "text-[#6B5A6F] hover:bg-white/60"
+                      )}
+                    >
+                      Saved Addresses
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedAddressIndex("new");
+                        const concatenated = [
+                          addrLine1.trim(),
+                          addrLine2.trim(),
+                          addrCity.trim(),
+                          addrState.trim(),
+                          addrPincode.trim()
+                        ].join(" | ");
+                        setShippingAddress(concatenated);
+                      }}
+                      className={cn(
+                        "flex-1 py-2 px-3 text-[12.5px] font-semibold rounded-lg transition-all cursor-pointer",
+                        selectedAddressIndex === "new" 
+                          ? "bg-[#8B1D8F] text-white shadow-sm" 
+                          : "text-[#6B5A6F] hover:bg-white/60"
+                      )}
+                    >
+                      + Add New Address
+                    </button>
+                  </div>
+
+                  {selectedAddressIndex !== "new" && (
+                    <div>
+                      <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Select Saved Shipping Address</label>
+                      <select
+                        value={selectedAddressIndex}
+                        onChange={handleAddressSelectChange}
+                        className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-white px-4 text-[13.5px] text-[#2E1F31] outline-none focus:border-[#E1BFE6] cursor-pointer font-medium"
+                      >
+                        {((session.user as any).addresses || []).map((addr: string, idx: number) => {
+                          const isDefault = addr === (session.user as any).defaultAddress;
+                          return (
+                            <option key={idx} value={idx.toString()}>
+                              {isDefault ? `★ [Default] ${addr.replaceAll(" | ", ", ")}` : addr.replaceAll(" | ", ", ")}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
 
               {(!session || selectedAddressIndex === "new" || ((session.user as any).addresses || []).length === 0) && (
                 <div className="space-y-3">
                   <div>
-                    <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">Shipping Address</label>
+                    <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">Address Line 1 (House No, Building, Street)*</label>
                     <input
                       type="text"
-                      value={newAddressText}
-                      onChange={(e) => {
-                        setNewAddressText(e.target.value);
-                        setShippingAddress(e.target.value);
-                      }}
-                      placeholder="Street Address, City, Pincode"
+                      value={addrLine1}
+                      onChange={(e) => setAddrLine1(e.target.value)}
+                      placeholder="e.g. Flat 101, Shivam Apartments, MG Road"
                       className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
                     />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">Address Line 2 (Landmark, Area)</label>
+                    <input
+                      type="text"
+                      value={addrLine2}
+                      onChange={(e) => setAddrLine2(e.target.value)}
+                      placeholder="e.g. Near Hanuman Temple"
+                      className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">City*</label>
+                      <input
+                        type="text"
+                        value={addrCity}
+                        onChange={(e) => setAddrCity(e.target.value)}
+                        placeholder="e.g. Rajkot"
+                        className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">State*</label>
+                      <input
+                        type="text"
+                        value={addrState}
+                        onChange={(e) => setAddrState(e.target.value)}
+                        placeholder="e.g. Gujarat"
+                        className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">Pincode*</label>
+                      <input
+                        type="text"
+                        value={addrPincode}
+                        onChange={(e) => setAddrPincode(e.target.value)}
+                        placeholder="e.g. 360001"
+                        className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
+                      />
+                    </div>
                   </div>
                   {session && (
                     <div className="space-y-2 pt-1 pl-1">
@@ -549,11 +737,17 @@ export default function Cart() {
 
               <div className="flex justify-between">
                 <span>Shipping</span>
-                <span className="font-semibold text-[#0F8A4B]">Free</span>
+                {paymentMethod === "cod" ? (
+                  <span className={cn("font-semibold", shippingFee > 0 ? "text-[#1A0F1C]" : "text-[#0F8A4B]")}>
+                    {calculatingShipping ? "Calculating..." : shippingFee > 0 ? `₹${shippingFee}` : "Free"}
+                  </span>
+                ) : (
+                  <span className="font-semibold text-[#0F8A4B]">Free</span>
+                )}
               </div>
               <div className="flex justify-between border-t border-[#F0E6F2] pt-4 text-[18px] font-semibold text-[#1A0F1C]">
                 <span>Total</span>
-                <span>₹{total}</span>
+                <span>₹{total + shippingFee}</span>
               </div>
             </div>
 

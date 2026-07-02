@@ -68,6 +68,10 @@ export async function POST(req: Request) {
         }
       }
       order.shippingStatus = shippingStatus;
+      // Set deliveredAt timestamp when first marking as Delivered
+      if (shippingStatus === "Delivered" && !order.deliveredAt) {
+        order.deliveredAt = new Date();
+      }
     }
 
     // Update payment status if provided

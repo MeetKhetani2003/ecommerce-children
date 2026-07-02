@@ -46,7 +46,11 @@ export async function POST(req: Request) {
     }
 
     // Update order status
-    order.paymentStatus = "paid";
+    if (order.paymentMethod === "cod") {
+      order.paymentStatus = "pending"; // Costume payment pending collectable on delivery
+    } else {
+      order.paymentStatus = "paid";
+    }
     order.paymentId = razorpay_payment_id;
     await order.save();
 

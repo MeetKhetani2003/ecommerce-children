@@ -23,6 +23,7 @@ export default function CreateOfflineOrderPage() {
   // Selected Product Item
   const [selectedProductId, setSelectedProductId] = useState<number | "">("");
   const [selectedQuantity, setSelectedQuantity] = useState<number>(1);
+  const [selectedSize, setSelectedSize] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -63,16 +64,29 @@ export default function CreateOfflineOrderPage() {
     const prod = products.find(p => p.id === Number(selectedProductId));
     if (!prod) return;
 
-    if (prod.stock < selectedQuantity) {
-      toast(`Only ${prod.stock} items left in stock for ${prod.title}.`);
+    // Check size stock or general stock
+    if (prod.sizes && prod.sizes.length > 0 && selectedSize) {
+      const sizeObj = prod.sizes.find((s: any) => s.size === selectedSize);
+      if (!sizeObj || sizeObj.stock < selectedQuantity) {
+        toast.error(`Only ${sizeObj?.stock || 0} items left in stock for size ${selectedSize}.`);
+        return;
+      }
+    } else if (prod.stock < selectedQuantity) {
+      toast.error(`Only ${prod.stock} items left in stock for ${prod.title}.`);
       return;
     }
 
-    // Check if product already added in cart
-    const existingIdx = cartItems.findIndex(item => item.productId === prod.id);
+    // Check if product with SAME size already added in cart
+    const existingIdx = cartItems.findIndex(item => item.productId === prod.id && item.size === selectedSize);
     if (existingIdx !== -1) {
       const newQty = cartItems[existingIdx].quantity + selectedQuantity;
-      if (prod.stock < newQty) {
+      if (prod.sizes && prod.sizes.length > 0 && selectedSize) {
+        const sizeObj = prod.sizes.find((s: any) => s.size === selectedSize);
+        if (sizeObj && sizeObj.stock < newQty) {
+          toast.error(`Cannot add more. Total added quantity (${newQty}) exceeds stock for size ${selectedSize} (${sizeObj.stock}).`);
+          return;
+        }
+      } else if (prod.stock < newQty) {
         toast.error(`Cannot add more. Total added quantity (${newQty}) exceeds stock (${prod.stock}).`);
         return;
       }
@@ -87,7 +101,8 @@ export default function CreateOfflineOrderPage() {
           title: prod.title,
           price: prod.price,
           image: prod.image,
-          quantity: selectedQuantity
+          quantity: selectedQuantity,
+          size: selectedSize || null
         }
       ]);
     }
@@ -95,6 +110,7 @@ export default function CreateOfflineOrderPage() {
     // Reset selection inputs
     setSelectedProductId("");
     setSelectedQuantity(1);
+    setSelectedSize("");
     setSearchQuery("");
     setShowDropdown(false);
   };
@@ -139,7 +155,8 @@ export default function CreateOfflineOrderPage() {
           },
           items: cartItems.map(item => ({
             productId: item.productId,
-            quantity: item.quantity
+            quantity: item.quantity,
+            size: item.size || null
           })),
           discount: manualDiscount,
           paymentStatus,
@@ -311,6 +328,11 @@ export default function CreateOfflineOrderPage() {
                               setSelectedProductId(p.id);
                               setSearchQuery(`${p.title} (₹${p.price} | Stock: ${p.stock})`);
                               setShowDropdown(false);
+                              if (p.sizes && p.sizes.length > 0) {
+                                setSelectedSize(p.sizes[0].size);
+                              } else {
+                                setSelectedSize("");
+                              }
                             }}
                             className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-[13px] border-b border-gray-50 last:border-0 hover:bg-[#FCF7FD] transition disabled:opacity-40 disabled:cursor-not-allowed"
                           >
@@ -330,13 +352,29 @@ export default function CreateOfflineOrderPage() {
                 </div>
 
                 {selectedProductId !== "" && (
-                  <div className="flex items-end gap-4">
+                  <div className="flex items-end flex-wrap gap-4">
+                    {products.find(p => p.id === Number(selectedProductId))?.sizes?.length > 0 && (
+                      <div className="w-[150px]">
+                        <label className="mb-1 block text-[12.5px] font-medium text-[#4A354D]">Size</label>
+                        <select
+                          value={selectedSize}
+                          onChange={(e) => setSelectedSize(e.target.value)}
+                          className="h-10.5 w-full rounded-xl border border-[#EEDDF0] px-3 text-[13.5px] focus:outline-[#8B1D8F] bg-white text-[#1A0F1C]"
+                        >
+                          {products.find(p => p.id === Number(selectedProductId))?.sizes.map((s: any) => (
+                            <option key={s.size} value={s.size}>
+                              {s.size} (Stock: {s.stock})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <div className="w-[120px]">
                       <label className="mb-1 block text-[12.5px] font-medium text-[#4A354D]">Quantity</label>
                       <input
                         type="number"
                         min={1}
-                        max={products.find(p => p.id === Number(selectedProductId))?.stock || 1}
+                        max={products.find(p => p.id === Number(selectedProductId))?.sizes?.find((s: any) => s.size === selectedSize)?.stock || products.find(p => p.id === Number(selectedProductId))?.stock || 1}
                         value={selectedQuantity}
                         onChange={(e) => setSelectedQuantity(Math.max(1, Number(e.target.value)))}
                         className="h-10.5 w-full rounded-xl border border-[#EEDDF0] px-3.5 text-[13.5px] focus:outline-[#8B1D8F] bg-white text-[#1A0F1C]"
@@ -370,7 +408,10 @@ export default function CreateOfflineOrderPage() {
                     <img src={item.image} alt="" className="h-11 w-9 rounded object-cover bg-gray-50 border shrink-0" />
                     <div className="flex-1 min-w-0">
                       <h4 className="text-[13px] font-semibold text-[#1A0F1C] truncate">{item.title}</h4>
-                      <p className="text-[11px] text-[#8B7A8F]">{item.quantity}x • ₹{item.price}</p>
+                      <p className="text-[11px] text-[#8B7A8F]">
+                        {item.quantity}x • ₹{item.price}
+                        {item.size && <span className="ml-2 rounded bg-purple-50 px-1.5 py-0.5 text-[9.5px] font-semibold text-[#8B1D8F] border border-purple-100">Size: {item.size}</span>}
+                      </p>
                     </div>
                     <span className="text-[13px] font-bold text-[#1A0F1C] mr-2">₹{item.price * item.quantity}</span>
                     <button

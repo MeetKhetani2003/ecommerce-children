@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, Mail, MapPin, Phone, Calendar, ArrowRight, ShoppingBag, Loader, Download } from "lucide-react";
+import { CheckCircle, Mail, MapPin, Phone, Calendar, ArrowRight, ShoppingBag, Loader, Download, Printer } from "lucide-react";
 import { motion } from "framer-motion";
 import OrderBarcode from "@/components/OrderBarcode";
 
@@ -98,9 +98,9 @@ function SuccessContent() {
   }
 
   return (
-    <div className="mx-auto max-w-[800px] px-4 py-8 md:py-16" style={{ fontFamily: "Plus Jakarta Sans, Outfit, Inter, sans-serif" }}>
+    <div className="mx-auto max-w-[800px] px-4 py-8 md:py-16 print:py-0 print:px-0 print:max-w-full" style={{ fontFamily: "Plus Jakarta Sans, Outfit, Inter, sans-serif" }}>
       {/* Success Banner Hero */}
-      <div className="text-center mb-10">
+      <div className="text-center mb-10 print:hidden">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -139,7 +139,7 @@ function SuccessContent() {
       </div>
 
       {/* Invoice Card Container */}
-      <div className="rounded-3xl border border-[#F0E6F2] bg-white p-6 md:p-10 shadow-xl shadow-[#8B1D8F]/5 print:border-none print:shadow-none">
+      <div className="rounded-3xl border border-[#F0E6F2] bg-white p-6 md:p-10 shadow-xl shadow-[#8B1D8F]/5 print:border-none print:shadow-none print:p-0">
         
         {/* Invoice Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 border-b border-[#F8F0F9] pb-6 mb-6">
@@ -171,7 +171,7 @@ function SuccessContent() {
               <MapPin className="h-4 w-4 text-[#A38AA6] shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <strong>Shipping Address:</strong>
-                <p className="mt-0.5 text-[#6B5A6F] leading-relaxed break-words">{order.shippingDetails.address}</p>
+                <p className="mt-0.5 text-[#6B5A6F] leading-relaxed break-words">{order.shippingDetails.address?.replaceAll(" | ", ", ")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-[#4A354D]">
@@ -189,7 +189,15 @@ function SuccessContent() {
               <div key={idx} className="flex items-center justify-between gap-4 py-1.5 border-b border-[#F8F0F9] last:border-b-0">
                 <div className="min-w-0">
                   <div className="text-[14px] font-bold text-[#1A0F1C] truncate">{item.title}</div>
-                  <div className="text-[12px] text-[#8B7A8F] mt-0.5">Quantity: {item.quantity} x Price: ₹{item.price}</div>
+                  <div className="text-[12px] text-[#8B7A8F] mt-0.5 flex flex-wrap items-center gap-x-2">
+                    <span>Quantity: {item.quantity} x Price: ₹{item.price}</span>
+                    {item.size && (
+                      <>
+                        <span className="h-1.5 w-1.5 rounded-full bg-gray-300" />
+                        <span className="font-semibold text-[#8B1D8F]">Size: {item.size}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="text-[14.5px] font-bold text-[#1A0F1C] shrink-0">₹{item.price * item.quantity}</div>
               </div>
@@ -209,12 +217,19 @@ function SuccessContent() {
               <span className="font-semibold">-₹{order.discount}</span>
             </div>
           )}
-          <div className="flex justify-between text-[#0F8A4B]">
-            <span>Shipping:</span>
-            <span className="font-semibold">Free Express</span>
-          </div>
+          {order.shippingFee > 0 ? (
+            <div className="flex justify-between text-[#4A354D]">
+              <span>Shipping Fee (COD):</span>
+              <span className="font-semibold text-gray-800">₹{order.shippingFee}</span>
+            </div>
+          ) : (
+            <div className="flex justify-between text-[#0F8A4B]">
+              <span>Shipping:</span>
+              <span className="font-semibold">Free Express</span>
+            </div>
+          )}
           <div className="flex justify-between border-t border-[#F0E6F2] pt-3 text-[17px] font-extrabold text-[#1A0F1C]">
-            <span>Total Bill Paid:</span>
+            <span>{order.paymentMethod === "cod" ? "Total Bill to Pay (COD):" : "Total Bill Paid:"}</span>
             <span className="text-[#8B1D8F]">₹{order.total}</span>
           </div>
         </div>
@@ -232,6 +247,7 @@ function SuccessContent() {
 
       {/* Action Buttons */}
       <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 print:hidden">
+
         <button
           onClick={handleDownloadPDF}
           className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-[#EEDDF0] bg-white px-6 py-3 text-[14px] font-semibold text-[#3A2A3D] hover:bg-[#FCF7FD] transition cursor-pointer"
@@ -241,7 +257,7 @@ function SuccessContent() {
         </button>
 
         <Link
-          href="/profile"
+          href="/profile?tab=orders"
           className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-[#FCF7FD] border border-[#F3E7F5] px-6 py-3 text-[14px] font-semibold text-[#8B1D8F] hover:bg-[#F3E7F5]/40 transition"
         >
           <ShoppingBag className="h-4.5 w-4.5" />

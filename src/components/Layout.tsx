@@ -145,7 +145,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#FFFCFE] text-[#1A0F1C] antialiased selection:bg-[#8B1D8F]/20 selection:text-[#6B146E]" style={{ fontFamily: "Plus Jakarta Sans, Outfit, Inter, system-ui, -apple-system, sans-serif" }}>
       {/* Top Announcement */}
-      <div className="relative z-[60] w-full bg-gradient-to-r from-[#8B1D8F] via-[#A32B9D] to-[#C2187B] text-white">
+      <div className="relative z-[60] w-full bg-gradient-to-r from-[#8B1D8F] via-[#A32B9D] to-[#C2187B] text-white print:hidden">
         <div className="mx-auto flex max-w-[1240px] items-center justify-center gap-3 px-4 py-[9px] text-[12.5px] font-medium tracking-wide">
           <Sparkles className="h-3.5 w-3.5 opacity-90" />
           <span>School Event Season • Free Next-Day Delivery in Mumbai, Delhi, Pune • COD Available</span>
@@ -153,7 +153,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Navbar */}
-      <header className={cn("sticky top-0 z-50 w-full border-b transition-all duration-300", scrolled ? "border-[#F0E6F2] bg-white/80 backdrop-blur-xl" : "border-transparent bg-white/60 backdrop-blur-lg")}>
+      <header className={cn("sticky top-0 z-50 w-full border-b transition-all duration-300 print:hidden", scrolled ? "border-[#F0E6F2] bg-white/80 backdrop-blur-xl" : "border-transparent bg-white/60 backdrop-blur-lg")}>
         <div className="mx-auto flex h-[68px] max-w-[1240px] items-center gap-4 px-4 md:h-[76px]">
           {/* Logo */}
           <Link href="/" className="flex items-center">
@@ -481,7 +481,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Footer */}
-      <footer className="mt-12 border-t border-[#F0E6F2] bg-[#FFFCFE]">
+      <footer className="mt-12 border-t border-[#F0E6F2] bg-[#FFFCFE] print:hidden">
         <div className="mx-auto max-w-[1240px] px-4 py-10">
           <div className="grid gap-8 md:grid-cols-[1.3fr_1fr_1fr_1fr]">
             <div>
@@ -518,7 +518,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Cart Toast */}
       <AnimatePresence>
         {showCart && (
-          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="fixed bottom-5 left-1/2 z-[90] flex w-[92%] max-w-[420px] -translate-x-1/2 items-center gap-3 rounded-2xl border border-[#EEDDF0] bg-white p-3.5 shadow-2xl shadow-black/10 md:bottom-7">
+          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="fixed bottom-5 left-1/2 z-[90] flex w-[92%] max-w-[420px] -translate-x-1/2 items-center gap-3 rounded-2xl border border-[#EEDDF0] bg-white p-3.5 shadow-2xl shadow-black/10 md:bottom-7 print:hidden">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#F3E7F5] text-[#8B1D8F]">
               <Check className="h-5 w-5" />
             </div>

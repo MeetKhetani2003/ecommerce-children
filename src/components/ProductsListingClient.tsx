@@ -75,13 +75,13 @@ export default function ProductsListingClient({
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  
+
   const categoryParam = searchParams ? searchParams.get("category") : null;
   const activeCategory = categoryParam || initialCategory || "All";
-  
+
   const [sortBy, setSortBy] = useState<string>("featured");
   const [showFilters, setShowFilters] = useState(false);
-  
+
   const [activeAges, setActiveAges] = useState<string[]>([]);
   const [activePrices, setActivePrices] = useState<string[]>([]);
   const [productsList, setProductsList] = useState<any[]>([]);
@@ -105,7 +105,7 @@ export default function ProductsListingClient({
     }
     fetchProducts();
   }, []);
-  
+
   const handleMobileFilterAction = () => {
     if (window.innerWidth < 768) {
       setShowFilters(false);
@@ -142,7 +142,7 @@ export default function ProductsListingClient({
         );
       });
     }
-    
+
     // 4. Age filter (Tags or description check)
     if (activeAges.length > 0) {
       // Custom age filter check based on tags/sizes
@@ -156,7 +156,7 @@ export default function ProductsListingClient({
         });
       });
     }
-    
+
     // 5. Price filter
     if (activePrices.length > 0) {
       result = result.filter(p => {
@@ -166,7 +166,7 @@ export default function ProductsListingClient({
         return false;
       });
     }
-    
+
     // 6. Sorting
     if (sortBy === "price-low") {
       result = [...result].sort((a, b) => a.price - b.price);
@@ -181,10 +181,10 @@ export default function ProductsListingClient({
   // Format header text dynamically for local / brand SEO
   const headingText = useMemo(() => {
     let text = activeCategory === "All" ? "All Costumes" : activeCategory;
-    
+
     // Capitalize city name
     const formatStr = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
-    
+
     if (initialBrand && initialCity) {
       const brandName = initialBrand === "saheli-shrungar" ? "Saheli Shrungar" : formatStr(initialBrand);
       return `${text} by ${brandName} in ${formatStr(initialCity)}`;
@@ -215,17 +215,17 @@ export default function ProductsListingClient({
             {filteredProducts.length} items found
           </p>
         </div>
-        
+
         <div className="mt-6 flex items-center gap-3 md:mt-0">
-          <button 
+          <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 rounded-full border border-[#EEDDF0] bg-white px-4 py-2.5 text-[14px] font-medium text-[#4A354D] transition hover:bg-[#FCF7FD] md:hidden"
           >
             <Filter className="h-4 w-4" /> Filters
           </button>
-          
+
           <div className="relative ml-auto md:ml-0">
-            <select 
+            <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="appearance-none rounded-full border border-[#EEDDF0] bg-white py-2.5 pl-4 pr-10 text-[14px] font-medium text-[#4A354D] outline-none transition focus:border-[#E1BFE6] focus:ring-4 focus:ring-[#F3E7F5]"
@@ -239,7 +239,7 @@ export default function ProductsListingClient({
           </div>
         </div>
       </div>
-      
+
       <div className="flex flex-col gap-8 md:flex-row md:items-start">
         {/* Filters Sidebar */}
         <aside className={cn(
@@ -257,8 +257,8 @@ export default function ProductsListingClient({
                 }}
                 className={cn(
                   "w-full rounded-xl px-3 py-2 text-left text-[14px] transition font-medium",
-                  activeCategory === "All" 
-                    ? "bg-[#F3E7F5] text-[#8B1D8F]" 
+                  activeCategory === "All"
+                    ? "bg-[#F3E7F5] text-[#8B1D8F]"
                     : "text-[#4A354D] hover:bg-[#FCF7FD]"
                 )}
               >
@@ -282,7 +282,7 @@ export default function ProductsListingClient({
                           className={cn(
                             "w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition",
                             activeCategory.toLowerCase() === cat.toLowerCase()
-                              ? "bg-[#F3E7F5]/70 font-semibold text-[#8B1D8F]" 
+                              ? "bg-[#F3E7F5]/70 font-semibold text-[#8B1D8F]"
                               : "text-[#6B5A6F] hover:bg-[#FCF7FD] hover:text-[#8B1D8F]"
                           )}
                         >
@@ -294,21 +294,21 @@ export default function ProductsListingClient({
                 </div>
               ))}
             </div>
-            
+
             <div className="mt-8 border-t border-[#F0E6F2] pt-6">
               <h3 className="mb-4 text-[15px] font-semibold text-[#1A0F1C]">Age Group</h3>
               <ul className="space-y-2">
                 {["0-2 Years", "3-5 Years", "6-8 Years", "9-12 Years"].map(age => (
                   <li key={age}>
                     <label className="flex cursor-pointer items-center gap-3">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={activeAges.includes(age)}
                         onChange={() => {
                           setActiveAges(prev => prev.includes(age) ? prev.filter(a => a !== age) : [...prev, age]);
                           handleMobileFilterAction();
                         }}
-                        className="h-4 w-4 rounded border-[#EEDDF0] text-[#8B1D8F] focus:ring-[#8B1D8F]" 
+                        className="h-4 w-4 rounded border-[#EEDDF0] text-[#8B1D8F] focus:ring-[#8B1D8F]"
                       />
                       <span className="text-[14px] text-[#4A354D]">{age}</span>
                     </label>
@@ -316,21 +316,21 @@ export default function ProductsListingClient({
                 ))}
               </ul>
             </div>
-            
+
             <div className="mt-8 border-t border-[#F0E6F2] pt-6">
               <h3 className="mb-4 text-[15px] font-semibold text-[#1A0F1C]">Price</h3>
               <ul className="space-y-2">
                 {["Under ₹500", "₹500 - ₹1000", "Over ₹1000"].map(price => (
                   <li key={price}>
                     <label className="flex cursor-pointer items-center gap-3">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={activePrices.includes(price)}
                         onChange={() => {
                           setActivePrices(prev => prev.includes(price) ? prev.filter(p => p !== price) : [...prev, price]);
                           handleMobileFilterAction();
                         }}
-                        className="h-4 w-4 rounded border-[#EEDDF0] text-[#8B1D8F] focus:ring-[#8B1D8F]" 
+                        className="h-4 w-4 rounded border-[#EEDDF0] text-[#8B1D8F] focus:ring-[#8B1D8F]"
                       />
                       <span className="text-[14px] text-[#4A354D]">{price}</span>
                     </label>
@@ -355,7 +355,7 @@ export default function ProductsListingClient({
               </div>
               <h3 className="text-[18px] font-medium text-[#1A0F1C]">No costumes found</h3>
               <p className="mt-2 text-[14px] text-[#6B5A6F]">Try selecting a different category or filter.</p>
-              <button 
+              <button
                 onClick={() => { router.push(pathname); }}
                 className="mt-6 rounded-full bg-[#1A0F1C] px-6 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#8B1D8F]"
               >
@@ -372,16 +372,16 @@ export default function ProductsListingClient({
                         <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                       </Link>
                       <div className="absolute left-2.5 top-2.5 right-11 flex flex-wrap items-center gap-1.5">
-                        <span 
-                          className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur max-w-[90px] sm:max-w-[130px] truncate inline-block" 
+                        <span
+                          className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur max-w-[90px] sm:max-w-[130px] truncate inline-block"
                           title={p.category}
                         >
                           {p.category.includes(">") ? p.category.split(">").pop()?.trim() : p.category}
                         </span>
                         {p.tag && <span className="rounded-full bg-[#1A0F1C] px-2 py-1 text-[10.5px] font-medium leading-none text-white">{p.tag}</span>}
                       </div>
-                      <button 
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(p.id); }} 
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(p.id); }}
                         className="absolute right-2.5 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-[#6B5A6F] shadow-sm backdrop-blur transition-all hover:text-[#E91E7A]"
                       >
                         <Heart className={cn("h-4 w-4 transition", wishlist.includes(p.id) && "fill-[#E91E7A] text-[#E91E7A]")} />
@@ -419,16 +419,16 @@ export default function ProductsListingClient({
                           </select>
                         </div>
                       )}
-                      <button 
-                        onClick={(e) => { 
-                          e.preventDefault(); 
-                          e.stopPropagation(); 
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           if (p.sizes && p.sizes.length > 0 && !selectedSizes[p.id]) {
                             toast.error("Please select a size first");
                             return;
                           }
-                          addToCart(p, p.sizes && p.sizes.length > 0 ? selectedSizes[p.id] : undefined); 
-                        }} 
+                          addToCart(p, p.sizes && p.sizes.length > 0 ? selectedSizes[p.id] : undefined);
+                        }}
                         className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#F3E7F5] bg-[#FCF7FD] py-2 text-[13px] font-medium text-[#8B1D8F] transition hover:bg-[#8B1D8F] hover:text-white"
                       >
                         <ShoppingBag className="h-3.5 w-3.5" /> Add to cart

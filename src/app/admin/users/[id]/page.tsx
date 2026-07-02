@@ -346,7 +346,10 @@ export default function UserDetailPage() {
                             {order.items.map((item: any, idx: number) => (
                               <li key={idx} className="flex items-center gap-3 text-[13px] text-[#4A354D]">
                                 <img src={item.image} alt="" className="h-8 w-7 rounded bg-gray-50 border shrink-0 object-cover" />
-                                <span className="font-medium text-[#1A0F1C] truncate">{item.title}</span>
+                                <span className="font-medium text-[#1A0F1C] truncate flex items-center gap-1.5">
+                                  {item.title}
+                                  {item.size && <span className="rounded bg-purple-50 px-1.5 py-0.5 text-[9.5px] font-semibold text-[#8B1D8F] border border-purple-100 shrink-0">Size: {item.size}</span>}
+                                </span>
                                 <span className="text-[#8B7A8F] shrink-0">({item.quantity}x)</span>
                                 <span className="ml-auto font-semibold">₹{item.price * item.quantity}</span>
                               </li>

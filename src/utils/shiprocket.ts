@@ -1,6 +1,7 @@
 import dbConnect from "./dbConnect";
 import { Order } from "@/models/Order";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import https from "https";
 
 // In-memory cache for Shiprocket JWT token
 let cachedToken: string | null = null;
@@ -142,7 +143,7 @@ export async function createShiprocketShipmentAndAwb(orderId: string) {
     
     order.trackingNumber = mockAwbCode;
     order.trackingLink = mockTrackingLink;
-    order.shippingStatus = "Shipped";
+    order.shippingStatus = order.exchangeRequested ? "Exchange Processing" : "Shipped";
     await order.save();
     
     return {
@@ -192,17 +193,34 @@ export async function createShiprocketShipmentAndAwb(orderId: string) {
       selling_price: item.price.toString(),
     }));
 
+    let addressLine1 = order.shippingDetails.address;
+    let addressLine2 = "";
+    let city = addressInfo.city;
+    let state = addressInfo.state;
+    let pincode = addressInfo.pincode;
+
+    if (order.shippingDetails.address.includes(" | ")) {
+      const parts = order.shippingDetails.address.split(" | ");
+      if (parts.length >= 5) {
+        addressLine1 = parts[0] || "";
+        addressLine2 = parts[1] || "";
+        city = parts[2] || addressInfo.city;
+        state = parts[3] || addressInfo.state;
+        pincode = parts[4] || addressInfo.pincode;
+      }
+    }
+
     const payload = {
-      order_id: order._id.toString(),
+      order_id: order.exchangeRequested ? `${order._id.toString()}-EX` : order._id.toString(),
       order_date: orderDateStr,
       pickup_location: process.env.SHIP_ROCKET_PICKUP_LOCATION || "Primary",
       billing_customer_name: firstName,
       billing_last_name: lastName,
-      billing_address: order.shippingDetails.address.substring(0, 95),
-      billing_address_2: order.shippingDetails.address.length > 95 ? order.shippingDetails.address.substring(95, 190) : "",
-      billing_city: addressInfo.city,
-      billing_pincode: addressInfo.pincode,
-      billing_state: addressInfo.state,
+      billing_address: addressLine1.substring(0, 95),
+      billing_address_2: addressLine2.substring(0, 95),
+      billing_city: city,
+      billing_pincode: pincode,
+      billing_state: state,
       billing_country: "India",
       billing_email: order.email || "customer@saheli.com",
       billing_phone: cleanPhoneNumber(order.shippingDetails.phone),
@@ -398,11 +416,17 @@ export async function syncShiprocketTracking(orderId: string) {
   console.log(`[Shiprocket Tracking] AWB: ${awbCode} status is: ${currentStatus}`);
 
   // Map tracking status to our Order shippingStatus
+  // For exchange orders, "Delivered" means the exchange parcel was delivered (Exchange Completed)
   let newShippingStatus = order.shippingStatus;
+  const isExchange = !!order.exchangeRequested;
   
   const lowerStatus = currentStatus.toLowerCase();
   if (lowerStatus === "delivered") {
-    newShippingStatus = "Delivered";
+    newShippingStatus = "Delivered"; // Both regular & exchange use "Delivered"
+    // Set deliveredAt if not already set
+    if (!order.deliveredAt) {
+      order.deliveredAt = new Date();
+    }
   } else if (lowerStatus === "cancelled" || lowerStatus === "canceled") {
     newShippingStatus = "Cancelled";
   } else if (
@@ -415,13 +439,13 @@ export async function syncShiprocketTracking(orderId: string) {
   ) {
     newShippingStatus = "Shipped";
   } else if (lowerStatus === "return" || lowerStatus === "rto") {
-    newShippingStatus = "Exchange Processing"; // RTO maps to processing or status update
+    newShippingStatus = isExchange ? "Exchange Processing" : "Exchange Processing";
   }
 
-  if (newShippingStatus !== order.shippingStatus) {
+  if (newShippingStatus !== order.shippingStatus || order.isModified("deliveredAt")) {
     order.shippingStatus = newShippingStatus;
     await order.save();
-    console.log(`[Shiprocket Tracking] Updated Order: ${orderId} status to: ${newShippingStatus}`);
+    console.log(`[Shiprocket Tracking] Updated Order: ${orderId} status to: ${newShippingStatus}${isExchange ? " (Exchange Order)" : ""}`);
   }
 
   return {
@@ -429,6 +453,7 @@ export async function syncShiprocketTracking(orderId: string) {
     awbCode,
     currentStatus,
     mappedStatus: newShippingStatus,
+    isExchange,
     updated: newShippingStatus !== order.shippingStatus
   };
 }
@@ -491,18 +516,22 @@ export async function generateShippingLabelPDF(orderId: string, autoPrint = fals
     color: rgb(107/255, 90/255, 111/255),
   });
 
-  // Header Right Side Badge (EXPRESS SHIPPING)
+  // Header Right Side Badge — EXCHANGE SHIPMENT or EXPRESS SHIPPING
+  const isExchangeOrder = !!order.exchangeRequested;
+  const badgeColor = isExchangeOrder ? rgb(180/255, 83/255, 9/255) : rgb(139/255, 29/255, 143/255);
+  const badgeText = isExchangeOrder ? "EXCHANGE SHIPMENT" : "EXPRESS SHIPPING";
+
   page.drawRectangle({
-    x: 316,
+    x: 298,
     y: 251,
-    width: 96,
+    width: 114,
     height: 18,
-    color: rgb(139/255, 29/255, 143/255),
+    color: badgeColor,
     borderRadius: 4,
   } as any);
 
-  page.drawText("EXPRESS SHIPPING", {
-    x: 325,
+  page.drawText(badgeText, {
+    x: 306,
     y: 257,
     size: 7,
     font: boldFont,
@@ -579,7 +608,7 @@ export async function generateShippingLabelPDF(orderId: string, autoPrint = fals
   });
 
   // Address text (Prefixed with "Address: ")
-  const fullAddressText = `Address: ${order.shippingDetails.address}`;
+  const fullAddressText = `Address: ${order.shippingDetails.address.replaceAll(" | ", ", ")}`;
   page.drawText(fullAddressText, {
     x: 18,
     y: 189,
@@ -643,11 +672,18 @@ export async function generateShippingLabelPDF(orderId: string, autoPrint = fals
   let barcodeImage = null;
   try {
     const barcodeUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(barcodeValue)}&scale=3&height=12&includetext=false`;
-    const res = await fetch(barcodeUrl);
-    if (res.ok) {
-      const buffer = await res.arrayBuffer();
-      barcodeImage = await pdfDoc.embedPng(buffer);
-    }
+    const buffer = await new Promise<Buffer>((resolve, reject) => {
+      https.get(barcodeUrl, (res) => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`Status ${res.statusCode}`));
+          return;
+        }
+        const chunks: any[] = [];
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => resolve(Buffer.concat(chunks)));
+      }).on("error", reject);
+    });
+    barcodeImage = await pdfDoc.embedPng(buffer);
   } catch (err) {
     console.error("[Courier Label PDF] Barcode fetch failed:", err);
   }
@@ -788,4 +824,68 @@ export async function generateShippingLabelPDF(orderId: string, autoPrint = fals
 
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
+}
+
+/**
+ * Calculates dynamic shipping rate from Shiprocket Serviceability API
+ */
+export async function getShiprocketShippingCharge(
+  deliveryPostcode: string,
+  weight: number,
+  isCod: boolean,
+  declaredValue: number
+): Promise<number> {
+  // Sandbox mode fallback
+  if (process.env.SHIP_ROCKET_SANDBOX === "true") {
+    console.log(`[Shiprocket Sandbox] Simulating shipping charge calculation for Pincode: ${deliveryPostcode}, COD: ${isCod}`);
+    return isCod ? 90 : 0; // Default COD shipping charge simulation
+  }
+
+  try {
+    const token = await getShiprocketToken();
+    const pickupPostcode = process.env.SHIP_ROCKET_PICKUP_POSTCODE || "360001";
+    
+    const url = new URL("https://apiv2.shiprocket.in/v1/external/courier/serviceability/");
+    url.searchParams.append("pickup_postcode", pickupPostcode);
+    url.searchParams.append("delivery_postcode", deliveryPostcode.trim());
+    url.searchParams.append("weight", weight.toString());
+    url.searchParams.append("cod", isCod ? "1" : "0");
+    url.searchParams.append("declared_value", declaredValue.toString());
+
+    const res = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[Shiprocket Serviceability] Failed to fetch rates: ${res.status} - ${errText}`);
+      return 80; // Fallback shipping fee
+    }
+
+    const data = await res.json();
+    const couriers = data?.data?.available_courier_companies;
+
+    if (Array.isArray(couriers) && couriers.length > 0) {
+      // Find the cheapest courier rate
+      let minRate = Infinity;
+      couriers.forEach((c: any) => {
+        const rate = parseFloat(c.rate);
+        if (!isNaN(rate) && rate < minRate) {
+          minRate = rate;
+        }
+      });
+
+      if (minRate !== Infinity) {
+        return Math.round(minRate);
+      }
+    }
+
+    return 80; // Fallback
+  } catch (err) {
+    console.error("[Shiprocket Serviceability Error] Failed to calculate shipping rate:", err);
+    return 80; // Fallback
+  }
 }

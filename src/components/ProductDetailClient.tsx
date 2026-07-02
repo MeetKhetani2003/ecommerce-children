@@ -62,6 +62,7 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
 
   // Size guide modal state
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+  const [sizeRequired, setSizeRequired] = useState(false);
 
   // Bulk inquiry form states
   const [bulkFormOpen, setBulkFormOpen] = useState(false);
@@ -296,12 +297,19 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
 
           {/* Sizes */}
           {product.sizes && product.sizes.length > 0 && (
-            <div className="mt-8">
+            <div id="size-selector" className="mt-8">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-[15px] font-medium text-[#1A0F1C]">Select Size</h3>
+                <h3 className="text-[15px] font-medium text-[#1A0F1C]">
+                  Select Size
+                  {sizeRequired && !selectedSize && (
+                    <span className="ml-2 text-[12px] font-bold text-red-500 animate-pulse">
+                      ← Please select a size!
+                    </span>
+                  )}
+                </h3>
                 <button onClick={() => setSizeGuideOpen(true)} className="text-[13px] font-medium text-[#8B1D8F] hover:underline focus:outline-none">Size Guide</button>
               </div>
-              <div className="flex flex-wrap gap-3">
+              <div className={`flex flex-wrap gap-3 ${sizeRequired && !selectedSize ? "ring-2 ring-red-300 ring-offset-2 rounded-xl p-2" : ""}`}>
                 {product.sizes.map((sizeObj: any, idx: number) => {
                   const sizeLabel = typeof sizeObj === "object" && sizeObj !== null ? sizeObj.size : sizeObj;
                   const sizeStock = typeof sizeObj === "object" && sizeObj !== null ? Number(sizeObj.stock) : 1;
@@ -309,13 +317,15 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
                   return (
                     <button
                       key={idx}
-                      onClick={() => !isOutOfStock && setSelectedSize(sizeLabel)}
+                      onClick={() => { if (!isOutOfStock) { setSelectedSize(sizeLabel); setSizeRequired(false); } }}
                       disabled={isOutOfStock}
                       title={isOutOfStock ? "Out of Stock" : `${sizeStock} in stock`}
                       className={`relative rounded-full border px-5 py-2.5 text-[14px] transition-all focus:outline-none ${isOutOfStock
                         ? "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400 line-through opacity-60"
                         : selectedSize === sizeLabel
                           ? "border-[#8B1D8F] bg-[#F3E7F5] text-[#7A187C] font-medium"
+                          : sizeRequired && !selectedSize
+                          ? "border-red-300 text-[#5E4F63] hover:border-[#8B1D8F]"
                           : "border-[#E8DDE9] text-[#5E4F63] hover:border-[#8B1D8F] hover:text-[#8B1D8F]"
                         }`}
                     >
@@ -329,11 +339,13 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
                   );
                 })}
               </div>
-              {selectedSize && (
+              {selectedSize ? (
                 <p className="mt-2 text-[12px] text-[#8B7A8F]">
                   Selected: <span className="font-semibold text-[#8B1D8F]">{selectedSize}</span>
                 </p>
-              )}
+              ) : sizeRequired ? (
+                <p className="mt-2 text-[12px] font-semibold text-red-500">⚠️ You must select a size to continue</p>
+              ) : null}
             </div>
           )}
 
@@ -341,7 +353,10 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
             <button
               onClick={() => {
                 if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+                  setSizeRequired(true);
                   toast.error("Please select a size first");
+                  // scroll to size section
+                  document.getElementById("size-selector")?.scrollIntoView({ behavior: "smooth", block: "center" });
                   return;
                 }
                 addToCart(product, selectedSize || undefined);
@@ -353,7 +368,9 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
             <button
               onClick={() => {
                 if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+                  setSizeRequired(true);
                   toast.error("Please select a size first");
+                  document.getElementById("size-selector")?.scrollIntoView({ behavior: "smooth", block: "center" });
                   return;
                 }
                 addToCart(product, selectedSize || undefined);

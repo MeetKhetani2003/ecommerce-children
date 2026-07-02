@@ -75,6 +75,27 @@ export async function POST(req: Request) {
     }
 
     const total = subtotal - discount;
+    let calculatedShippingFee = 0;
+
+    if (paymentMethod === "cod") {
+      try {
+        const { parseAddressAndGetLocation, getShiprocketShippingCharge } = await import("@/utils/shiprocket");
+        const addressInfo = await parseAddressAndGetLocation(shippingDetails.address);
+        const totalQty = cartItems.reduce((acc: number, item: any) => acc + item.quantity, 0);
+        const weight = Math.max(0.5, totalQty * 0.5);
+        calculatedShippingFee = await getShiprocketShippingCharge(
+          addressInfo.pincode,
+          weight,
+          true,
+          total
+        );
+      } catch (shippingErr) {
+        console.error("Failed to calculate shipping charge on order creation:", shippingErr);
+        calculatedShippingFee = 80; // Fallback
+      }
+    }
+
+    const grandTotal = total + calculatedShippingFee;
 
     // 3. Deduct Stock Temporarily (Reservation)
     for (const item of itemsToOrder) {
@@ -103,15 +124,16 @@ export async function POST(req: Request) {
       shippingDetails,
       subtotal,
       discount,
-      total,
+      shippingFee: calculatedShippingFee,
+      total: grandTotal,
       couponUsed: couponCode || null,
       paymentStatus: "pending",
       paymentMethod: paymentMethod || "online",
       shippingStatus: "Processing"
     });
 
-    // If Cash on Delivery, we don't need an active Reservation or Razorpay Order
-    if (paymentMethod === "cod") {
+    // If Cash on Delivery and shipping fee is 0, we can bypass Razorpay flow entirely
+    if (paymentMethod === "cod" && calculatedShippingFee === 0) {
       await Reservation.create({
         orderId: localOrder._id,
         items: itemsToOrder.map(item => ({
@@ -133,7 +155,8 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         orderId: localOrder._id.toString(),
-        isCod: true
+        isCod: true,
+        amount: 0
       });
     }
 
@@ -155,7 +178,9 @@ export async function POST(req: Request) {
     const isPlaceholder = key_id === "rzp_test_placeholder" || key_secret === "placeholder_secret";
 
     let rzpOrderId = "";
-    let rzpAmount = total * 100;
+    // If COD, they pay shippingFee online. If Prepaid, they pay total online.
+    const amountToPayOnline = paymentMethod === "cod" ? calculatedShippingFee : total;
+    let rzpAmount = amountToPayOnline * 100;
 
     if (isPlaceholder) {
       rzpOrderId = "mock_rzp_" + Math.random().toString(36).substring(2, 11);
@@ -166,7 +191,7 @@ export async function POST(req: Request) {
       });
 
       const rzpOrder = await razorpay.orders.create({
-        amount: total * 100, // Razorpay works in paise
+        amount: rzpAmount, // Razorpay works in paise
         currency: "INR",
         receipt: localOrder._id.toString()
       });
@@ -183,7 +208,8 @@ export async function POST(req: Request) {
       orderId: localOrder._id.toString(),
       razorpayOrderId: rzpOrderId,
       amount: rzpAmount,
-      key: key_id
+      key: key_id,
+      isCod: paymentMethod === "cod"
     });
 
   } catch (error: any) {

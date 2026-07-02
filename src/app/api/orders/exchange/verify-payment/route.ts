@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     if (newSizes && newSizes.length > 0) {
       // Re-verify stock once more
       for (const reqItem of newSizes) {
-        const orderItem = order.items.find((item: any) => item.productId === reqItem.productId && item.size === reqItem.oldSize);
+        const orderItem = order.items.find((item: any) => item.productId === reqItem.productId && (item.size === reqItem.oldSize || (!item.size && reqItem.oldSize === "Std")));
         if (orderItem && reqItem.newSize && reqItem.newSize !== orderItem.size) {
           const product = await Product.findOne({ id: reqItem.productId });
           if (product && product.sizes && product.sizes.length > 0) {
@@ -75,17 +75,17 @@ export async function POST(req: Request) {
         }
       }
 
-      // Proceed with adjustments
+      // Process database changes after payment verified
       for (const reqItem of newSizes) {
-        const orderItem = order.items.find((item: any) => item.productId === reqItem.productId && item.size === reqItem.oldSize);
+        const orderItem = order.items.find((item: any) => item.productId === reqItem.productId && (item.size === reqItem.oldSize || (!item.size && reqItem.oldSize === "Std")));
         if (orderItem && reqItem.newSize && reqItem.newSize !== orderItem.size) {
-          originalSizes.push({ productId: reqItem.productId, size: orderItem.size });
+          originalSizes.push({ productId: reqItem.productId, size: orderItem.size || "Std" });
           recordedNewSizes.push({ productId: reqItem.productId, size: reqItem.newSize });
 
           const product = await Product.findOne({ id: reqItem.productId });
           if (product && product.sizes && product.sizes.length > 0) {
             // Restore stock of old size
-            const oldSizeObj = product.sizes.find((s: any) => s.size === orderItem.size);
+            const oldSizeObj = product.sizes.find((s: any) => s.size === (orderItem.size || "Std"));
             if (oldSizeObj) {
               oldSizeObj.stock += orderItem.quantity;
             }
@@ -130,7 +130,19 @@ export async function POST(req: Request) {
       razorpayPaymentId: razorpay_payment_id
     } as any;
 
+    // Clear tracking details of the original shipment to make way for the exchange shipment
+    order.trackingNumber = undefined;
+    order.trackingLink = undefined;
+
     await order.save();
+
+    // Trigger new Shiprocket Shipment and AWB generation for this exchange
+    try {
+      const { createShiprocketShipmentAndAwb } = await import("@/utils/shiprocket");
+      await createShiprocketShipmentAndAwb(order._id.toString());
+    } catch (shiprocketErr) {
+      console.error("Failed to trigger Shiprocket for exchange order:", shiprocketErr);
+    }
 
     return NextResponse.json({ 
       success: true, 

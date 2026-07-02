@@ -630,8 +630,7 @@ function AdminDashboard() {
                             <div className="min-w-0">
                               <div className="font-semibold text-[#1A0F1C] truncate">{order.shippingDetails?.name}</div>
                               <div className="text-[11px] text-[#8B7A8F]">
-                                {new Date(order.exchangeDetails?.requestedAt || order.createdAt).toLocaleDateString("en-IN")} •
-                                {order.exchangeDetails?.paymentMethod === "cod" ? " COD Fee" : " Online Paid"}
+                                {new Date(order.exchangeDetails?.requestedAt || order.createdAt).toLocaleDateString("en-IN")} • Online Paid
                               </div>
                             </div>
                             <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10.5px] font-bold text-orange-700">
@@ -767,10 +766,17 @@ function AdminDashboard() {
                         <div key={order._id} className="rounded-2xl border border-[#F0E6F2] p-5 hover:border-[#E1BFE6] transition">
                           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#F8F0F9] pb-4">
                             <div>
-                              <div className="text-[13px] text-[#8B7A8F]">Order ID: <span className="font-mono text-[#8B1D8F] font-semibold">{order._id}</span></div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <div className="text-[13px] text-[#8B7A8F]">Order ID: <span className="font-mono text-[#8B1D8F] font-semibold">{order._id}</span></div>
+                                {order.exchangeRequested && (
+                                  <span className="rounded-full bg-orange-100 border border-orange-300 px-2.5 py-0.5 text-[10.5px] font-bold text-orange-700 uppercase tracking-wide animate-pulse">
+                                    🔄 Exchange Order
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-[12px] text-[#8B7A8F] mt-0.5">Date: {new Date(order.createdAt).toLocaleString("en-IN")}</div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 flex-wrap">
                               {/* Payment Method Badge */}
                               <span className="rounded-full bg-purple-50 text-purple-700 border border-purple-200 px-3 py-1 text-[11px] font-semibold uppercase">
                                 {order.paymentMethod === "cod" ? "COD" : "Online"}
@@ -809,8 +815,9 @@ function AdminDashboard() {
                                 {order.items.map((item: any, i: number) => (
                                   <li key={i} className="flex items-center gap-3 text-[13.5px] text-[#4A354D]">
                                     <div className="h-8 w-7 rounded bg-gray-50 border border-gray-100 overflow-hidden shrink-0"><img src={item.image} className="h-full w-full object-cover" /></div>
-                                    <span className="font-medium text-[#1A0F1C] hover:text-[#8B1D8F] transition">
+                                    <span className="font-medium text-[#1A0F1C] hover:text-[#8B1D8F] transition flex items-center gap-1.5">
                                       <Link href={`/product/${item.productId}`}>{item.title}</Link>
+                                      {item.size && <span className="rounded bg-purple-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-[#8B1D8F] border border-purple-100">Size: {item.size}</span>}
                                     </span>
                                     <span className="text-[#8B7A8F]">({item.quantity}x)</span>
                                     <span className="ml-auto font-semibold">₹{item.price * item.quantity}</span>
@@ -823,6 +830,12 @@ function AdminDashboard() {
                               <div><strong>Customer:</strong> {order.shippingDetails.name}</div>
                               <div><strong>Address:</strong> {order.shippingDetails.address}</div>
                               <div><strong>Phone:</strong> {order.shippingDetails.phone}</div>
+                              {order.shippingFee > 0 && (
+                                <div className="text-[12px] text-gray-500 mt-1 flex justify-between">
+                                  <span>COD Shipping Fee:</span>
+                                  <span>₹{order.shippingFee}</span>
+                                </div>
+                              )}
                               <div className="mt-2 border-t border-[#EEDDF0] pt-2 flex justify-between font-bold text-[#1A0F1C]">
                                 <span>Grand Total:</span>
                                 <span>₹{order.total}</span>
@@ -966,15 +979,16 @@ function AdminDashboard() {
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="rounded-full bg-orange-100 border border-orange-200 px-3 py-1 text-[11px] font-bold text-orange-700 uppercase tracking-wide">
-                                Exchange Processing
+                                🔄 Exchange Order
                               </span>
-                              <span className={`rounded-full px-3 py-1 text-[11px] font-semibold border ${
-                                order.exchangeDetails?.paymentMethod === "cod"
-                                  ? "bg-yellow-50 border-yellow-200 text-yellow-700"
-                                  : "bg-green-50 border-green-200 text-green-700"
-                              }`}>
-                                {order.exchangeDetails?.paymentMethod === "cod" ? "💵 Fee on Delivery (₹120)" : "✅ Online Paid (₹120)"}
+                              <span className="rounded-full bg-green-50 border-green-200 px-3 py-1 text-[11px] font-semibold border text-green-700">
+                                ✅ Online Paid (₹{order.exchangeFee || 120})
                               </span>
+                              {order.trackingNumber && (
+                                <span className="rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-[11px] font-semibold text-blue-700">
+                                  📦 AWB: {order.trackingNumber}
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -1058,6 +1072,84 @@ function AdminDashboard() {
                                   <option value="Shipped">🚚 Shipped (New Size)</option>
                                   <option value="Delivered">✅ Exchange Completed</option>
                                 </select>
+                              </div>
+
+                              {/* Shiprocket Shipment & Label */}
+                              <div className="space-y-1.5 mt-2">
+                                <label className="text-[11px] font-semibold text-[#8B7A8F] uppercase tracking-wide">Shiprocket + Label</label>
+
+                                {/* AWB not assigned yet — create shipment */}
+                                {!order.trackingNumber && (
+                                  <button
+                                    onClick={() => handleManualShiprocketSync(order._id)}
+                                    disabled={syncingOrderId === order._id}
+                                    className="w-full rounded-xl border border-[#8B1D8F] bg-white px-3 py-2 text-[12.5px] font-semibold text-[#8B1D8F] hover:bg-[#FCF7FD] transition disabled:opacity-50 cursor-pointer"
+                                  >
+                                    {syncingOrderId === order._id ? "Creating Shipment..." : "🚀 Create Shiprocket Shipment + AWB"}
+                                  </button>
+                                )}
+
+                                {/* Pending AWB — retry */}
+                                {order.trackingNumber && order.trackingNumber.startsWith("PENDING_AWB_") && (
+                                  <div className="space-y-1.5">
+                                    <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[11.5px] text-amber-800">
+                                      ⚠️ Shipment created but AWB pending. Click to retry.
+                                    </div>
+                                    <button
+                                      onClick={() => handleManualShiprocketSync(order._id)}
+                                      disabled={syncingOrderId === order._id}
+                                      className="w-full rounded-xl border border-amber-400 bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-800 hover:bg-amber-100 transition disabled:opacity-50 cursor-pointer"
+                                    >
+                                      {syncingOrderId === order._id ? "Retrying..." : "🔄 Retry AWB Assignment"}
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* AWB assigned — full controls */}
+                                {order.trackingNumber && !order.trackingNumber.startsWith("PENDING_AWB_") && (
+                                  <div className="space-y-2">
+                                    {/* AWB info card */}
+                                    <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-[12px]">
+                                      <div className="font-semibold text-blue-800">AWB Assigned ✓</div>
+                                      <div className="text-blue-700 font-mono mt-0.5">{order.trackingNumber}</div>
+                                      {order.trackingLink && (
+                                        <a href={order.trackingLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-600 underline mt-0.5 block">Track on Shiprocket →</a>
+                                      )}
+                                    </div>
+
+                                    {/* Sync tracking status from Shiprocket */}
+                                    <button
+                                      onClick={() => handleManualTrackingSync(order._id)}
+                                      disabled={syncingOrderId === order._id}
+                                      className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 py-2 text-[11.5px] font-bold text-white transition disabled:opacity-50 cursor-pointer"
+                                    >
+                                      {syncingOrderId === order._id ? "Syncing..." : "🔄 Sync Tracking Status from Shiprocket"}
+                                    </button>
+
+                                    {/* Shipping Label Download / Print */}
+                                    <div className="flex gap-1.5">
+                                      <a
+                                        href={`/api/admin/orders/shipping-label?orderId=${order._id}`}
+                                        download
+                                        className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 py-1.5 text-[10.5px] font-bold text-orange-700 transition cursor-pointer"
+                                        title="Download Exchange Shipping Label PDF"
+                                      >
+                                        <Download className="h-3 w-3" />
+                                        <span>Exchange Label</span>
+                                      </a>
+                                      <a
+                                        href={`/api/admin/orders/shipping-label?orderId=${order._id}&print=true`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 py-1.5 text-[10.5px] font-bold text-orange-700 transition cursor-pointer"
+                                        title="Print Exchange Shipping Label"
+                                      >
+                                        <Printer className="h-3 w-3" />
+                                        <span>Print Label</span>
+                                      </a>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -1412,7 +1504,10 @@ function AdminDashboard() {
                       <div className="h-8 w-7 rounded bg-gray-50 border border-gray-100 overflow-hidden shrink-0">
                         <img src={item.image} className="h-full w-full object-cover" />
                       </div>
-                      <span className="font-semibold text-[#1A0F1C]">{item.title}</span>
+                      <span className="font-semibold text-[#1A0F1C] flex items-center gap-1.5">
+                        {item.title}
+                        {item.size && <span className="rounded bg-purple-50 px-1.5 py-0.5 text-[9.5px] font-semibold text-[#8B1D8F] border border-purple-100">Size: {item.size}</span>}
+                      </span>
                       <span className="text-[#8B7A8F]">({item.quantity}x)</span>
                       <span className="ml-auto font-bold text-[#1A0F1C]">₹{item.price * item.quantity}</span>
                     </li>

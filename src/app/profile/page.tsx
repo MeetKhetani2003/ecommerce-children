@@ -24,7 +24,13 @@ export default function Profile() {
   // Address fields
   const [addresses, setAddresses] = useState<string[]>([]);
   const [defaultAddress, setDefaultAddress] = useState<string>("");
-  const [newAddress, setNewAddress] = useState("");
+
+  // Split address states (for new address / shiprocket requirements)
+  const [profileAddr1, setProfileAddr1] = useState("");
+  const [profileAddr2, setProfileAddr2] = useState("");
+  const [profileCity, setProfileCity] = useState("");
+  const [profileState, setProfileState] = useState("");
+  const [profilePincode, setProfilePincode] = useState("");
 
   // Return & Exchange states
   const [isExchangeModalOpen, setIsExchangeModalOpen] = useState(false);
@@ -33,7 +39,15 @@ export default function Profile() {
   const [exchangeItems, setExchangeItems] = useState<any[]>([]);
   const [submittingExchange, setSubmittingExchange] = useState(false);
   const [allProductsForExchange, setAllProductsForExchange] = useState<any[]>([]);
-  const [exchangePaymentMethod, setExchangePaymentMethod] = useState<"online" | "cod">("online");
+  const [exchangePaymentMethod] = useState<"online">("online");
+  // Exchange address form state
+  const [exchangeAddrMode, setExchangeAddrMode] = useState<"saved" | "new">("saved");
+  const [exchangeSelectedSavedIdx, setExchangeSelectedSavedIdx] = useState<number>(0);
+  const [exchangeAddrLine1, setExchangeAddrLine1] = useState("");
+  const [exchangeAddrLine2, setExchangeAddrLine2] = useState("");
+  const [exchangeAddrCity, setExchangeAddrCity] = useState("");
+  const [exchangeAddrState, setExchangeAddrState] = useState("");
+  const [exchangeAddrPincode, setExchangeAddrPincode] = useState("");
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -81,14 +95,6 @@ export default function Profile() {
       if (!data.success) {
         toast.error("Failed to request exchange: " + data.message);
         setSubmittingExchange(false);
-        return;
-      }
-
-      // If COD, process immediately
-      if (data.isCod) {
-        toast.success("Exchange request submitted successfully! A flat fee of ₹120 will be charged on delivery.");
-        setIsExchangeModalOpen(false);
-        fetchOrders();
         return;
       }
 
@@ -213,6 +219,13 @@ export default function Profile() {
 
   useEffect(() => {
     fetchProductsForExchange();
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "orders" || tab === "wishlist" || tab === "addresses" || tab === "cart") {
+        setActiveSection(tab as any);
+      }
+    }
   }, []);
 
   const saveAddressesToDb = async (newAddressesList: string[], newDefault: string) => {
@@ -248,7 +261,7 @@ export default function Profile() {
       const data = await res.json();
       if (data.success) {
         toast.success("Phone number saved successfully");
-        
+
         // If there was a welcome coupon generated, maybe show another toast?
         if (data.couponCode) {
           toast.success("Welcome! A 10% discount coupon has been sent to your email! 🎉", { duration: 5000 });
@@ -267,16 +280,35 @@ export default function Profile() {
   };
 
   const handleAddAddress = async () => {
-    if (!newAddress.trim()) return;
-    const trimmed = newAddress.trim();
-    const updatedAddresses = [...addresses, trimmed];
-    const updatedDefault = defaultAddress ? defaultAddress : trimmed;
+    if (!profileAddr1.trim() || !profileCity.trim() || !profileState.trim() || !profilePincode.trim()) {
+      toast.error("Address Line 1, City, State, and Pincode are required");
+      return;
+    }
+    if (!/^\d{6}$/.test(profilePincode.trim())) {
+      toast.error("Pincode must be a 6-digit number");
+      return;
+    }
+
+    const formatted = [
+      profileAddr1.trim(),
+      profileAddr2.trim(),
+      profileCity.trim(),
+      profileState.trim(),
+      profilePincode.trim()
+    ].join(" | ");
+
+    const updatedAddresses = [...addresses, formatted];
+    const updatedDefault = defaultAddress ? defaultAddress : formatted;
 
     setAddresses(updatedAddresses);
     if (!defaultAddress) {
       setDefaultAddress(updatedDefault);
     }
-    setNewAddress("");
+    setProfileAddr1("");
+    setProfileAddr2("");
+    setProfileCity("");
+    setProfileState("");
+    setProfilePincode("");
 
     await saveAddressesToDb(updatedAddresses, updatedDefault);
   };
@@ -464,14 +496,14 @@ export default function Profile() {
                 <div>
                   <label className="mb-1.5 block text-[13px] font-medium text-[#4A354D]">Mobile Number</label>
                   <div className="flex gap-2">
-                    <input 
-                      type="tel" 
-                      value={phone} 
+                    <input
+                      type="tel"
+                      value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+91" 
-                      className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-white px-4 text-[14px] text-[#1A0F1C] outline-none focus:border-[#8B1D8F]" 
+                      placeholder="+91"
+                      className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-white px-4 text-[14px] text-[#1A0F1C] outline-none focus:border-[#8B1D8F]"
                     />
-                    <button 
+                    <button
                       onClick={handleSavePhone}
                       disabled={savingPhone || phone === (session.user as any).phone}
                       className="h-11 px-4 rounded-xl bg-[#8B1D8F] text-white text-[13px] font-medium transition hover:bg-[#7A187C] disabled:opacity-50"
@@ -507,34 +539,76 @@ export default function Profile() {
                 <div className="mt-8 space-y-6">
                   {orders.map((order) => (
                     <div key={order._id} className="rounded-2xl border border-[#F0E6F2] p-5 hover:border-[#E1BFE6] transition bg-[#FFFCFE]/40">
-                      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#F8F0F9] pb-4">
-                        <div>
-                          <div className="text-[13px] text-[#8B7A8F]">Order ID: <span className="font-mono text-[#8B1D8F] font-semibold">{order._id}</span></div>
-                          <div className="text-[12px] text-[#8B7A8F] mt-0.5">Placed: {new Date(order.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}</div>
+                      {/* Order Header */}
+                      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#F8F0F9] pb-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11px] font-bold text-[#8B7A8F] uppercase tracking-wide mb-0.5">Order Number</div>
+                          <div className="font-mono text-[13px] text-[#8B1D8F] font-bold break-all">{order._id}</div>
+                          <div className="text-[12px] text-[#8B7A8F] mt-1">
+                            Placed: <strong className="text-[#4A354D]">{new Date(order.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}</strong>
+                            {" · "}
+                            <span className="capitalize">{order.paymentMethod === "cod" ? "💵 Cash on Delivery" : "💳 Online Payment"}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium border ${order.paymentStatus === "paid" ? "bg-green-50 text-green-700 border-green-200" : "bg-yellow-50 text-yellow-700 border-yellow-200"}`}>
-                            {order.paymentStatus === "paid" ? "Paid" : "Unpaid"}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${
+                            order.paymentStatus === "paid"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                          }`}>
+                            {order.paymentStatus === "paid" ? "✅ Paid" : "⏳ Pending Payment"}
                           </span>
-                          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium border ${order.shippingStatus === "Delivered" ? "bg-blue-50 text-blue-700 border-blue-200" : order.shippingStatus === "Cancelled" ? "bg-red-50 text-red-700 border-red-200" : "bg-purple-50 text-purple-700 border-purple-200"}`}>
+                          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${
+                            order.shippingStatus === "Delivered"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : order.shippingStatus === "Cancelled"
+                              ? "bg-red-50 text-red-700 border-red-200"
+                              : "bg-purple-50 text-purple-700 border-purple-200"
+                          }`}>
                             {order.shippingStatus}
                           </span>
                         </div>
                       </div>
 
+                      {/* Delivery Address + Phone */}
+                      {order.shippingDetails && (
+                        <div className="mt-3 mb-1 rounded-xl bg-[#FCF7FD] border border-[#F0E6F2] p-3 text-[12.5px]">
+                          <div className="text-[11px] font-bold text-[#8B7A8F] uppercase tracking-wide mb-1.5">📦 Delivery Details</div>
+                          <div className="grid sm:grid-cols-2 gap-1">
+                            <div><span className="font-semibold text-[#4A354D]">Name: </span><span className="text-[#1A0F1C]">{order.shippingDetails.name || "—"}</span></div>
+                            <div><span className="font-semibold text-[#4A354D]">Phone: </span><span className="text-[#1A0F1C]">{order.shippingDetails.phone || "—"}</span></div>
+                            <div className="sm:col-span-2"><span className="font-semibold text-[#4A354D]">Address: </span><span className="text-[#1A0F1C]">{order.shippingDetails.address || "—"}</span></div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Items */}
-                      <ul className="py-4 space-y-3">
-                        {order.items.map((item: any, idx: number) => (
-                          <li key={idx} className="flex items-center gap-4 text-[13.5px]">
-                            <div className="h-10 w-8 rounded bg-gray-50 border border-gray-100 overflow-hidden shrink-0"><img src={item.image} className="h-full w-full object-cover" /></div>
-                            <span className="font-medium text-[#1A0F1C] flex-1 truncate hover:text-[#8B1D8F] transition">
-                              <Link href={`/product/${item.productId}`}>{item.title}</Link>
-                            </span>
-                            <span className="text-[#8B7A8F]">{item.quantity}x</span>
-                            <span className="font-semibold text-[#1A0F1C]">₹{item.price * item.quantity}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="py-3">
+                        <div className="text-[11px] font-bold text-[#8B7A8F] uppercase tracking-wide mb-2">🎭 Costume Items</div>
+                        <ul className="space-y-3">
+                          {order.items.map((item: any, idx: number) => (
+                            <li key={idx} className="flex items-start gap-3 text-[13.5px] bg-white rounded-xl p-2.5 border border-[#F5EDF7]">
+                              <div className="h-12 w-10 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden shrink-0">
+                                <img src={item.image} className="h-full w-full object-cover" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="font-semibold text-[#1A0F1C] block truncate hover:text-[#8B1D8F] transition text-[13px]">
+                                  <Link href={`/product/${item.productId}`}>{item.title}</Link>
+                                </span>
+                                {(item.size || item.selectedSize) && (
+                                  <span className="inline-block mt-0.5 rounded-md bg-purple-50 border border-purple-100 px-2 py-0.5 text-[11px] font-bold text-[#8B1D8F]">
+                                    Size: {item.size || item.selectedSize}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-[12px] text-[#8B7A8F]">{item.quantity}x ₹{item.price}</div>
+                                <div className="font-bold text-[#1A0F1C] text-[13px]">₹{item.price * item.quantity}</div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
 
                       {/* Stepper Tracking UI */}
                       {order.shippingStatus !== "Cancelled" && (
@@ -578,12 +652,12 @@ export default function Profile() {
                             </div>
                           )}
 
-                           <div className="mt-5 flex flex-col items-center justify-center p-3 rounded-2xl border border-dashed border-[#F0E6F2] bg-white max-w-xs mx-auto">
+                          <div className="mt-5 flex flex-col items-center justify-center p-3 rounded-2xl border border-dashed border-[#F0E6F2] bg-white max-w-xs mx-auto">
                             <span className="text-[10px] font-bold text-[#8B7A8F] uppercase tracking-wider mb-2.5">Scan Order Barcode</span>
-                            <OrderBarcode 
-                              orderId={order._id} 
-                              customerName={order.shippingDetails?.name} 
-                              phone={order.shippingDetails?.phone} 
+                            <OrderBarcode
+                              orderId={order._id}
+                              customerName={order.shippingDetails?.name}
+                              phone={order.shippingDetails?.phone}
                               width={1.0}
                               height={40}
                               fontSize={10}
@@ -592,46 +666,105 @@ export default function Profile() {
                         </div>
                       )}
 
-                      <div className="border-t border-[#F8F0F9] pt-4 mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-[13.5px] font-bold text-[#1A0F1C]">
-                        <div>
-                          <span>Grand Total:</span>
-                          <span className="ml-1.5 text-[15px] font-extrabold text-[#8B1D8F]">₹{order.total}</span>
-                          {order.exchangeRequested && (
-                            <span className="ml-2 text-[11px] font-normal text-gray-500">
-                              (Includes ₹{order.exchangeFee} Exchange Delivery Fee)
-                            </span>
+                      {/* Bill Summary */}
+                      <div className="rounded-xl bg-[#FCF7FD] border border-[#F0E6F2] p-3 text-[12.5px] mt-2">
+                        <div className="text-[11px] font-bold text-[#8B7A8F] uppercase tracking-wide mb-1.5">🧾 Bill Summary</div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[#4A354D]">
+                            <span>Subtotal</span>
+                            <span className="font-semibold">₹{order.subtotal || order.items?.reduce((a: number, i: any) => a + i.price * i.quantity, 0)}</span>
+                          </div>
+                          {order.discount > 0 && (
+                            <div className="flex justify-between text-green-700">
+                              <span>Coupon Discount {order.couponUsed && <span className="font-mono text-[10.5px]">({order.couponUsed})</span>}</span>
+                              <span className="font-semibold">-₹{order.discount}</span>
+                            </div>
                           )}
-                          {order.couponUsed && (
-                            <div className="mt-1 text-[12px] font-semibold text-[#0F8A4B]">Coupon Used: {order.couponUsed}</div>
+                          {order.shippingFee > 0 ? (
+                            <div className="flex justify-between text-[#4A354D]">
+                              <span>Shipping Fee (COD)</span>
+                              <span className="font-semibold">₹{order.shippingFee}</span>
+                            </div>
+                          ) : (
+                            <div className="flex justify-between text-[#0F8A4B]">
+                              <span>Shipping</span>
+                              <span className="font-semibold">Free</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between border-t border-[#EEDDF0] pt-1.5 mt-1 font-bold text-[#1A0F1C] text-[14px]">
+                            <span>Grand Total</span>
+                            <span className="text-[#8B1D8F]">₹{order.total}</span>
+                          </div>
+                          {order.paymentMethod === "cod" && order.paymentStatus !== "paid" && (
+                            <div className="mt-1.5 rounded-lg bg-yellow-50 border border-yellow-200 px-2.5 py-1.5 text-[11.5px] text-yellow-800 font-semibold">
+                              ⏳ Costume amount collectible on delivery
+                            </div>
                           )}
                         </div>
+                      </div>
 
+                      {/* Exchange & Actions */}
+                      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                        {(() => {
+                          const isDelivered = order.shippingStatus === "Delivered";
+                          const deliveredAt = order.deliveredAt ? new Date(order.deliveredAt) : new Date(order.createdAt);
+                          const daysSinceDelivery = (Date.now() - deliveredAt.getTime()) / (1000 * 60 * 60 * 24);
+                          const daysLeft = Math.max(0, 7 - Math.floor(daysSinceDelivery));
+                          const hoursLeft = Math.max(0, Math.floor(((7 * 24 * 60 * 60 * 1000) - (Date.now() - deliveredAt.getTime())) / (1000 * 60 * 60)));
+                          const withinWindow = isDelivered && daysSinceDelivery <= 7;
 
-                        {/* Exchange button */}
-                        {((Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60 * 24) <= 7) && order.shippingStatus !== "Cancelled" && !order.exchangeRequested && (
-                          <button
-                            onClick={() => {
-                              setSelectedOrderForExchange(order);
-                              setNewExchangeAddress(order.shippingDetails.address);
-                              const initialExchangeSizes = order.items.map((item: any) => ({
-                                productId: item.productId, title: item.title,
-                                oldSize: item.size, newSize: item.size,
-                                quantity: item.quantity, image: item.image,
-                              }));
-                              setExchangeItems(initialExchangeSizes);
-                              fetchProductsForExchange();
-                              setIsExchangeModalOpen(true);
-                            }}
-                            className="rounded-full border border-[#8B1D8F] bg-white px-4 py-1.5 text-[12.5px] font-semibold text-[#8B1D8F] hover:bg-[#8B1D8F] hover:text-white transition-all active:scale-[0.97] cursor-pointer"
-                          >
-                            Exchange Size / Address (7 Days Return)
-                          </button>
-                        )}
-                        {order.exchangeRequested && (
-                          <span className="rounded-full bg-orange-50 border border-orange-200 px-3.5 py-1 text-[11.5px] font-bold text-orange-700">
-                            Exchange Processing
-                          </span>
-                        )}
+                          if (!isDelivered) return null;
+                          if (order.exchangeRequested) return (
+                            <span className="rounded-full bg-orange-50 border border-orange-200 px-3.5 py-1 text-[11.5px] font-bold text-orange-700">
+                              🔄 Exchange Processing
+                            </span>
+                          );
+                          if (!withinWindow) return (
+                            <span className="text-[11px] text-gray-400 italic">Exchange window expired</span>
+                          );
+                          return (
+                            <div className="flex items-center gap-2 flex-wrap justify-end">
+                              <div className="flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1">
+                                <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">⏱ Exchange Window:</span>
+                                <span className="text-[11px] font-extrabold text-amber-800">{daysLeft}d {hoursLeft % 24}h left</span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setSelectedOrderForExchange(order);
+                                  const initialExchangeSizes = order.items.map((item: any) => ({
+                                    productId: item.productId, title: item.title,
+                                    oldSize: item.size || item.selectedSize || "Std",
+                                    newSize: item.size || item.selectedSize || "Std",
+                                    quantity: item.quantity, image: item.image,
+                                    selected: false,
+                                  }));
+                                  setExchangeItems(initialExchangeSizes);
+                                  fetchProductsForExchange();
+                                  // Initialize address state
+                                  const savedAddrs = (session?.user as any)?.addresses || [];
+                                  if (savedAddrs.length > 0) {
+                                    setExchangeAddrMode("saved");
+                                    setExchangeSelectedSavedIdx(0);
+                                    setNewExchangeAddress(savedAddrs[0]);
+                                  } else {
+                                    setExchangeAddrMode("new");
+                                    setNewExchangeAddress(order.shippingDetails.address || "");
+                                  }
+                                  // Reset new address form
+                                  setExchangeAddrLine1("");
+                                  setExchangeAddrLine2("");
+                                  setExchangeAddrCity("");
+                                  setExchangeAddrState("");
+                                  setExchangeAddrPincode("");
+                                  setIsExchangeModalOpen(true);
+                                }}
+                                className="rounded-full border border-[#8B1D8F] bg-white px-4 py-1.5 text-[12.5px] font-semibold text-[#8B1D8F] hover:bg-[#8B1D8F] hover:text-white transition-all active:scale-[0.97] cursor-pointer"
+                              >
+                                🔄 Exchange Size / Address
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   ))}
@@ -662,16 +795,16 @@ export default function Profile() {
                                 <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                               </Link>
                               <div className="absolute left-2.5 top-2.5 right-11 flex flex-wrap items-center gap-1.5">
-                                <span 
-                                  className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur max-w-[90px] sm:max-w-[130px] truncate inline-block" 
+                                <span
+                                  className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur max-w-[90px] sm:max-w-[130px] truncate inline-block"
                                   title={p.category}
                                 >
                                   {p.category.includes(">") ? p.category.split(">").pop()?.trim() : p.category}
                                 </span>
                                 {p.tag && <span className="rounded-full bg-[#1A0F1C] px-2 py-1 text-[10.5px] font-medium leading-none text-white">{p.tag}</span>}
                               </div>
-                              <button 
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(p.id); }} 
+                              <button
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(p.id); }}
                                 className="absolute right-2.5 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-[#6B5A6F] shadow-sm backdrop-blur transition-all hover:text-[#E91E7A]"
                               >
                                 <Heart className={cn("h-4 w-4 transition", wishlist.includes(p.id) && "fill-[#E91E7A] text-[#E91E7A]")} />
@@ -701,24 +834,28 @@ export default function Profile() {
                                     className="w-full h-8 rounded-lg border border-[#B59CB9] bg-white px-2 text-[12px] text-[#4A354D] outline-none"
                                   >
                                     <option value="" disabled>Select Size</option>
-                                    {p.sizes.map((s: any) => (
-                                      <option key={s.size} value={s.size} disabled={s.stock <= 0}>
-                                        {s.size} {s.stock <= 0 ? '(Out of stock)' : ''}
-                                      </option>
-                                    ))}
+                                    {p.sizes.map((s: any, sIdx: number) => {
+                                      const sizeVal = typeof s === "object" && s !== null ? s.size : s;
+                                      const isStockOut = typeof s === "object" && s !== null ? s.stock <= 0 : false;
+                                      return (
+                                        <option key={sIdx} value={sizeVal} disabled={isStockOut}>
+                                          {sizeVal} {isStockOut ? '(Out of stock)' : ''}
+                                        </option>
+                                      );
+                                    })}
                                   </select>
                                 </div>
                               )}
-                              <button 
-                                onClick={(e) => { 
-                                  e.preventDefault(); 
-                                  e.stopPropagation(); 
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
                                   if (p.sizes && p.sizes.length > 0 && !selectedSizes[p.id]) {
                                     toast.error("Please select a size first");
                                     return;
                                   }
-                                  addToCart(p, p.sizes && p.sizes.length > 0 ? selectedSizes[p.id] : undefined); 
-                                }} 
+                                  addToCart(p, p.sizes && p.sizes.length > 0 ? selectedSizes[p.id] : undefined);
+                                }}
                                 className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#F3E7F5] bg-[#FCF7FD] py-2 text-[13px] font-medium text-[#8B1D8F] transition hover:bg-[#8B1D8F] hover:text-white"
                               >
                                 <ShoppingBag className="h-3.5 w-3.5" /> Add to cart
@@ -767,13 +904,13 @@ export default function Profile() {
                         </div>
                       </div>
                     ))}
-                    
+
                     <div className="mt-6 border-t border-[#F0E6F2] pt-4">
                       <div className="flex justify-between items-center mb-4">
                         <span className="text-[15px] font-semibold text-[#1A0F1C]">Subtotal:</span>
                         <span className="text-[18px] font-bold text-[#8B1D8F]">₹{cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)}</span>
                       </div>
-                      <Link href="/checkout" className="block w-full rounded-full bg-[#8B1D8F] py-3.5 text-center text-[15px] font-bold text-white transition hover:bg-[#7A187C]">
+                      <Link href="/cart" className="block w-full rounded-full bg-[#8B1D8F] py-3.5 text-center text-[15px] font-bold text-white transition hover:bg-[#7A187C]">
                         Proceed to Checkout
                       </Link>
                     </div>
@@ -798,7 +935,7 @@ export default function Profile() {
                       <div className="flex items-start gap-3 min-w-0">
                         <MapPin className={`h-5 w-5 shrink-0 mt-0.5 ${addr === defaultAddress ? "text-[#8B1D8F]" : "text-[#A38AA6]"}`} />
                         <div className="min-w-0">
-                          <p className="text-[#1A0F1C] font-medium leading-relaxed break-words">{addr}</p>
+                          <p className="text-[#1A0F1C] font-medium leading-relaxed break-words">{addr.replaceAll(" | ", ", ")}</p>
                           {addr === defaultAddress && (
                             <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#F3E7F5] px-2.5 py-0.5 text-[10px] font-bold text-[#8B1D8F] border border-[#E9D5ED]">
                               ★ Default Address
@@ -829,20 +966,65 @@ export default function Profile() {
                 )}
 
                 <div className="mt-8 border-t border-[#F0E6F2] pt-6">
-                  <h3 className="text-[14.5px] font-semibold text-[#1A0F1C] mb-3">Add New Address</h3>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newAddress}
-                      onChange={(e) => setNewAddress(e.target.value)}
-                      placeholder="Enter complete shipping address"
-                      className="h-11 flex-1 rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
-                    />
+                  <h3 className="text-[14.5px] font-semibold text-[#1A0F1C] mb-4">Add New Address</h3>
+                  <div className="space-y-4 max-w-xl">
+                    <div>
+                      <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">Address Line 1 (House No, Building, Street)*</label>
+                      <input
+                        type="text"
+                        value={profileAddr1}
+                        onChange={(e) => setProfileAddr1(e.target.value)}
+                        placeholder="e.g. Flat 101, Shivam Apartments, MG Road"
+                        className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">Address Line 2 (Landmark, Area)</label>
+                      <input
+                        type="text"
+                        value={profileAddr2}
+                        onChange={(e) => setProfileAddr2(e.target.value)}
+                        placeholder="e.g. Near Hanuman Temple"
+                        className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">City*</label>
+                        <input
+                          type="text"
+                          value={profileCity}
+                          onChange={(e) => setProfileCity(e.target.value)}
+                          placeholder="e.g. Rajkot"
+                          className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">State*</label>
+                        <input
+                          type="text"
+                          value={profileState}
+                          onChange={(e) => setProfileState(e.target.value)}
+                          placeholder="e.g. Gujarat"
+                          className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[13px] font-medium text-[#4A354D]">Pincode*</label>
+                        <input
+                          type="text"
+                          value={profilePincode}
+                          onChange={(e) => setProfilePincode(e.target.value)}
+                          placeholder="e.g. 360001"
+                          className="h-11 w-full rounded-xl border border-[#EEDDF0] px-4 text-[13.5px] outline-none focus:border-[#E1BFE6]"
+                        />
+                      </div>
+                    </div>
                     <button
                       onClick={handleAddAddress}
-                      className="rounded-xl bg-[#1A0F1C] px-5 text-[13.5px] font-medium text-white hover:bg-black transition active:scale-[0.98] cursor-pointer"
+                      className="w-full sm:w-auto rounded-xl bg-[#1A0F1C] px-6 py-3 text-[13.5px] font-semibold text-white hover:bg-black transition active:scale-[0.98] cursor-pointer"
                     >
-                      Save
+                      Save Address
                     </button>
                   </div>
                 </div>
@@ -856,10 +1038,10 @@ export default function Profile() {
       {/* Exchange / Return Modal */}
       {isExchangeModalOpen && selectedOrderForExchange && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-[500px] overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#F0E6F2] p-5">
+          <div className="w-full max-w-[560px] max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#F0E6F2] p-5 sticky top-0 bg-white z-10">
               <h3 className="text-[16px] font-semibold text-[#1A0F1C] flex items-center gap-2">
-                <Package className="h-4.5 w-4.5 text-[#8B1D8F]" /> Exchange Costume / Address
+                <Package className="h-4.5 w-4.5 text-[#8B1D8F]" /> Exchange Costume Size / Address
               </h3>
               <button
                 onClick={() => setIsExchangeModalOpen(false)}
@@ -869,116 +1051,297 @@ export default function Profile() {
               </button>
             </div>
 
-            <form onSubmit={handleExchangeSubmit} className="p-5 space-y-4">
-              <div className="text-[12.5px] text-[#6B5A6F]">
-                You can change the sizes of your items or edit the delivery address.
-                A flat redelivery and processing fee of <span className="font-bold text-[#8B1D8F]">₹120</span> applies to all exchanges.
+            <form onSubmit={handleExchangeSubmit} className="p-5 space-y-5">
+              {/* Info Banner */}
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[12.5px] text-amber-800">
+                <strong>🔄 Exchange Policy:</strong> Select the costumes you want to exchange and choose new sizes. Only the redelivery shipping charge of <span className="font-bold text-[#8B1D8F]">₹120</span> is payable — no need to pay the costume price again.
               </div>
 
-              {/* Items Section */}
-              <div className="space-y-3">
-                <label className="block text-[13px] font-semibold text-[#4A354D]">Exchange Sizes</label>
-                <div className="space-y-3 max-h-[180px] overflow-y-auto pr-1">
+              {/* Items with Checkboxes */}
+              <div className="space-y-2">
+                <label className="block text-[13px] font-bold text-[#4A354D]">Select Items to Exchange</label>
+                <div className="space-y-3">
                   {exchangeItems.map((item, idx) => {
-                    const product = allProductsForExchange.find(p => p.id === item.productId);
-                    const sizeOptions = product?.sizes || [];
+                    const prod = allProductsForExchange.find((p: any) => p.id === item.productId);
+                    const sizeOptions: any[] = (prod?.sizes || []).map((s: any) =>
+                      typeof s === "string" ? { size: s, stock: 1 } : s
+                    );
+                    const isSelected = item.selected;
                     return (
-                      <div key={idx} className="flex gap-3 items-center border border-[#F0E6F2] p-2.5 rounded-xl bg-[#FCF7FD]/30">
-                        {item.image && <img src={item.image} className="h-12 w-10 rounded object-cover border border-gray-100 shrink-0" />}
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-[13px] font-medium text-[#1A0F1C] truncate">{item.title}</h4>
-                          <div className="mt-1.5 flex items-center gap-2">
-                            <span className="text-[11px] text-[#8B7A8F]">Size:</span>
-                            <select
-                              value={item.newSize}
-                              onChange={(e) => {
-                                const updated = exchangeItems.map((x, i) => i === idx ? { ...x, newSize: e.target.value } : x);
-                                setExchangeItems(updated);
-                              }}
-                              className="h-7 rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12px] outline-none font-semibold text-[#8B1D8F]"
-                            >
-                              <option value={item.oldSize}>{item.oldSize} (Current)</option>
-                              {sizeOptions.filter((s: any) => s.size !== item.oldSize).map((s: any) => (
-                                <option key={s.size} value={s.size} disabled={s.stock === 0}>
-                                  {s.size} {s.stock === 0 ? "(Out of stock)" : `(${s.stock} available)`}
-                                </option>
-                              ))}
-                            </select>
+                      <div
+                        key={idx}
+                        className={`rounded-xl border-2 p-3 transition-all cursor-pointer ${
+                          isSelected
+                            ? "border-[#8B1D8F] bg-[#FCF7FD]"
+                            : "border-[#F0E6F2] bg-white hover:border-[#E1BFE6]"
+                        }`}
+                        onClick={() => {
+                          const updated = exchangeItems.map((x, i) =>
+                            i === idx ? { ...x, selected: !x.selected } : x
+                          );
+                          setExchangeItems(updated);
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            className="mt-1 h-4 w-4 accent-[#8B1D8F] cursor-pointer shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          {item.image && (
+                            <img src={item.image} className="h-14 w-11 rounded-lg object-cover border border-gray-100 shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-[13px] font-semibold text-[#1A0F1C] truncate">{item.title}</h4>
+                            <div className="mt-1 flex items-center gap-2 flex-wrap">
+                              <span className="rounded-md bg-purple-50 border border-purple-100 px-2 py-0.5 text-[11px] font-bold text-[#8B1D8F]">
+                                Bought: {item.oldSize}
+                              </span>
+                              <span className="text-[11px] text-gray-400">Qty: {item.quantity}</span>
+                            </div>
+                            {isSelected && (
+                              <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                                <label className="text-[11px] font-semibold text-[#4A354D] block mb-1">Exchange to new size:</label>
+                                <select
+                                  value={item.newSize}
+                                  onChange={(e) => {
+                                    const updated = exchangeItems.map((x, i) =>
+                                      i === idx ? { ...x, newSize: e.target.value } : x
+                                    );
+                                    setExchangeItems(updated);
+                                  }}
+                                  className="h-8 w-full rounded-lg border border-[#EEDDF0] bg-white px-2 text-[12px] outline-none font-semibold text-[#8B1D8F] focus:border-[#8B1D8F]"
+                                >
+                                  {sizeOptions.length === 0 ? (
+                                    <option value={item.oldSize}>{item.oldSize} (Same size)</option>
+                                  ) : (
+                                    sizeOptions.map((s: any) => (
+                                      <option key={s.size} value={s.size} disabled={s.stock === 0}>
+                                        {s.size}{s.size === item.oldSize ? " (Current)" : ""} {s.stock === 0 ? "— Out of Stock" : s.stock <= 3 ? `— Only ${s.stock} left` : ""}
+                                      </option>
+                                    ))
+                                  )}
+                                </select>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
+                {exchangeItems.every((i: any) => !i.selected) && (
+                  <p className="text-[11.5px] text-amber-600 font-medium">⚠️ Please select at least one item to exchange</p>
+                )}
               </div>
 
-              {/* Address Section */}
-              <div>
-                <label className="mb-1 block text-[13px] font-semibold text-[#4A354D]">New Delivery Address</label>
-                <textarea
-                  required
-                  rows={3}
-                  value={newExchangeAddress}
-                  onChange={(e) => setNewExchangeAddress(e.target.value)}
-                  className="w-full rounded-xl border border-[#EEDDF0] p-3 text-[13px] focus:outline-[#8B1D8F] bg-white text-[#1A0F1C]"
-                  placeholder="Enter the new shipping address for this exchange..."
-                />
-              </div>
-
-              {/* Payment Method Selector */}
+              {/* Delivery Address */}
               <div className="space-y-2">
-                <label className="block text-[13px] font-semibold text-[#4A354D]">Payment Method for Exchange Fee</label>
-                <div className="grid grid-cols-1 gap-3">
+                <label className="block text-[13px] font-bold text-[#4A354D]">📍 Delivery Address for Exchange</label>
+
+                {/* Tab toggle: Saved vs New */}
+                <div className="flex gap-2 p-1 bg-[#FCF7FD] rounded-xl border border-[#F0E6F2]">
                   <button
                     type="button"
-                    onClick={() => setExchangePaymentMethod("online")}
-                    className={`flex flex-col items-center justify-center p-3 rounded-2xl w-full border text-center transition-all ${exchangePaymentMethod === "online"
-                      ? "border-[#8B1D8F] bg-[#FCF7FD] text-[#8B1D8F] shadow-sm shadow-[#8B1D8F]/5"
-                      : "border-[#F0E6F2] hover:border-[#E1BFE6] bg-white text-[#4A354D]"
-                      }`}
+                    onClick={() => {
+                      setExchangeAddrMode("saved");
+                      if (addresses.length > 0) {
+                        const addr = addresses[exchangeSelectedSavedIdx] || addresses[0];
+                        setNewExchangeAddress(addr);
+                      }
+                    }}
+                    className={`flex-1 py-1.5 px-3 text-[12px] font-semibold rounded-lg transition-all ${
+                      exchangeAddrMode === "saved"
+                        ? "bg-[#8B1D8F] text-white shadow-sm"
+                        : "text-[#6B5A6F] hover:bg-white/60"
+                    } ${addresses.length === 0 ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+                    disabled={addresses.length === 0}
                   >
-                    <span className="text-[13px] font-bold">Pay Online</span>
-                    <span className="text-[10.5px] text-gray-500 mt-0.5">Razorpay / UPI / Cards</span>
+                    Saved Addresses {addresses.length === 0 && "(none)"}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setExchangeAddrMode("new")}
+                    className={`flex-1 py-1.5 px-3 text-[12px] font-semibold rounded-lg transition-all cursor-pointer ${
+                      exchangeAddrMode === "new"
+                        ? "bg-[#8B1D8F] text-white shadow-sm"
+                        : "text-[#6B5A6F] hover:bg-white/60"
+                    }`}
+                  >
+                    + Add New Address
+                  </button>
+                </div>
 
-                  {/* <button
-                        type="button"
-                        onClick={() => setExchangePaymentMethod("cod")}
-                        className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
-                          exchangePaymentMethod === "cod"
-                            ? "border-[#8B1D8F] bg-[#FCF7FD] text-[#8B1D8F] shadow-sm shadow-[#8B1D8F]/5"
-                            : "border-[#F0E6F2] hover:border-[#E1BFE6] bg-white text-[#4A354D]"
-                        }`}
-                      >
-                        <span className="text-[13px] font-bold">Cash on Delivery</span>
-                        <span className="text-[10.5px] text-gray-500 mt-0.5">Pay ₹120 on delivery</span>
-                      </button> */}
+                {/* Saved address cards */}
+                {exchangeAddrMode === "saved" && addresses.length > 0 && (
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                    {addresses.map((addr, i) => {
+                      const parts = addr.split(" | ");
+                      const isSelected = exchangeSelectedSavedIdx === i;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            setExchangeSelectedSavedIdx(i);
+                            setNewExchangeAddress(addr);
+                          }}
+                          className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
+                            isSelected
+                              ? "border-[#8B1D8F] bg-[#FCF7FD]"
+                              : "border-[#F0E6F2] bg-white hover:border-[#E1BFE6]"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center ${
+                              isSelected ? "border-[#8B1D8F] bg-[#8B1D8F]" : "border-gray-300"
+                            }`}>
+                              {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[12.5px] font-semibold text-[#1A0F1C]">
+                                Address {i + 1}{addr === (session?.user as any)?.defaultAddress && " ★ Default"}
+                              </div>
+                              <div className="text-[11.5px] text-[#6B5A6F] mt-0.5">
+                                {parts.filter(Boolean).join(", ")}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* New address inline form */}
+                {exchangeAddrMode === "new" && (
+                  <div className="space-y-2.5 rounded-xl border border-[#F0E6F2] bg-[#FCF7FD]/40 p-3">
+                    <div>
+                      <label className="mb-1 block text-[11.5px] font-medium text-[#4A354D]">Address Line 1 (House No, Street)*</label>
+                      <input
+                        type="text"
+                        value={exchangeAddrLine1}
+                        onChange={(e) => {
+                          setExchangeAddrLine1(e.target.value);
+                          const full = [e.target.value, exchangeAddrLine2, exchangeAddrCity, exchangeAddrState, exchangeAddrPincode].filter(Boolean).join(" | ");
+                          setNewExchangeAddress(full);
+                        }}
+                        placeholder="e.g. Flat 101, Shivam Apartments, MG Road"
+                        className="h-9 w-full rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none focus:border-[#8B1D8F]"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11.5px] font-medium text-[#4A354D]">Address Line 2 (Landmark, Area)</label>
+                      <input
+                        type="text"
+                        value={exchangeAddrLine2}
+                        onChange={(e) => {
+                          setExchangeAddrLine2(e.target.value);
+                          const full = [exchangeAddrLine1, e.target.value, exchangeAddrCity, exchangeAddrState, exchangeAddrPincode].filter(Boolean).join(" | ");
+                          setNewExchangeAddress(full);
+                        }}
+                        placeholder="e.g. Near Hanuman Temple"
+                        className="h-9 w-full rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none focus:border-[#8B1D8F]"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="mb-1 block text-[11.5px] font-medium text-[#4A354D]">City*</label>
+                        <input
+                          type="text"
+                          value={exchangeAddrCity}
+                          onChange={(e) => {
+                            setExchangeAddrCity(e.target.value);
+                            const full = [exchangeAddrLine1, exchangeAddrLine2, e.target.value, exchangeAddrState, exchangeAddrPincode].filter(Boolean).join(" | ");
+                            setNewExchangeAddress(full);
+                          }}
+                          placeholder="City"
+                          className="h-9 w-full rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none focus:border-[#8B1D8F]"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11.5px] font-medium text-[#4A354D]">State*</label>
+                        <input
+                          type="text"
+                          value={exchangeAddrState}
+                          onChange={(e) => {
+                            setExchangeAddrState(e.target.value);
+                            const full = [exchangeAddrLine1, exchangeAddrLine2, exchangeAddrCity, e.target.value, exchangeAddrPincode].filter(Boolean).join(" | ");
+                            setNewExchangeAddress(full);
+                          }}
+                          placeholder="State"
+                          className="h-9 w-full rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none focus:border-[#8B1D8F]"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11.5px] font-medium text-[#4A354D]">Pincode*</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={exchangeAddrPincode}
+                          onChange={(e) => {
+                            setExchangeAddrPincode(e.target.value);
+                            const full = [exchangeAddrLine1, exchangeAddrLine2, exchangeAddrCity, exchangeAddrState, e.target.value].filter(Boolean).join(" | ");
+                            setNewExchangeAddress(full);
+                          }}
+                          placeholder="362001"
+                          className="h-9 w-full rounded-lg border border-[#EEDDF0] bg-white px-3 text-[12.5px] outline-none focus:border-[#8B1D8F]"
+                        />
+                      </div>
+                    </div>
+                    {newExchangeAddress && (
+                      <div className="rounded-lg bg-white border border-[#F0E6F2] px-3 py-2 text-[11.5px] text-[#4A354D]">
+                        <span className="font-semibold text-[#8B1D8F]">Preview: </span>
+                        {newExchangeAddress.replace(/ \| /g, ", ")}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Info — Online Only */}
+              <div className="rounded-xl bg-green-50 border border-green-200 p-3.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-green-600 text-[18px]">💳</span>
+                  <div>
+                    <div className="text-[13px] font-bold text-green-800">Online Payment Required</div>
+                    <div className="text-[11.5px] text-green-700 mt-0.5">Exchange shipping fee must be paid online via Razorpay / UPI / Cards</div>
+                  </div>
                 </div>
               </div>
 
-              {/* Fees Summary */}
-              <div className="rounded-xl bg-[#FCF7FD] p-3 border border-[#F0E6F2] text-[13px] space-y-1">
+              {/* Fees Summary — only shipping charge, not order value */}
+              <div className="rounded-xl bg-[#FCF7FD] p-3.5 border border-[#F0E6F2] text-[13px] space-y-1.5">
+                <div className="text-[11px] font-bold text-[#8B7A8F] uppercase tracking-wide mb-2">💳 Exchange Cost Breakdown</div>
                 <div className="flex justify-between text-[#6B5A6F]">
-                  <span>Original Order Total:</span>
-                  <span>₹{selectedOrderForExchange.total}</span>
+                  <span>Costume Value (Already Paid)</span>
+                  <span className="line-through text-gray-400">₹{selectedOrderForExchange.total}</span>
                 </div>
-                <div className="flex justify-between text-[#6B5A6F]">
-                  <span>Exchange Delivery Charge:</span>
-                  <span>₹120</span>
+                <div className="flex justify-between text-[#4A354D]">
+                  <span>Selected Items Count</span>
+                  <span className="font-semibold">{exchangeItems.filter((i: any) => i.selected).length} / {exchangeItems.length}</span>
                 </div>
-                <div className="flex justify-between font-bold text-[#1A0F1C] border-t border-[#EEDDF0] pt-1.5">
-                  <span>New Grand Total:</span>
-                  <span>₹{selectedOrderForExchange.total + 120}</span>
+                <div className="flex justify-between text-[#4A354D]">
+                  <span>Redelivery + Processing Charge</span>
+                  <span className="font-bold text-[#8B1D8F]">₹120</span>
                 </div>
+                <div className="flex justify-between font-extrabold text-[#1A0F1C] border-t border-[#EEDDF0] pt-2 text-[14px]">
+                  <span>You Pay Now</span>
+                  <span className="text-[#8B1D8F]">₹120</span>
+                </div>
+                <p className="text-[10.5px] text-green-700 font-medium mt-1">✅ No need to pay the costume price again</p>
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-1">
                 <button
                   type="submit"
-                  disabled={submittingExchange}
-                  className="flex-1 rounded-full bg-[#8B1D8F] py-3 text-[14px] font-bold text-white transition hover:bg-[#7A187C] disabled:opacity-50"
+                  disabled={submittingExchange || exchangeItems.every((i: any) => !i.selected)}
+                  className="flex-1 rounded-full bg-[#8B1D8F] py-3 text-[14px] font-bold text-white transition hover:bg-[#7A187C] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submittingExchange ? "Submitting Request..." : "Confirm Exchange"}
+                  {submittingExchange ? "Submitting..." : `Confirm Exchange (₹120)`}
                 </button>
                 <button
                   type="button"

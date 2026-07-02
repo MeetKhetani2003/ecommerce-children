@@ -36,7 +36,7 @@ export default function Home() {
           fetch("/api/products"),
           fetch("/api/admin/banners")
         ]);
-        
+
         const [prodData, bannerData] = await Promise.all([
           prodRes.json(),
           bannerRes.json()
@@ -75,6 +75,29 @@ export default function Home() {
     if (!carouselRef.current) return;
     const amount = carouselRef.current.clientWidth * 0.8;
     carouselRef.current.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
+  };
+
+  const getRealAgeProductImage = (ageGroup: string, fallbackImg: string) => {
+    const matchedProduct = productsList.find((p: any) => {
+      if (!p.sizes || p.sizes.length === 0) return false;
+      return p.sizes.some((sz: any) => {
+        const sizeStr = typeof sz === "string" ? sz : sz?.size || "";
+        const numMatch = sizeStr.match(/\d+/);
+        if (!numMatch) return false;
+        const firstAge = parseInt(numMatch[0]);
+        if (ageGroup === "0-2 Years") {
+          return firstAge <= 2;
+        } else if (ageGroup === "3-5 Years") {
+          return firstAge >= 3 && firstAge <= 5;
+        } else if (ageGroup === "6-8 Years") {
+          return firstAge >= 6 && firstAge <= 8;
+        } else if (ageGroup === "9-12 Years") {
+          return firstAge >= 9 && firstAge <= 13;
+        }
+        return false;
+      });
+    });
+    return matchedProduct ? matchedProduct.image : fallbackImg;
   };
 
   return (
@@ -221,8 +244,8 @@ export default function Home() {
                       <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                     </Link>
                     <div className="absolute left-2.5 top-2.5 right-11 flex flex-wrap items-center gap-1.5">
-                      <span 
-                        className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur max-w-[90px] sm:max-w-[130px] truncate inline-block" 
+                      <span
+                        className="rounded-full bg-white/95 px-2 py-1 text-[10.5px] font-medium leading-none text-[#6B146E] shadow-sm backdrop-blur max-w-[90px] sm:max-w-[130px] truncate inline-block"
                         title={p.category}
                       >
                         {p.category.includes(">") ? p.category.split(">").pop()?.trim() : p.category}
@@ -265,16 +288,16 @@ export default function Home() {
                         </select>
                       </div>
                     )}
-                    <button 
-                      onClick={(e) => { 
-                        e.preventDefault(); 
-                        e.stopPropagation(); 
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         if (p.sizes && p.sizes.length > 0 && !selectedSizes[p.id]) {
                           toast.error("Please select a size first");
                           return;
                         }
-                        addToCart(p, p.sizes && p.sizes.length > 0 ? selectedSizes[p.id] : undefined); 
-                      }} 
+                        addToCart(p, p.sizes && p.sizes.length > 0 ? selectedSizes[p.id] : undefined);
+                      }}
                       className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#F3E7F5] bg-[#FCF7FD] py-2 text-[13px] font-medium text-[#8B1D8F] transition hover:bg-[#8B1D8F] hover:text-white"
                     >
                       <ShoppingBag className="h-3.5 w-3.5" /> Add to cart
@@ -293,18 +316,18 @@ export default function Home() {
           <div className="relative grid grid-cols-1 items-center gap-6 rounded-[27px] bg-white/70 px-6 py-8 backdrop-blur md:grid-cols-[1.1fr_0.9fr] md:px-10 md:py-10">
             <div>
               <div className="inline-flex items-center gap-1.5 rounded-full bg-[#1A0F1C] px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-white">
-                <Sparkles className="h-3 w-3" /> School Event Collection
+                <Sparkles className="h-3 w-3 text-yellow-400 fill-yellow-400" /> Stage-Ready Costumes
               </div>
-              <h3 className="mt-3 text-[24px] font-semibold leading-tight tracking-tight text-[#1A0F1C] md:text-[30px]">Flat 25% OFF on 3+ Costumes</h3>
-              <p className="mt-2 max-w-[520px] text-[14px] leading-relaxed text-[#5E4F63]">Perfect for annual day, fancy dress, and theme parties. Mix & match across categories. Premium accessories included.</p>
+              <h3 className="mt-3 text-[24px] font-semibold leading-tight tracking-tight text-[#1A0F1C] md:text-[30px]">Premium Stage & Event Costumes</h3>
+              <p className="mt-2 max-w-[520px] text-[14px] leading-relaxed text-[#5E4F63]">Discover our top-rated, highly detailed costumes crafted with soft, breathable fabrics and complete accessory sets to ensure your child looks and feels their best on stage.</p>
               <div className="mt-5 flex flex-wrap items-center gap-2.5">
                 <Link href="/products" className="inline-flex items-center gap-1.5 rounded-full bg-[#8B1D8F] px-5 py-2.5 text-[13.5px] font-medium text-white shadow-md shadow-[#8B1D8F]/20 transition hover:bg-[#7A187C]">
-                  Shop Combo <ArrowRight className="h-4 w-4" />
+                  Explore Collection <ArrowRight className="h-4 w-4" />
                 </Link>
                 <div className="flex items-center gap-2 text-[12.5px] text-[#6B5A6F]">
-                  <Check className="h-4 w-4 text-[#0F8A4B]" /> Free size exchange
+                  <Check className="h-4 w-4 text-[#0F8A4B]" /> Premium Quality
                   <span className="h-1 w-1 rounded-full bg-[#D8C9DB]" />
-                  <Check className="h-4 w-4 text-[#0F8A4B]" /> Express delivery
+                  <Check className="h-4 w-4 text-[#0F8A4B]" /> stage-ready accessories
                 </div>
               </div>
             </div>
@@ -316,9 +339,17 @@ export default function Home() {
                   ))
                 ) : (
                   productsList.slice(0, 3).map((p) => (
-                    <div key={p.id} className="aspect-[3/4] overflow-hidden rounded-2xl border border-[#F0E6F2] bg-white shadow-sm">
-                      <img src={p.image} alt="" className="h-full w-full object-cover" />
-                    </div>
+                    <Link
+                      key={p.id}
+                      href={`/product/${p.slug || p.id}`}
+                      className="group/item relative aspect-[3/4] overflow-hidden rounded-2xl border border-[#F0E6F2] bg-white shadow-sm hover:border-[#8B1D8F] transition-all duration-300 hover:shadow-md block"
+                    >
+                      <img src={p.image} alt={p.title} className="h-full w-full object-cover transition-transform duration-500 group-hover/item:scale-105" />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 text-left">
+                        <div className="line-clamp-1 text-[11px] font-semibold text-white group-hover/item:text-[#F3E7F5] transition-colors">{p.title}</div>
+                        <div className="text-[10px] font-bold text-[#E91E7A]">₹{p.price}</div>
+                      </div>
+                    </Link>
                   ))
                 )}
               </div>
@@ -335,21 +366,29 @@ export default function Home() {
           <Link href="/products" className="text-[13.5px] font-medium text-[#8B1D8F] hover:underline">View all</Link>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-6">
-          {categories.slice(0, 6).map((c) => (
-            <Link key={c.name} href={`/products?category=${c.name}`} className="group relative overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white">
-              <div className="aspect-[4/5] overflow-hidden">
-                <img src={c.image} alt={c.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-              </div>
-              <div className="absolute inset-x-0 bottom-0 p-3.5">
-                <div className="text-[15px] font-medium text-white">{c.name}</div>
-                <div className="text-[11.5px] text-white/80">{c.count}</div>
-              </div>
-              <div className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-white/90 opacity-0 backdrop-blur transition group-hover:opacity-100">
-                <ArrowRight className="h-3.5 w-3.5 text-[#1A0F1C]" />
-              </div>
-            </Link>
-          ))}
+          {categories.slice(0, 6).map((c, idx) => {
+            const realProduct = productsList.find((p: any) => {
+              const productCat = p.category || "";
+              return productCat.toLowerCase() === c.name.toLowerCase() ||
+                     productCat.toLowerCase().includes(c.name.toLowerCase());
+            });
+            const displayImage = realProduct ? realProduct.image : (productsList[idx % productsList.length]?.image || c.image);
+            return (
+              <Link key={c.name} href={`/products?category=${c.name}`} className="group relative overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white">
+                <div className="aspect-[4/5] overflow-hidden">
+                  <img src={displayImage} alt={c.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                </div>
+                <div className="absolute inset-x-0 bottom-0 p-3.5">
+                  <div className="text-[15px] font-medium text-white">{c.name}</div>
+                  <div className="text-[11.5px] text-white/80">{c.count}</div>
+                </div>
+                <div className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-white/90 opacity-0 backdrop-blur transition group-hover:opacity-100">
+                  <ArrowRight className="h-3.5 w-3.5 text-[#1A0F1C]" />
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </motion.section>
 
@@ -362,16 +401,20 @@ export default function Home() {
             { age: "3-5 Years", label: "Preschoolers", img: "https://images.pexels.com/photos/31625368/pexels-photo-31625368.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=400&h=400" },
             { age: "6-8 Years", label: "Kids", img: "https://images.pexels.com/photos/34322336/pexels-photo-34322336.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=400&h=400" },
             { age: "9-12 Years", label: "Pre-teens", img: "https://images.pexels.com/photos/14211426/pexels-photo-14211426.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=400&h=400" },
-          ].map((item) => (
-            <Link key={item.age} href={`/products`} className="group relative overflow-hidden rounded-[20px] bg-[#FCF7FD]">
-              <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              <img src={item.img} alt={item.age} className="aspect-square w-full object-cover transition-transform duration-700 group-hover:scale-110" />
-              <div className="absolute bottom-4 left-4 z-20">
-                <div className="text-[18px] font-bold text-white">{item.age}</div>
-                <div className="text-[13px] font-medium text-white/80">{item.label}</div>
-              </div>
-            </Link>
-          ))}
+          ].map((item, idx) => {
+            const fallbackProductImg = productsList[(idx + 2) % productsList.length]?.image || item.img;
+            const displayImage = getRealAgeProductImage(item.age, fallbackProductImg);
+            return (
+              <Link key={item.age} href={`/products`} className="group relative overflow-hidden rounded-[20px] bg-[#FCF7FD]">
+                <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <img src={displayImage} alt={item.age} className="aspect-square w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <div className="absolute bottom-4 left-4 z-20">
+                  <div className="text-[18px] font-bold text-white">{item.age}</div>
+                  <div className="text-[13px] font-medium text-white/80">{item.label}</div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </motion.section>
 
@@ -420,7 +463,7 @@ export default function Home() {
         <div className="overflow-hidden rounded-[32px] bg-[#FCF7FD] md:grid md:grid-cols-2">
           <div className="flex flex-col justify-center p-8 md:p-14 lg:p-20">
             <h2 className="text-[28px] font-bold leading-tight text-[#1A0F1C] md:text-[36px]">
-              Crafted for Comfort,<br/> Designed to Shine.
+              Crafted for Comfort,<br /> Designed to Shine.
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-[#5E4F63]">
               We know that an itchy costume ruins the fun. That's why every Saheli Shrungar outfit is lined with breathable cotton, ensuring your child can perform, play, and celebrate in complete comfort.
@@ -525,7 +568,7 @@ export default function Home() {
               <p className="mt-4 text-[14px] leading-relaxed text-[#3A2A3D] min-h-[72px]">“{t.text}”</p>
               <div className="mt-5 flex items-center gap-3 border-t border-[#F8F0F9] pt-4">
                 <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-[#F3E7F5] to-[#FFE4F2] text-[13px] font-semibold text-[#7A187C]">
-                  {t.name.split(" ").map(n=>n[0]).join("")}
+                  {t.name.split(" ").map(n => n[0]).join("")}
                 </div>
                 <div>
                   <div className="text-[13.5px] font-semibold text-[#1A0F1C]">{t.name}</div>
