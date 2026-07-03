@@ -7,6 +7,7 @@ interface InvoiceItem {
   title: string;
   price: number;
   quantity: number;
+  size?: string | null;
 }
 
 interface InvoiceDetails {
@@ -149,12 +150,21 @@ export async function generateInvoicePDF(details: InvoiceDetails): Promise<Buffe
   page.drawLine({ start: { x: 50, y: tableTopY }, end: { x: 545, y: tableTopY }, thickness: 1, color: rgb(220/255, 200/255, 225/255) });
   page.drawLine({ start: { x: 50, y: tableTopY - 20 }, end: { x: 545, y: tableTopY - 20 }, thickness: 1, color: rgb(220/255, 200/255, 225/255) });
 
-  let itemY = tableTopY - 38;
+  let itemY = tableTopY - 35;
   details.items.forEach((item, index) => {
     // S.No
     page.drawText((index + 1).toString(), { x: 55, y: itemY, size: 9, font: font, color: rgb(74/255, 53/255, 77/255) });
     // Item Name
-    page.drawText(item.title, { x: 90, y: itemY, size: 9.5, font: boldFont, color: rgb(26/255, 15/255, 28/255), maxWidth: 210 });
+    const displayTitle = item.size ? `${item.title} (Size: ${item.size})` : item.title;
+    page.drawText(displayTitle, {
+      x: 90,
+      y: itemY,
+      size: 9.5,
+      font: boldFont,
+      color: rgb(26/255, 15/255, 28/255),
+      maxWidth: 210,
+      lineHeight: 11
+    });
     // Qty
     page.drawText(item.quantity.toString(), { x: 320, y: itemY, size: 9, font: font, color: rgb(74/255, 53/255, 77/255) });
     // Price
@@ -162,18 +172,18 @@ export async function generateInvoicePDF(details: InvoiceDetails): Promise<Buffe
     // Total Amount
     page.drawText(`Rs. ${(item.price * item.quantity).toFixed(2)}`, { x: 470, y: itemY, size: 9.5, font: boldFont, color: rgb(26/255, 15/255, 28/255) });
 
-    itemY -= 24;
+    itemY -= 32;
     // Light bottom separator line
     page.drawLine({
-      start: { x: 50, y: itemY + 12 },
-      end: { x: 545, y: itemY + 12 },
+      start: { x: 50, y: itemY + 16 },
+      end: { x: 545, y: itemY + 16 },
       thickness: 0.5,
       color: rgb(248/255, 240/255, 249/255)
     });
   });
 
   // Table Outer Frame Box
-  const tableBottomY = itemY + 12;
+  const tableBottomY = itemY + 16;
   page.drawLine({ start: { x: 50, y: tableTopY }, end: { x: 50, y: tableBottomY }, thickness: 1, color: rgb(220/255, 200/255, 225/255) });
   page.drawLine({ start: { x: 545, y: tableTopY }, end: { x: 545, y: tableBottomY }, thickness: 1, color: rgb(220/255, 200/255, 225/255) });
   page.drawLine({ start: { x: 50, y: tableBottomY }, end: { x: 545, y: tableBottomY }, thickness: 1, color: rgb(220/255, 200/255, 225/255) });
@@ -246,6 +256,7 @@ export async function sendInvoiceEmail(details: InvoiceDetails) {
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #F0E6F2; text-align: left; font-size: 14px; color: #1A0F1C;">
           <strong>${item.title}</strong>
+          ${item.size ? `<br/><span style="font-size: 12px; color: #6B5A6F;">Size: ${item.size}</span>` : ""}
         </td>
         <td style="padding: 12px; border-bottom: 1px solid #F0E6F2; text-align: center; font-size: 14px; color: #4A354D;">
           ${item.quantity}
@@ -371,6 +382,7 @@ export async function sendInvoiceEmail(details: InvoiceDetails) {
         },
       });
 
+      // 1. Send to Customer
       await transporter.sendMail({
         from: `"Saheli Shrungar Costumes" <${user}>`,
         to: email,
@@ -386,8 +398,32 @@ export async function sendInvoiceEmail(details: InvoiceDetails) {
             ]
           : [],
       });
+      console.log(`[Email Service] Invoice sent to customer ${email} with PDF attachment for order ${orderId}`);
 
-      console.log(`[Email Service] Invoice sent to ${email} with PDF attachment for order ${orderId}`);
+      // 2. Send copy to Admin (Self Mail)
+      const adminEmail = process.env.EMAIL_USER || user;
+      if (adminEmail) {
+        try {
+          await transporter.sendMail({
+            from: `"Saheli Admin Notification" <${user}>`,
+            to: adminEmail,
+            subject: `NEW ORDER: Invoice for Order #${orderId} - Saheli Shrungar`,
+            html: emailHtml,
+            attachments: pdfBuffer
+              ? [
+                  {
+                    filename: `Invoice_${orderId}.pdf`,
+                    content: pdfBuffer,
+                    contentType: "application/pdf",
+                  },
+                ]
+              : [],
+          });
+          console.log(`[Email Service] Invoice copy sent to admin ${adminEmail} for order ${orderId}`);
+        } catch (adminErr) {
+          console.error("[Email Service] Failed to send copy to admin:", adminErr);
+        }
+      }
       return;
     } catch (error) {
       console.error("[Email Service] Failed to send email via SMTP:", error);

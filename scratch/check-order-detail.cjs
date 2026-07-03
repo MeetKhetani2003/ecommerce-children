@@ -33,7 +33,7 @@ async function main() {
   await mongoose.connect(MONGODB_URI);
   console.log("Connected to MongoDB!");
 
-  const order = await Order.findOne({ _id: new mongoose.Types.ObjectId("6a464902f2b51b6f8d6dab70") });
+  const order = await Order.findOne({ _id: new mongoose.Types.ObjectId("6a47509e59f7b870e09a7be3") });
   if (order) {
     console.log("Found order:", order._id.toString());
     console.log("Items:", JSON.stringify(order.items, null, 2));
