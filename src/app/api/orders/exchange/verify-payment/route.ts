@@ -93,6 +93,14 @@ export async function POST(req: Request) {
             const newSizeObj = product.sizes.find((s: any) => s.size === reqItem.newSize);
             if (newSizeObj) {
               newSizeObj.stock -= orderItem.quantity;
+              if (newSizeObj.stock <= 0) {
+                try {
+                  const { sendOutOfStockEmail } = await import("@/utils/emailService");
+                  await sendOutOfStockEmail(product.title, product.id, reqItem.newSize);
+                } catch (err) {
+                  console.error("Failed to send out of stock alert during exchange:", err);
+                }
+              }
             }
             await product.save();
           }
@@ -135,6 +143,38 @@ export async function POST(req: Request) {
     order.trackingLink = undefined;
 
     await order.save();
+
+    // Trigger Exchange Request Email Notification
+    try {
+      const { sendExchangeRequestEmail } = await import("@/utils/emailService");
+      
+      // Map exchange details
+      const exchangeItems = order.items
+        .filter((item: any) => {
+          return recordedNewSizes.some(ns => ns.productId === item.productId && ns.size === item.size);
+        })
+        .map((item: any) => {
+          const matchingNewSizeObj = newSizes.find((ns: any) => ns.productId === item.productId);
+          return {
+            productId: item.productId,
+            title: item.title,
+            oldSize: matchingNewSizeObj ? matchingNewSizeObj.oldSize : "Std",
+            newSize: item.size || "Std"
+          };
+        });
+
+      await sendExchangeRequestEmail({
+        orderId: order._id.toString(),
+        customerName: order.shippingDetails?.name || "Customer",
+        email: order.email,
+        items: exchangeItems,
+        exchangeFee: order.exchangeFee || 120,
+        newAddress: order.exchangeDetails?.newAddress || undefined,
+        phone: order.shippingDetails?.phone || ""
+      });
+    } catch (exchangeEmailErr) {
+      console.error("Failed to send exchange request email:", exchangeEmailErr);
+    }
 
     // Trigger new Shiprocket Shipment and AWB generation for this exchange
     try {

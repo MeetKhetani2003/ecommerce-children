@@ -62,9 +62,25 @@ export async function POST(req: Request) {
         const sizeObj = item.productDocument.sizes.find((s: any) => s.size === item.selectedSize);
         if (sizeObj) {
           sizeObj.stock -= item.quantity;
+          if (sizeObj.stock <= 0) {
+            try {
+              const { sendOutOfStockEmail } = await import("@/utils/emailService");
+              await sendOutOfStockEmail(item.title, item.productId, item.selectedSize);
+            } catch (err) {
+              console.error("Failed to send out of stock alert:", err);
+            }
+          }
         }
       }
       item.productDocument.stock -= item.quantity;
+      if (item.productDocument.stock <= 0) {
+        try {
+          const { sendOutOfStockEmail } = await import("@/utils/emailService");
+          await sendOutOfStockEmail(item.title, item.productId, null);
+        } catch (err) {
+          console.error("Failed to send out of stock alert:", err);
+        }
+      }
       await item.productDocument.save();
     }
 
@@ -96,6 +112,26 @@ export async function POST(req: Request) {
       shippingStatus: shippingStatus || "Delivered",
       createdAt: new Date()
     });
+
+    // Send invoice email notification to customer (if email provided) and admin copy
+    try {
+      const { sendInvoiceEmail } = await import("@/utils/emailService");
+      await sendInvoiceEmail({
+        orderId: offlineOrder._id.toString(),
+        customerName: offlineOrder.shippingDetails?.name || customerDetails.name,
+        email: offlineOrder.email,
+        items: offlineOrder.items,
+        subtotal: offlineOrder.subtotal,
+        discount: offlineOrder.discount,
+        total: offlineOrder.total,
+        address: offlineOrder.shippingDetails?.address || customerDetails.address || "Offline Walk-in Counter",
+        phone: offlineOrder.shippingDetails?.phone || customerDetails.phone,
+      });
+      offlineOrder.invoiceSent = true;
+      await offlineOrder.save();
+    } catch (emailErr) {
+      console.error("Failed to send offline order invoice email:", emailErr);
+    }
 
     return NextResponse.json({
       success: true,

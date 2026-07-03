@@ -644,3 +644,238 @@ export async function sendWelcomeCouponEmail(email: string, name: string, coupon
   console.log(`Coupon Code: ${couponCode}`);
   console.log("==================================================================");
 }
+
+interface ExchangeEmailItem {
+  productId: number;
+  title: string;
+  oldSize: string;
+  newSize: string;
+}
+
+interface ExchangeEmailDetails {
+  orderId: string;
+  customerName: string;
+  email: string;
+  items: ExchangeEmailItem[];
+  exchangeFee: number;
+  newAddress?: string;
+  phone: string;
+}
+
+export async function sendExchangeRequestEmail(details: ExchangeEmailDetails) {
+  const {
+    orderId,
+    customerName,
+    email,
+    items,
+    exchangeFee,
+    newAddress,
+    phone,
+  } = details;
+
+  const itemRows = items
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #F0E6F2; text-align: left; font-size: 14px; color: #1A0F1C;">
+          <strong>${item.title}</strong>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #F0E6F2; text-align: center; font-size: 14px; color: #C2187B; font-weight: bold;">
+          ${item.oldSize}
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #F0E6F2; text-align: center; font-size: 14px; color: #0F8A4B; font-weight: bold;">
+          ${item.newSize}
+        </td>
+      </tr>
+    `
+    )
+    .join("");
+
+  const emailHtml = `
+    <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #FFFCFE; padding: 30px 15px; text-align: center;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #F0E6F2; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 20px rgba(139, 29, 143, 0.05); text-align: left;">
+        
+        <!-- Header Banner -->
+        <div style="background: linear-gradient(135deg, #8B1D8F 0%, #C2187B 100%); padding: 30px; text-align: center; color: #ffffff;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">Saheli Shrungar</h1>
+          <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Exchange Request Processed</p>
+        </div>
+
+        <div style="padding: 30px;">
+          <!-- Greeting -->
+          <h2 style="margin-top: 0; font-size: 18px; color: #1A0F1C; font-weight: 600;">Hello ${customerName},</h2>
+          <p style="font-size: 14px; color: #6B5A6F; line-height: 1.6; margin-bottom: 25px;">
+            Your exchange request has been successfully registered. We are preparing the replacement costumes. Below are the exchange details.
+          </p>
+
+          <!-- Meta Info -->
+          <div style="background-color: #FCF7FD; border-radius: 16px; padding: 15px 20px; margin-bottom: 25px; border: 1px dashed #EEDDF0; font-size: 13.5px; color: #4A354D; display: flex; flex-direction: column; gap: 6px;">
+            <div><strong>Order ID:</strong> <span style="font-family: monospace; color: #8B1D8F;">${orderId}</span></div>
+            <div><strong>Request Date:</strong> ${new Date().toLocaleDateString("en-IN", { dateStyle: "long" })}</div>
+            <div><strong>Exchange Fee Paid:</strong> ₹${exchangeFee}</div>
+            <div><strong>Status:</strong> <span style="color: #8B1D8F; font-weight: 600;">Exchange Processing</span></div>
+          </div>
+
+          <!-- Items Table -->
+          <h3 style="font-size: 15px; color: #1A0F1C; border-bottom: 2px solid #F0E6F2; padding-bottom: 8px; margin-bottom: 12px; font-weight: 600;">Exchanged Items</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+            <thead>
+              <tr style="background-color: #FCF7FD;">
+                <th style="padding: 10px 12px; text-align: left; font-size: 12.5px; text-transform: uppercase; color: #8B7A8F; font-weight: 600;">Costume</th>
+                <th style="padding: 10px 12px; text-align: center; font-size: 12.5px; text-transform: uppercase; color: #8B7A8F; font-weight: 600;">Original Size</th>
+                <th style="padding: 10px 12px; text-align: center; font-size: 12.5px; text-transform: uppercase; color: #8B7A8F; font-weight: 600;">New Size</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemRows}
+            </tbody>
+          </table>
+
+          ${newAddress ? `
+          <!-- Delivery Address -->
+          <h3 style="font-size: 15px; color: #1A0F1C; border-bottom: 2px solid #F0E6F2; padding-bottom: 8px; margin-bottom: 12px; font-weight: 600;">New Delivery Address</h3>
+          <div style="font-size: 14px; color: #6B5A6F; line-height: 1.6; background-color: #FFFCFE; border: 1px solid #F0E6F2; border-radius: 16px; padding: 15px 20px; margin-bottom: 25px;">
+            <strong>${customerName}</strong><br/>
+            ${newAddress}<br/>
+            <strong>Phone:</strong> ${phone}
+          </div>
+          ` : ""}
+
+          <!-- Footer -->
+          <div style="margin-top: 40px; border-top: 1px solid #F0E6F2; padding-top: 20px; text-align: center; font-size: 12px; color: #8B7A8F; line-height: 1.5;">
+            Thank you for choosing Saheli Shrungar!<br/>
+            For help or inquiries, contact us at support@sahelishrungar.com
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `;
+
+  let host = process.env.SMTP_HOST;
+  let port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 465;
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+
+  if (!host && process.env.EMAIL_USER) {
+    host = "smtp.gmail.com";
+    port = 465;
+  }
+
+  if (host && user && pass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
+      });
+
+      // 1. Send to Customer
+      if (email && email.trim() !== "" && email.trim() !== "offline@saheli.com") {
+        await transporter.sendMail({
+          from: `"Saheli Shrungar Costumes" <${user}>`,
+          to: email,
+          subject: `Exchange Registered for Order #${orderId} - Saheli Shrungar`,
+          html: emailHtml,
+        });
+        console.log(`[Email Service] Exchange email sent to customer ${email} for order ${orderId}`);
+      }
+
+      // 2. Send copy to Admin (Self Mail)
+      const adminEmail = process.env.EMAIL_USER || user;
+      if (adminEmail) {
+        await transporter.sendMail({
+          from: `"Saheli Admin Notification" <${user}>`,
+          to: adminEmail,
+          subject: `EXCHANGE REQUEST: Order #${orderId} - Saheli Shrungar`,
+          html: emailHtml,
+        });
+        console.log(`[Email Service] Exchange copy sent to admin ${adminEmail} for order ${orderId}`);
+      }
+      return;
+    } catch (error) {
+      console.error("[Email Service] Failed to send exchange emails via SMTP:", error);
+    }
+  }
+
+  console.log("==================================================================");
+  console.log(`[MOCK EMAIL FALLBACK] Exchange registered for order ${orderId}`);
+  console.log(`Recipient: ${email}`);
+  console.log("==================================================================");
+}
+
+export async function sendOutOfStockEmail(productTitle: string, productId: number, size?: string | null) {
+  const emailHtml = `
+    <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #FFFCFE; padding: 30px 15px; text-align: center;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #FFCCD5; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 20px rgba(220, 53, 69, 0.05); text-align: left;">
+        
+        <!-- Header Banner -->
+        <div style="background: linear-gradient(135deg, #DC3545 0%, #C2187B 100%); padding: 30px; text-align: center; color: #ffffff;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">Saheli Shrungar</h1>
+          <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Inventory Alert: Out of Stock</p>
+        </div>
+
+        <div style="padding: 30px;">
+          <h2 style="margin-top: 0; font-size: 18px; color: #DC3545; font-weight: 600;">Product Sold Out!</h2>
+          <p style="font-size: 14px; color: #6B5A6F; line-height: 1.6; margin-bottom: 25px;">
+            The following product/size has just reached <strong>0 stock</strong> and is now marked as out of stock. Please restock it.
+          </p>
+
+          <!-- Product Details Card -->
+          <div style="background-color: #FFF5F5; border-radius: 16px; padding: 20px; border: 1px solid #FFE3E3; font-size: 14px; color: #4A354D; display: flex; flex-direction: column; gap: 8px;">
+            <div><strong>Product Title:</strong> <span style="font-weight: 600; color: #1A0F1C;">${productTitle}</span></div>
+            <div><strong>Product ID:</strong> <span style="font-family: monospace; color: #8B1D8F;">${productId}</span></div>
+            ${size ? `<div><strong>Size:</strong> <span style="font-weight: 600; color: #DC3545;">${size}</span></div>` : ""}
+            <div><strong>Status:</strong> <span style="color: #DC3545; font-weight: bold; text-transform: uppercase;">Out Of Stock</span></div>
+          </div>
+
+          <div style="margin-top: 30px; border-top: 1px solid #F0E6F2; padding-top: 20px; text-align: center; font-size: 12px; color: #8B7A8F; line-height: 1.5;">
+            Inventory Notification Service • Saheli Shrungar Costumes
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `;
+
+  let host = process.env.SMTP_HOST;
+  let port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 465;
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+
+  if (!host && process.env.EMAIL_USER) {
+    host = "smtp.gmail.com";
+    port = 465;
+  }
+
+  if (host && user && pass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
+      });
+
+      const adminEmail = process.env.EMAIL_USER || user;
+      if (adminEmail) {
+        await transporter.sendMail({
+          from: `"Saheli Inventory Alert" <${user}>`,
+          to: adminEmail,
+          subject: `🚨 OUT OF STOCK: ${productTitle}${size ? ` (Size: ${size})` : ""}`,
+          html: emailHtml,
+        });
+        console.log(`[Email Service] Out of stock alert sent to admin ${adminEmail} for ${productTitle} (${size || "Standard"})`);
+      }
+      return;
+    } catch (error) {
+      console.error("[Email Service] Failed to send out of stock alert via SMTP:", error);
+    }
+  }
+
+  console.log("==================================================================");
+  console.log(`[MOCK EMAIL FALLBACK] Out of stock alert for ${productTitle} (${size || "Standard"})`);
+  console.log("==================================================================");
+}
+

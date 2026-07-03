@@ -103,9 +103,25 @@ export async function POST(req: Request) {
         const sizeObj = item.productDocument.sizes.find((s: any) => s.size === item.selectedSize);
         if (sizeObj) {
           sizeObj.stock -= item.quantity;
+          if (sizeObj.stock <= 0) {
+            try {
+              const { sendOutOfStockEmail } = await import("@/utils/emailService");
+              await sendOutOfStockEmail(item.title, item.productId, item.selectedSize);
+            } catch (err) {
+              console.error("Failed to send out of stock alert:", err);
+            }
+          }
         }
       }
       item.productDocument.stock -= item.quantity;
+      if (item.productDocument.stock <= 0) {
+        try {
+          const { sendOutOfStockEmail } = await import("@/utils/emailService");
+          await sendOutOfStockEmail(item.title, item.productId, null);
+        } catch (err) {
+          console.error("Failed to send out of stock alert:", err);
+        }
+      }
       await item.productDocument.save();
     }
 
