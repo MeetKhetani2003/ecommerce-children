@@ -100,6 +100,10 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   };
 
   const addToCart = (product: Product, size?: string) => {
+    if (!session?.user) {
+      window.dispatchEvent(new CustomEvent("openLoginModal"));
+      return;
+    }
     setCartItems((prev) => {
       const cartItemId = size ? `${product.id}-${size}` : `${product.id}`;
       const existing = prev.find((p) => p.cartItemId === cartItemId);
