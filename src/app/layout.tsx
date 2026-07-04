@@ -27,6 +27,9 @@ export const metadata = {
     template: "%s | Saheli Shrungar",
   },
   description: "India's premier online store for premium kids fancy dress costumes for school annual days, competitions, and festivals. Fast next-day delivery, secure payments, and COD.",
+  icons: {
+    icon: "/assets/favicon.png",
+  },
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://sahelishrungar.com"),
   alternates: {
     canonical: "/",
