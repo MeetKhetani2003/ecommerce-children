@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ShieldCheck, ArrowLeft, Heart, Search, Check, ChevronDown, Sparkles, Star, Truck, RotateCcw, ShoppingBag, ChevronRight, X, Trash2 } from "lucide-react";
+import { ShieldCheck, Heart, Star, Truck, RotateCcw, ShoppingBag, ChevronRight, Trash2 } from "lucide-react";
 import SizeGuideModal from "./SizeGuideModal";
 import { useShop } from "@/context/ShopContext";
 import Barcode from "react-barcode";
