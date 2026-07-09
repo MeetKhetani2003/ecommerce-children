@@ -77,7 +77,7 @@ export async function generateInvoicePDF(details: InvoiceDetails): Promise<Buffe
   // Company details below logo
   page.drawText("Saheli Shrungar Costumes", { x: 50, y: 738, size: 9, font: boldFont, color: rgb(26/255, 15/255, 28/255) });
   page.drawText("Mumbai, Maharashtra, India", { x: 50, y: 726, size: 8, font: font, color: rgb(107/255, 90/255, 111/255) });
-  page.drawText("Email: support@sahelishrungar.com", { x: 50, y: 714, size: 8, font: font, color: rgb(107/255, 90/255, 111/255) });
+  page.drawText("Email: sahelishrungarecom@gmail.com", { x: 50, y: 714, size: 8, font: font, color: rgb(107/255, 90/255, 111/255) });
 
   // Invoice Title and Metadata on Right
   page.drawText("TAX INVOICE / BILL", {
@@ -225,7 +225,7 @@ export async function generateInvoicePDF(details: InvoiceDetails): Promise<Buffe
     font: font,
     color: rgb(139/255, 122/255, 143/255)
   });
-  page.drawText("For help or support, contact us at support@sahelishrungar.com", {
+  page.drawText("For help or support, contact us at sahelishrungarecom@gmail.com", {
     x: 135,
     y: 50,
     size: 8.5,
@@ -343,7 +343,7 @@ export async function sendInvoiceEmail(details: InvoiceDetails) {
           <!-- Footer -->
           <div style="margin-top: 40px; border-top: 1px solid #F0E6F2; padding-top: 20px; text-align: center; font-size: 12px; color: #8B7A8F; line-height: 1.5;">
             Thank you for shopping with Saheli Shrungar! We hope your little star shines in their event.<br/>
-            For help or inquiries, contact us at support@sahelishrungar.com
+            For help or inquiries, contact us at sahelishrungarecom@gmail.com
           </div>
 
         </div>
@@ -511,7 +511,7 @@ export async function sendBulkInquiryEmails(details: BulkInquiryDetails) {
         <p style="margin-top: 30px; font-size: 13px; color: #8B7A8F;">
           Best Regards,<br/>
           <strong>Saheli Shrungar Customer Support Team</strong><br/>
-          Contact: support@sahelishrungar.com
+          Contact: sahelishrungarecom@gmail.com
         </p>
       </div>
     </div>
@@ -598,7 +598,7 @@ export async function sendWelcomeCouponEmail(email: string, name: string, coupon
           <!-- Footer -->
           <div style="margin-top: 40px; border-top: 1px solid #F0E6F2; padding-top: 20px; text-align: center; font-size: 12px; color: #8B7A8F; line-height: 1.5;">
             Thank you for shopping with Saheli Shrungar!<br/>
-            For help or inquiries, contact us at support@sahelishrungar.com
+            For help or inquiries, contact us at sahelishrungarecom@gmail.com
           </div>
         </div>
       </div>
@@ -744,7 +744,7 @@ export async function sendExchangeRequestEmail(details: ExchangeEmailDetails) {
           <!-- Footer -->
           <div style="margin-top: 40px; border-top: 1px solid #F0E6F2; padding-top: 20px; text-align: center; font-size: 12px; color: #8B7A8F; line-height: 1.5;">
             Thank you for choosing Saheli Shrungar!<br/>
-            For help or inquiries, contact us at support@sahelishrungar.com
+            For help or inquiries, contact us at sahelishrungarecom@gmail.com
           </div>
 
         </div>
@@ -879,3 +879,82 @@ export async function sendOutOfStockEmail(productTitle: string, productId: numbe
   console.log("==================================================================");
 }
 
+export interface ContactDetails {
+  name: string;
+  email: string;
+  phone: string;
+  reason: string;
+  message: string;
+}
+
+export async function sendContactEmail(details: ContactDetails) {
+  const { name, email, phone, reason, message } = details;
+
+  const adminHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #F0E6F2; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+      <div style="background-color: #8B1D8F; padding: 20px; text-align: center; color: white;">
+        <h2 style="margin: 0; font-size: 20px;">New Contact Inquiry</h2>
+      </div>
+      <div style="padding: 25px; color: #1A0F1C; line-height: 1.6;">
+        <p>Hello Admin,</p>
+        <p>A new message has been submitted via the Contact Us form:</p>
+        
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background-color: #FCF7FD; border-radius: 12px; overflow: hidden;">
+          <tr>
+            <td style="padding: 10px 15px; border-bottom: 1px solid #F0E6F2; font-weight: bold;">Reason:</td>
+            <td style="padding: 10px 15px; border-bottom: 1px solid #F0E6F2; color: #8B1D8F; font-weight: bold;">${reason}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 15px; border-bottom: 1px solid #F0E6F2; font-weight: bold;">Name:</td>
+            <td style="padding: 10px 15px; border-bottom: 1px solid #F0E6F2;">${name}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 15px; border-bottom: 1px solid #F0E6F2; font-weight: bold;">Email:</td>
+            <td style="padding: 10px 15px; border-bottom: 1px solid #F0E6F2;"><a href="mailto:${email}">${email}</a></td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 15px; border-bottom: 1px solid #F0E6F2; font-weight: bold;">Phone:</td>
+            <td style="padding: 10px 15px; border-bottom: 1px solid #F0E6F2;">${phone}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 15px; font-weight: bold; vertical-align: top;">Message:</td>
+            <td style="padding: 10px 15px;">${message.replace(/\n/g, '<br/>')}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  `;
+
+  let host = process.env.SMTP_HOST;
+  let port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 465;
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+
+  if (!host && process.env.EMAIL_USER) {
+    host = "smtp.gmail.com";
+    port = 465;
+  }
+
+  if (host && user && pass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
+      });
+
+      const adminEmail = process.env.EMAIL_USER || user;
+      await transporter.sendMail({
+        from: `"Saheli Contact Form" <${user}>`,
+        to: adminEmail,
+        subject: `Contact Inquiry: ${reason} - ${name}`,
+        html: adminHtml,
+      });
+      console.log(`[Email Service] Contact inquiry email dispatched to admin.`);
+      return;
+    } catch (error) {
+      console.error("[Email Service] Failed to send contact email via SMTP:", error);
+    }
+  }
+}

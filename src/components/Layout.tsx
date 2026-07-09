@@ -9,8 +9,13 @@ import { useShop } from "@/context/ShopContext";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import { FaWhatsapp } from "react-icons/fa";
 
 const LoginModal = dynamic(() => import("@/components/LoginModal"), {
+  ssr: false,
+});
+
+const SizeGuideModal = dynamic(() => import("@/components/SizeGuideModal"), {
   ssr: false,
 });
 
@@ -66,6 +71,7 @@ const cn = (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { wishlist, cartCount, showCart, setShowCart } = useShop();
@@ -504,22 +510,58 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <p className="mt-4 max-w-[320px] text-[13.5px] leading-relaxed text-[#6B5A6F]">India’s most loved fancy dress destination for school events. Premium fabrics, complete sets, delivered fast.</p>
             </div>
             {[
-              { title: "Shop", links: ["Superhero", "Mythology", "Animals", "Dance Wear", "National Days", "Halloween"] },
-              { title: "Help", links: ["Size Guide", "Delivery", "Returns", "Track Order", "Contact Us"] },
-              { title: "Company", links: ["About", "Parent Reviews", "Wholesale", "Careers", "Privacy"] },
+              { 
+                title: "Shop", 
+                links: [
+                  { label: "Superhero", href: "/products?category=Super%20Heroes" },
+                  { label: "Mythology", href: "/products?category=Indian%20Mythology%20Costume" },
+                  { label: "Animals", href: "/products?category=Animal%20Costume" },
+                  { label: "Dance Wear", href: "/products?category=Indian%20Dance%20Costume" },
+                  { label: "National Days", href: "/products?category=Independence%20Day%20Costume" },
+                  { label: "Halloween", href: "/products?category=Halloween%20Costumes" }
+                ] 
+              },
+              { 
+                title: "Help", 
+                links: [
+                  { label: "Size Guide", action: () => setIsSizeGuideOpen(true) },
+                  { label: "Contact Us", href: "/contact-us" }
+                ] 
+              },
+              { 
+                title: "Company", 
+                links: [
+                  { label: "About", href: "/about" },
+                  { label: "Parent Reviews", href: "/reviews" },
+                  { label: "Wholesale", href: "/wholesale" },
+                  { label: "Careers", href: "/careers" },
+                  { label: "Privacy", href: "/privacy" }
+                ] 
+              },
             ].map((col) => (
               <div key={col.title}>
                 <div className="text-[13px] font-semibold uppercase tracking-wide text-[#3A2A3D]">{col.title}</div>
                 <ul className="mt-3 space-y-2.5">
-                  {col.links.map((l) => (
-                    <li key={l}><Link href={col.title === "Shop" ? `/products?category=${l}` : "#"} className="text-[13.5px] text-[#6B5A6F] transition hover:text-[#8B1D8F]">{l}</Link></li>
+                  {col.links.map((l: any) => (
+                    <li key={l.label}>
+                      {l.action ? (
+                        <button onClick={l.action} className="text-[13.5px] text-[#6B5A6F] transition hover:text-[#8B1D8F]">{l.label}</button>
+                      ) : (
+                        <Link href={l.href} className="text-[13.5px] text-[#6B5A6F] transition hover:text-[#8B1D8F]">{l.label}</Link>
+                      )}
+                    </li>
                   ))}
                 </ul>
               </div>
             ))}
           </div>
           <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-[#F0E6F2] pt-6 md:flex-row">
-            <div className="text-[12.5px] text-[#8B7A8F]">© {new Date().getFullYear()} Saheli Shrungar. All rights reserved. Made with love for school stars.</div>
+            <div className="flex flex-col gap-1 text-[12.5px] text-[#8B7A8F] text-center md:text-left">
+              <span>© {new Date().getFullYear()} Saheli Shrungar. All rights reserved. Made with love for school stars.</span>
+              <span className="text-[12px] opacity-80">
+                Powered by <a href="https://festiviya.com/" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#8B1D8F] hover:underline">Festiviya</a>
+              </span>
+            </div>
             <div className="flex items-center gap-3 text-[12px] text-[#8B7A8F]">
               <span className="rounded-full border border-[#EEDDF0] px-2.5 py-1">UPI</span>
               <span className="rounded-full border border-[#EEDDF0] px-2.5 py-1">Cards</span>
@@ -548,6 +590,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Login Modal */}
       <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
+
+      {/* Size Guide Modal */}
+      <SizeGuideModal isOpen={isSizeGuideOpen} onClose={() => setIsSizeGuideOpen(false)} />
+
+      {/* Floating WhatsApp Button */}
+      <a
+        href="https://wa.me/919664992997"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-[#25D366]/30 transition-transform duration-300 hover:scale-110 md:bottom-8 md:right-8 print:hidden"
+        aria-label="Chat on WhatsApp"
+      >
+        <FaWhatsapp className="h-8 w-8" />
+      </a>
     </div>
   );
 }
