@@ -15,6 +15,7 @@ export type Product = {
   image: string;
   tag: string;
   description?: string;
+  sizes?: { size: string; stock: number; price?: number; mrp?: number; netPrice?: number }[];
 };
 
 export type CartItem = Product & { quantity: number; size?: string; cartItemId: string };
@@ -104,13 +105,22 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       window.dispatchEvent(new CustomEvent("openLoginModal"));
       return;
     }
+    
+    let itemPrice = product.price;
+    if (size && product.sizes) {
+      const sizeObj = product.sizes.find((s) => s.size === size);
+      if (sizeObj && sizeObj.price != null) {
+        itemPrice = sizeObj.price;
+      }
+    }
+
     setCartItems((prev) => {
       const cartItemId = size ? `${product.id}-${size}` : `${product.id}`;
       const existing = prev.find((p) => p.cartItemId === cartItemId);
       if (existing) {
-        return prev.map((p) => (p.cartItemId === cartItemId ? { ...p, quantity: p.quantity + 1 } : p));
+        return prev.map((p) => (p.cartItemId === cartItemId ? { ...p, quantity: p.quantity + 1, price: itemPrice } : p));
       }
-      return [...prev, { ...product, quantity: 1, size, cartItemId }];
+      return [...prev, { ...product, quantity: 1, size, cartItemId, price: itemPrice }];
     });
     setShowCart(true);
     setTimeout(() => setShowCart(false), 2000);

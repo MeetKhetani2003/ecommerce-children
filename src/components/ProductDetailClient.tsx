@@ -101,6 +101,25 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
     }
   }, [initialProduct]);
 
+  // Compute dynamic price based on selected size
+  let displayPrice = product?.price || 0;
+  let displayMrp = product?.mrp || 0;
+
+  if (selectedSize && product?.sizes && product.sizes.length > 0) {
+    const sizeObj = product.sizes.find((s: any) => s.size === selectedSize);
+    if (sizeObj && sizeObj.price != null && sizeObj.price !== 0) {
+      displayPrice = sizeObj.price;
+      
+      if (sizeObj.mrp != null && sizeObj.mrp !== 0) {
+        displayMrp = sizeObj.mrp;
+      } else if (displayPrice > displayMrp) {
+        displayMrp = displayPrice + (product.mrp - product.price);
+      }
+    }
+  }
+
+  const discountPercentage = displayMrp > 0 ? Math.round(((displayMrp - displayPrice) / displayMrp) * 100) : 0;
+
   const handleBulkInquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!product) return;
@@ -284,10 +303,10 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
           </div>
 
           <div className="mt-4 sm:mt-6 flex flex-wrap items-baseline gap-2 sm:gap-3 border-b border-[#F0E6F2] pb-5 sm:pb-6">
-            <span className="text-[26px] sm:text-[32px] font-bold text-[#1A0F1C]">₹{product.price}</span>
-            <span className="text-[15px] sm:text-[18px] text-[#9A8A9D] line-through">₹{product.mrp}</span>
+            <span className="text-[26px] sm:text-[32px] font-bold text-[#1A0F1C]">₹{displayPrice}</span>
+            <span className="text-[15px] sm:text-[18px] text-[#9A8A9D] line-through">₹{displayMrp}</span>
             <span className="rounded bg-[#E8F5E9] px-2 py-0.5 sm:py-1 text-[11px] sm:text-[13px] font-bold text-[#0F8A4B]">
-              {Math.round(((product.mrp - product.price) / product.mrp) * 100)}% OFF
+              {discountPercentage}% OFF
             </span>
           </div>
 

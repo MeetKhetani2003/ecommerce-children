@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Filter, Star, Heart, ShoppingBag, ChevronDown, Search } from "lucide-react";
@@ -68,7 +68,7 @@ interface ProductsListingClientProps {
   initialBrand?: string;
 }
 
-export default function ProductsListingClient({
+function ProductsListingClientInner({
   initialCategory,
   initialCity,
   initialBrand,
@@ -365,10 +365,22 @@ export default function ProductsListingClient({
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredProducts.map((p) => (
-                <div key={p.id} className="group relative w-full shrink-0">
-                  <div className="overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
-                    <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
+              {filteredProducts.map((p) => {
+                const selectedSize = selectedSizes[p.id];
+                const sizeObj = selectedSize && p.sizes ? p.sizes.find((s: any) => s.size === selectedSize) : null;
+                const displayPrice = sizeObj?.price != null && sizeObj.price !== 0 ? sizeObj.price : p.price;
+                let displayMrp = p.mrp;
+                if (sizeObj?.mrp != null && sizeObj.mrp !== 0) {
+                  displayMrp = sizeObj.mrp;
+                } else if (displayPrice > displayMrp) {
+                  displayMrp = displayPrice + (p.mrp - p.price);
+                }
+                const discountPercentage = displayMrp > 0 ? Math.round(((displayMrp - displayPrice) / displayMrp) * 100) : 0;
+
+                return (
+                  <div key={p.id} className="group relative w-full shrink-0">
+                    <div className="overflow-hidden rounded-[20px] border border-[#B59CB9] bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#8B1D8F]/10">
+                      <div className="relative aspect-[4/5] overflow-hidden bg-[#FCF7FD]">
                       <Link href={`/product/${p.slug || p.id}`} className="block h-full w-full">
                         <Image
                           src={p.image}
@@ -405,9 +417,9 @@ export default function ProductsListingClient({
                         <span className="text-[11px] text-[#8B7A8F]">{p.rating}</span>
                       </div>
                       <div className="mt-2 flex items-baseline gap-1.5">
-                        <span className="text-[16px] font-semibold text-[#1A0F1C]">₹{p.price}</span>
-                        <span className="text-[12px] text-[#9A8A9D] line-through">₹{p.mrp}</span>
-                        <span className="ml-auto text-[11px] font-medium text-[#0F8A4B]">{Math.round(((p.mrp - p.price) / p.mrp) * 100)}% off</span>
+                        <span className="text-[16px] font-semibold text-[#1A0F1C]">₹{displayPrice}</span>
+                        <span className="text-[12px] text-[#9A8A9D] line-through">₹{displayMrp}</span>
+                        <span className="ml-auto text-[11px] font-medium text-[#0F8A4B]">{discountPercentage}% off</span>
                       </div>
                       {p.sizes && p.sizes.length > 0 && (
                         <div className="mt-3">
@@ -442,12 +454,20 @@ export default function ProductsListingClient({
                       </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProductsListingClient(props: ProductsListingClientProps) {
+  return (
+    <Suspense fallback={<div>Loading products...</div>}>
+      <ProductsListingClientInner {...props} />
+    </Suspense>
   );
 }

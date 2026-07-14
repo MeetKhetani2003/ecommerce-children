@@ -9,6 +9,9 @@ import { ChevronLeft, Package, Plus, Trash2, X, ImageIcon } from "lucide-react";
 interface SizeEntry {
   size: string;
   stock: number;
+  price?: number | "";
+  mrp?: number | "";
+  netPrice?: number | "";
 }
 
 export default function CreateProductPage() {
@@ -47,7 +50,7 @@ export default function CreateProductPage() {
 
   // Size-stock pairs
   const [sizeEntries, setSizeEntries] = useState<SizeEntry[]>([
-    { size: "", stock: 0 },
+    { size: "", stock: 0, price: "", mrp: "", netPrice: "" },
   ]);
 
   const isAdmin = (session?.user as any)?.role === "admin";
@@ -68,7 +71,7 @@ export default function CreateProductPage() {
   }
 
   const addSizeRow = () => {
-    setSizeEntries((prev) => [...prev, { size: "", stock: 0 }]);
+    setSizeEntries((prev) => [...prev, { size: "", stock: 0, price: "", mrp: "", netPrice: "" }]);
   };
 
   const removeSizeRow = (idx: number) => {
@@ -77,9 +80,14 @@ export default function CreateProductPage() {
 
   const updateSizeRow = (idx: number, field: keyof SizeEntry, value: string | number) => {
     setSizeEntries((prev) =>
-      prev.map((entry, i) =>
-        i === idx ? { ...entry, [field]: field === "stock" ? Number(value) : value } : entry
-      )
+      prev.map((entry, i) => {
+        if (i !== idx) return entry;
+        if (field === "stock") return { ...entry, [field]: Number(value) };
+        if (["price", "mrp", "netPrice"].includes(field)) {
+          return { ...entry, [field]: value === "" ? "" : Number(value) };
+        }
+        return { ...entry, [field]: value };
+      })
     );
   };
 
@@ -283,21 +291,48 @@ export default function CreateProductPage() {
             </div>
 
             {/* Header row */}
-            <div className="mb-2 grid grid-cols-[1fr_120px_40px] gap-3 px-1">
+            <div className="mb-2 grid grid-cols-[1fr_85px_85px_85px_80px_40px] gap-2 px-1">
               <span className="text-[12px] font-semibold uppercase tracking-wide text-[#8B7A8F]">Size / Age Group</span>
-              <span className="text-[12px] font-semibold uppercase tracking-wide text-[#8B7A8F] text-center">Stock (Qty)</span>
+              <span className="text-[12px] font-semibold uppercase tracking-wide text-[#8B7A8F] text-center" title="Net Cost">Net (₹)</span>
+              <span className="text-[12px] font-semibold uppercase tracking-wide text-[#8B7A8F] text-center" title="Selling Price">Sell (₹)</span>
+              <span className="text-[12px] font-semibold uppercase tracking-wide text-[#8B7A8F] text-center" title="MRP">MRP (₹)</span>
+              <span className="text-[12px] font-semibold uppercase tracking-wide text-[#8B7A8F] text-center">Stock</span>
               <span></span>
             </div>
 
             <div className="space-y-2.5">
               {sizeEntries.map((entry, idx) => (
-                <div key={idx} className="grid grid-cols-[1fr_120px_40px] items-center gap-3">
+                <div key={idx} className="grid grid-cols-[1fr_85px_85px_85px_80px_40px] items-center gap-2">
                   <input
                     type="text"
                     value={entry.size}
                     onChange={(e) => updateSizeRow(idx, "size", e.target.value)}
-                    placeholder="e.g. 3-4 Yrs, Size 26"
-                    className="h-11 rounded-xl border border-[#EEDDF0] bg-white px-4 text-[13.5px] outline-none focus:border-[#8B1D8F]"
+                    placeholder="e.g. 3-4 Yrs"
+                    className="h-11 rounded-xl border border-[#EEDDF0] bg-white px-3 text-[13px] outline-none focus:border-[#8B1D8F]"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    value={entry.netPrice}
+                    onChange={(e) => updateSizeRow(idx, "netPrice", e.target.value)}
+                    placeholder="Base"
+                    className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-white px-2 text-[13px] text-center outline-none focus:border-[#8B1D8F]"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    value={entry.price}
+                    onChange={(e) => updateSizeRow(idx, "price", e.target.value)}
+                    placeholder="Base"
+                    className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-white px-2 text-[13px] text-center font-semibold outline-none focus:border-[#8B1D8F]"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    value={entry.mrp}
+                    onChange={(e) => updateSizeRow(idx, "mrp", e.target.value)}
+                    placeholder="Base"
+                    className="h-11 w-full rounded-xl border border-[#EEDDF0] bg-white px-2 text-[13px] text-center outline-none focus:border-[#8B1D8F]"
                   />
                   <div className="relative">
                     <input
@@ -338,7 +373,7 @@ export default function CreateProductPage() {
                       : "bg-[#F3E7F5] text-[#7A187C]"
                       }`}
                   >
-                    {entry.size} ({entry.stock > 0 ? `${entry.stock} pcs` : "Out"})
+                    {entry.size} ({entry.stock > 0 ? `${entry.stock} pcs` : "Out"}) {entry.price !== "" && entry.price != null ? ` - ₹${entry.price}` : ""}
                   </span>
                 ))}
               </div>

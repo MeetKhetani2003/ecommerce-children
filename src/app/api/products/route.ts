@@ -66,7 +66,7 @@ export async function POST(req: Request) {
       }
     }
 
-    let sizes: { size: string; stock: number }[] = [];
+    let sizes: { size: string; stock: number; price?: number; mrp?: number; netPrice?: number }[] = [];
     if (sizesStr) {
       try {
         sizes = JSON.parse(sizesStr);
