@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ShieldCheck, Heart, Star, Truck, RotateCcw, ShoppingBag, ChevronRight, Trash2 } from "lucide-react";
+import { ShieldCheck, Heart, Star, Truck, RotateCcw, ShoppingBag, ChevronRight, Trash2, Sparkles, MessageCircle, Copy } from "lucide-react";
 import SizeGuideModal from "./SizeGuideModal";
 import { useShop } from "@/context/ShopContext";
 import Barcode from "react-barcode";
@@ -68,6 +68,9 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
   const [product, setProduct] = useState<any>(initialProduct);
   const [activeImage, setActiveImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  
+  // Affiliate sharing state
+  const [resellerCode, setResellerCode] = useState("");
 
   // Size guide modal state
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
@@ -194,7 +197,7 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
         setReviewRating(5);
         toast.success("Review submitted successfully!");
       } else {
-        setReviewError(data.message || "Failed to submit review.");
+        setReviewError(data.error || "Failed to submit review");
       }
     } catch (err) {
       setReviewError("An error occurred while submitting review.");
@@ -219,6 +222,28 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const getShareLink = () => {
+    let baseUrl = typeof window !== 'undefined' ? window.location.href.split('?')[0] : '';
+    if (resellerCode.trim()) {
+      return `${baseUrl}?ref=${encodeURIComponent(resellerCode.trim())}`;
+    }
+    return baseUrl;
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(getShareLink());
+    toast.success("Link copied to clipboard!");
+  };
+
+  const handleWhatsAppShare = () => {
+    const text = `Check out this amazing product: ${product?.title}\n\n${getShareLink()}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handleFacebookShare = () => {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(getShareLink())}`, '_blank');
   };
 
   if (!product) {
@@ -414,6 +439,37 @@ export default function ProductDetailClient({ product: initialProduct, allProduc
             >
               Buy Now
             </button>
+          </div>
+
+          {/* Reseller & Affiliate Sharing */}
+          <div className="mt-6 sm:mt-8 rounded-[20px] border border-[#E9ECF5] bg-[#F4F6FB] p-5 sm:p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
+            <h3 className="text-[17px] font-bold text-[#1E1650] flex items-center gap-2">
+              <Sparkles className="h-[18px] w-[18px] text-[#4A3BB9]" /> Reseller & Affiliate Sharing
+            </h3>
+            <p className="text-[13.5px] text-[#5C667B] mt-2 mb-4 leading-relaxed">
+              Share this product with your customers and earn commissions! Enter your Reseller Code to customize the links:
+            </p>
+            <input 
+              type="text" 
+              placeholder="e.g. ADMIN" 
+              value={resellerCode}
+              onChange={(e) => setResellerCode(e.target.value.toUpperCase())}
+              className="w-full h-11 rounded-[12px] border border-[#4A3BB9] bg-white px-4 text-[14px] font-medium text-[#1E1650] outline-none focus:ring-2 focus:ring-[#4A3BB9]/20"
+            />
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <button onClick={handleWhatsAppShare} className="flex flex-col items-center justify-center gap-1 rounded-[14px] bg-[#00C97B] py-3 text-[13px] font-semibold text-white transition hover:bg-[#00B36D] active:scale-[0.98]">
+                <MessageCircle className="h-5 w-5" />
+                <span>WhatsApp</span>
+              </button>
+              <button onClick={handleFacebookShare} className="flex flex-col items-center justify-center gap-1 rounded-[14px] bg-[#2F6EF5] py-3 text-[13px] font-semibold text-white transition hover:bg-[#2558C4] active:scale-[0.98]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                <span>Facebook</span>
+              </button>
+              <button onClick={handleCopyLink} className="flex flex-col items-center justify-center gap-1 rounded-[14px] bg-[#E90076] py-3 text-[13px] font-semibold text-white transition hover:bg-[#C20062] active:scale-[0.98]">
+                <Copy className="h-5 w-5" />
+                <span>Copy Link</span>
+              </button>
+            </div>
           </div>
 
           {/* Bulk Order Inquiry Section */}

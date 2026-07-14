@@ -121,8 +121,7 @@ async function seedDatabase() {
     if (couponCount === 0) {
       const defaultCoupons = [
         { code: "WELCOME10", discountPercent: 10, active: true },
-        { code: "FESTIVE20", discountPercent: 20, active: true },
-        { code: "SAHELI25", discountPercent: 25, active: true }
+        { code: "FESTIVE20", discountPercent: 20, active: true }
       ];
       await Coupon.insertMany(defaultCoupons);
     }

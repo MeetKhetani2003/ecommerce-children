@@ -148,6 +148,14 @@ export async function POST(req: Request) {
       shippingStatus: "Processing"
     });
 
+    // Mark coupon as used (inactive) immediately to enforce one-time use
+    if (couponCode) {
+      await Coupon.findOneAndUpdate(
+        { code: couponCode.toUpperCase() },
+        { active: false }
+      );
+    }
+
     // If Cash on Delivery and shipping fee is 0, we can bypass Razorpay flow entirely
     if (paymentMethod === "cod" && calculatedShippingFee === 0) {
       await Reservation.create({

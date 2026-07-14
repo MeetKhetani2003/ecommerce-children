@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/utils/dbConnect";
 import { User } from "@/models/User";
+import { checkAndSendWelcomeCoupon } from "@/utils/couponHelper";
 
 export async function POST(req: Request) {
   try {
@@ -31,10 +32,13 @@ export async function POST(req: Request) {
 
     await user.save();
 
+    const generatedCouponCode = await checkAndSendWelcomeCoupon(user);
+
     return NextResponse.json({
       success: true,
       addresses: user.addresses,
       defaultAddress: user.defaultAddress,
+      couponCode: generatedCouponCode
     });
   } catch (error: any) {
     console.error("Error updating user addresses:", error);

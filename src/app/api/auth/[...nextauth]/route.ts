@@ -89,6 +89,7 @@ const handler = NextAuth({
         (session.user as any).isEnvAdmin = true;
         (session.user as any).role = "admin";
         (session.user as any).id = "env-admin";
+        if (token.phone) (session.user as any).phone = token.phone;
         return session;
       }
 

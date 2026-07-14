@@ -21,6 +21,7 @@ const UserSchema = new Schema({
     quantity: { type: Number }
   }],
   wishlist: [{ type: Number }],
+  welcomeCouponSent: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 

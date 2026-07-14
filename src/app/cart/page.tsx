@@ -708,7 +708,7 @@ export default function Cart() {
                   type="text"
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value)}
-                  placeholder="WELCOM10, SAHELI25"
+                  placeholder="e.g. WELCOME10"
                   className="h-10 flex-1 rounded-xl border border-[#EEDDF0] bg-white px-3 text-[13px] outline-none focus:border-[#E1BFE6]"
                 />
                 <button
@@ -723,7 +723,6 @@ export default function Cart() {
             {couponError && (
               <div className="mt-2 text-[12px] text-red-500 flex items-center gap-1"><AlertCircle className="h-3.5 w-3.5" /> {couponError}</div>
             )}
-            <div className="mt-2 text-[11px] text-[#8B7A8F]">Try default test coupon: <span className="font-mono bg-white px-1 py-0.5 rounded border border-[#EEDDF0] font-semibold text-[#8B1D8F]">SAHELI25</span> for 25% discount.</div>
           </div>
 
           {/* Order Summary */}

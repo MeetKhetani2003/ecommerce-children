@@ -19,6 +19,10 @@ const SizeGuideModal = dynamic(() => import("@/components/SizeGuideModal"), {
   ssr: false,
 });
 
+const DiscountPopupClient = dynamic(() => import("@/components/DiscountPopupClient"), {
+  ssr: false,
+});
+
 const megaMenuGroups = [
   {
     title: "Nature & Animals",
@@ -593,6 +597,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Size Guide Modal */}
       <SizeGuideModal isOpen={isSizeGuideOpen} onClose={() => setIsSizeGuideOpen(false)} />
+
+      {/* Discount Popup */}
+      <DiscountPopupClient />
 
       {/* Floating WhatsApp Button */}
       <a

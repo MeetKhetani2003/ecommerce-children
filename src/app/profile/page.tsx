@@ -242,6 +242,9 @@ export default function Profile() {
       });
       const data = await res.json();
       if (data.success) {
+        if (data.couponCode) {
+          toast.success("Welcome! A 10% discount coupon has been sent to your email! 🎉", { duration: 5000 });
+        }
         await update();
       }
     } catch (err) {
