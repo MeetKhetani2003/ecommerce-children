@@ -23,6 +23,10 @@ const DiscountPopupClient = dynamic(() => import("@/components/DiscountPopupClie
   ssr: false,
 });
 
+const RecentPurchaseToastClient = dynamic(() => import("@/components/RecentPurchaseToastClient"), {
+  ssr: false,
+});
+
 const megaMenuGroups = [
   {
     title: "Nature & Animals",
@@ -600,6 +604,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Discount Popup */}
       <DiscountPopupClient />
+
+      {/* Recent Purchase Social Proof Toast */}
+      <RecentPurchaseToastClient />
 
       {/* Floating WhatsApp Button */}
       <a
