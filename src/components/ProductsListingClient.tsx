@@ -454,9 +454,10 @@ function ProductsListingClientInner({
                       </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
+          </div>
           )}
         </div>
       </div>

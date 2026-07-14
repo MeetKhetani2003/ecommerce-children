@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/utils/dbConnect";
 import { User } from "@/models/User";
-import { Coupon } from "@/models/Coupon";
 import { checkAndSendWelcomeCoupon } from "@/utils/couponHelper";
 
 export async function PUT(req: Request) {
