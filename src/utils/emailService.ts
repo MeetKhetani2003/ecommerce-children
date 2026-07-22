@@ -76,7 +76,7 @@ export async function generateInvoicePDF(details: InvoiceDetails): Promise<Buffe
 
   // Company details below logo
   page.drawText("Saheli Shrungar Costumes", { x: 50, y: 738, size: 9, font: boldFont, color: rgb(26/255, 15/255, 28/255) });
-  page.drawText("Mumbai, Maharashtra, India", { x: 50, y: 726, size: 8, font: font, color: rgb(107/255, 90/255, 111/255) });
+  page.drawText("9/97, Anandnagar Main Rd, Rajkot, Gujarat 360002", { x: 50, y: 726, size: 8, font: font, color: rgb(107/255, 90/255, 111/255) });
   page.drawText("Email: sahelishrungarecom@gmail.com", { x: 50, y: 714, size: 8, font: font, color: rgb(107/255, 90/255, 111/255) });
 
   // Invoice Title and Metadata on Right

@@ -69,7 +69,7 @@ export default function ContactUsPage() {
               <h3 className="text-[18px] font-bold text-[#1A0F1C] mb-2">Our Location</h3>
               <p className="text-[14px] text-[#6B5A6F] leading-relaxed">
                 Saheli Shrungar Costumes<br />
-                Mumbai, Maharashtra, India
+                9/97, Anandnagar Main Rd, opposite harshad provision store, Anand Nagar Colony, Bhakti Nagar, Rajkot, Gujarat 360002
               </p>
             </div>
 
@@ -89,7 +89,7 @@ export default function ContactUsPage() {
               </div>
               <h3 className="text-[18px] font-bold text-[#1A0F1C] mb-2">Call Us</h3>
               <p className="text-[14px] text-[#6B5A6F] leading-relaxed">
-                +91 98765 43210<br />
+                088663 31293<br />
                 Mon-Sat from 10am to 7pm
               </p>
             </div>
@@ -148,7 +148,7 @@ export default function ContactUsPage() {
                         required
                         value={formData.phone}
                         onChange={handleChange}
-                        placeholder="+91 98765 43210"
+                        placeholder="088663 31293"
                         className="w-full h-[52px] rounded-2xl border border-[#EEDDF0] bg-[#FCF7FD] pl-11 pr-4 text-[14px] text-[#1A0F1C] outline-none transition-all focus:border-[#E1BFE6] focus:bg-white focus:ring-4 focus:ring-[#F3E7F5] placeholder:text-[#A38AA6]"
                       />
                       <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-[#A38AA6]" />
