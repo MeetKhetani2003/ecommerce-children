@@ -543,7 +543,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   { label: "Parent Reviews", href: "/reviews" },
                   { label: "Wholesale", href: "/wholesale" },
                   { label: "Careers", href: "/careers" },
-                  { label: "Privacy", href: "/privacy" }
+                  { label: "Privacy Policy", href: "/privacy" },
+                  { label: "Terms & Conditions", href: "/terms" }
                 ] 
               },
             ].map((col) => (
